@@ -139,6 +139,11 @@ This is the compressed handoff from the long Codex/Kenjy conversation so Claude 
 - Room is treated as 63x63.
 - Chunk mode commonly uses 20x20 chunks.
 - A 2x2 layout means four chunks; Kenjy expects chunk numbering visually top-to-bottom by column where applicable, not confusing bottom-to-top labels.
+- Current exact marker anchors from Kenjy's room/object packet:
+  - chunk 1 marker anchor = `x:21, y:33`
+  - chunk 2 marker anchor = `x:21, y:62`
+  - chunk 3 marker anchor = `x:51, y:33`
+  - chunk 4 marker anchor = `x:51, y:62`
 - If the input only needs one chunk, build/preview only one chunk. Do not place the image into chunk 2/3/4 by accident.
 - Lights may extend slightly outside a chunk if needed for glow quality, because light furniture is bigger than one tile.
 - Kenjy gave room screenshots where each 20x20 chunk is framed by marker furniture and number labels. Markers are not decorative; they help camera/photo alignment.
@@ -202,3 +207,12 @@ This is the compressed handoff from the long Codex/Kenjy conversation so Claude 
 - Real build may still stop after a few items if ObjectAdd matching is too strict or settings are not confirmed.
 - UI may still contain stale `Canvas kamer-preview` and sizing/cropping issues.
 - Line numbers in `PROJECT_BRIEFING.md` and this file must be updated after large edits to `pixelart-lightart.js`.
+
+### Latest chunk-outline bug report from Kenjy
+
+- Kenjy sent an `{in:Objects}` packet with 330 objects after testing Claude's latest build. Parsed facts:
+  - 314 light objects with type id `886600854`.
+  - Marker/camera objects had anchors at `x=21/51` and `y=33/62`, confirming chunk 4 should be `x:51, y:62`, not `x:48, y:60`.
+  - 174 objects were outside the expected clipped 20x20 chunk boxes when compared to the marker anchors.
+- Root cause found in `pixelart-lightart.js:1409`: Light Art used `reserveTile(...)`, which spreads overlapping same-color lights to nearby tiles. That is wrong for Light Art because Kenjy wants lights to overlap/stack for strength and color mixing.
+- Fix direction: for `settings.generatorMode === 'light_art'`, use the calculated `{ x, y }` directly; only non-Light-Art modes should use `reserveTile(...)`.

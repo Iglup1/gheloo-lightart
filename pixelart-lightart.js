@@ -1177,7 +1177,7 @@
       1: { x: 21, y: 33 },
       2: { x: 21, y: 62 },
       3: { x: 51, y: 33 },
-      4: { x: 48, y: 60 }
+      4: { x: 51, y: 62 }
     };
     return anchors[nr] || null;
   }
@@ -1406,7 +1406,7 @@
         y = clamp(Math.round(anchorY - dx), 0, 63);
       }
       const z = normalizeHeight(baseBh);
-      const spot = settings.generatorMode === 'light_art' ? reserveTile(p.typeId, p.state, p.size, x, y, z) : { x, y };
+      const spot = settings.generatorMode === 'light_art' ? { x, y } : reserveTile(p.typeId, p.state, p.size, x, y, z);
       out.push({ id, typeId: p.typeId, x: spot.x, y: spot.y, z, rotation, state: p.state, size: p.size });
     });
     if (Object.keys(missing).length) throw new Error('Niet genoeg lights: ' + JSON.stringify(missing));

@@ -236,6 +236,31 @@ Fixed to: `y = anchorY - (logicalH - 1 - localY)` — image-top now maps to room
 
 ---
 
+## [2026-06-26] Codex - Session 10
+
+**Done:**
+- Investigated Kenjy's new bad preview packet/screenshot where the generated lights were visibly outside the chunk outlines.
+- Parsed the provided `{in:Objects}` packet: markers confirm chunk anchors `1=(21,33)`, `2=(21,62)`, `3=(51,33)`, `4=(51,62)`.
+- Fixed chunk 4 anchor and stopped Light Art from using the anti-overlap tile spreader that pushed stacked lights out of their chunks.
+- Updated `SHARED_CONTEXT.md` with the packet-derived facts and the root cause so Claude does not repeat this mistake.
+
+**Changed files:**
+- `pixelart-lightart.js:1180` - changed chunk 4 exact anchor to `{ x: 51, y: 62 }` based on Kenjy's marker packet.
+- `pixelart-lightart.js:1409` - Light Art now keeps calculated `{ x, y }` directly; only non-Light-Art modes use `reserveTile(...)`.
+- `SHARED_CONTEXT.md:142` - added exact marker anchors from Kenjy's room/object packet.
+- `SHARED_CONTEXT.md:211` - added latest chunk-outline bug report and packet analysis.
+- `SHARED_CONTEXT.md:217` - documented root cause: `reserveTile(...)` spread overlapped Light Art lamps outside chunks.
+- `DEVLOG.md` - added this handoff entry.
+
+**Verification:**
+- Ran `node --check pixelart-lightart.js` successfully.
+
+**Open / next:**
+- Kenjy should retest `Plaats preview in kamer`; expected result is that Light Art lamps stack/overlap inside the chunk anchors instead of spreading across the room.
+- If chunks still look offset, inspect `makeProjectedBuildObjects(...)` around `pixelart-lightart.js:1315` and compare the new packet against the anchors in `SHARED_CONTEXT.md:142`.
+
+---
+
 ## HOW TO UPDATE THIS FILE
 
 At **start of session**: read latest entry, understand state.
