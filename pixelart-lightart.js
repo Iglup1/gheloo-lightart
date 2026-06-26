@@ -1363,8 +1363,9 @@
       return { x, y };
     }
     plan.forEach(function(p) {
-      const lx = maxPx ? (p.px / maxPx) * mapW : p.px;
-      const ly = maxPy ? (p.py / maxPy) * mapH : p.py;
+      const isLA = settings.generatorMode === 'light_art';
+      const lx = isLA ? p.px : (maxPx ? (p.px / maxPx) * mapW : p.px);
+      const ly = isLA ? p.py : (maxPy ? (p.py / maxPy) * mapH : p.py);
       const chunkNr = chunkNumberForRoomPoint(lx, ly);
       if (chunkMode && selected && !selected.has(chunkNr)) return;
       let id = p.id || (out.length + 1);
@@ -1401,7 +1402,7 @@
         const sxRoom = (chunkMode ? chunkSize : roomW) / Math.max(1, logicalW);
         const syRoom = (chunkMode ? chunkSize : roomH) / Math.max(1, logicalH);
         x = clamp(Math.round(anchorX + (localX * sxRoom)), 0, 63);
-        y = clamp(Math.round(anchorY - (localY * syRoom)), 0, 63);
+        y = clamp(Math.round(anchorY - (logicalH - 1 - localY) * syRoom), 0, 63);
       } else {
         const dx = (localX - logicalW / 2) / xyStep;
         x = clamp(Math.round(anchorX + dx), 0, 63);
@@ -1915,6 +1916,8 @@
       '#__la .tabs button{flex:1 1 0;min-width:0;width:auto;border-bottom-left-radius:0!important;border-bottom-right-radius:0!important}',
       '#__la .btn-primary,#__la .btn-secondary{background:#1f7f99!important;border-color:#0f5f75!important;color:#fff!important}',
       '#__la .btn-primary.active,#__la .btn-secondary.active{background:#155f73!important;border-color:#0b4b5e!important}',
+      '#__la #__la_place_preview{background:#3a9fd4!important;border-color:#2276a3!important;color:#fff!important}',
+      '#__la #__la_place_preview.active{background:#0d4a7a!important;border-color:#083454!important;color:#fff!important}',
       '#__la .tabs .btn-secondary{background:#d1d0c8!important;border-color:#111!important;color:#000!important}',
       '#__la .tabs .btn-secondary.active{background:#f3efe4!important;border-color:#111!important;color:#000!important}',
       '#__la .btn-success{background:#198754!important;border-color:#11653d!important;color:#fff!important}',
@@ -1953,7 +1956,7 @@
           '<div class="row"><label>Naar rechts</label><input id="__la_chunk_rx" type="number" title="x verschil naar volgende chunk rechts" value="' + esc(settings.chunkRightX) + '"><input id="__la_chunk_ry" type="number" title="y verschil naar volgende chunk rechts" value="' + esc(settings.chunkRightY) + '"><label>Naar boven</label><input id="__la_chunk_ux" type="number" title="x verschil naar chunk erboven" value="' + esc(settings.chunkUpX) + '"><input id="__la_chunk_uy" type="number" title="y verschil naar chunk erboven" value="' + esc(settings.chunkUpY) + '"></div>' +
           '<div class="row"><button id="__la_plan" class="btn btn-secondary btn-sm flex-grow-1">Reload foto-preview</button></div>' +
           '<div class="sec">Koop en bouw</div><div class="prog"><div class="bar" id="__la_bar"></div></div><div id="__la_status">Klaar.</div>' +
-          '<div class="row"><button id="__la_room_preview" class="btn btn-primary btn-sm flex-grow-1">Canvas kamer-preview</button><button id="__la_place_preview" class="btn btn-primary btn-sm flex-grow-1">Plaats preview in kamer</button></div>' +
+          '<div class="row"><button id="__la_place_preview" class="btn btn-primary btn-sm flex-grow-1">Plaats preview in kamer</button></div>' +
           '<div class="row"><button id="__la_build" class="btn btn-warning btn-sm flex-grow-1">Koop+Bouw</button><button id="__la_info" class="btn btn-primary btn-sm">Plan info</button></div>' +
           '<div class="row"><button id="__la_stop" class="btn btn-danger btn-sm flex-grow-1">Stop</button></div>' +
           '<div class="row"><button id="__la_continue" class="btn btn-success btn-sm flex-grow-1">Continue</button></div>' +
