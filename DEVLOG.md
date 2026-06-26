@@ -59,6 +59,22 @@ Fixed to: `y = anchorY - (logicalH - 1 - localY)` — image-top now maps to room
 
 ---
 
+## [2026-06-26] Codex — Session 3
+
+**Done:**
+- Read `CODEX_INSTRUCTIONS.md` and latest `DEVLOG.md`.
+- Cloned/pulled `gheloo-lightart` locally and confirmed the GitHub repo is now the source of truth.
+- Verified `pixelart-lightart.js` already contains the current Light Art fixes: raster-based preview generation, fake `{in:Objects}` room preview injection, fast `{in:ObjectRemove}` cleanup, marker preview objects, and the y-axis chunk placement fix.
+
+**Changed files:**
+- `DEVLOG.md`
+
+**Open / next:**
+- Continue all future work in `C:\Users\prepa\OneDrive\Bureaublad\gheloo-lightart\pixelart-lightart.js`.
+- After testing in-game, tune the Light Art algorithm further if the room preview still looks too blurry or too sparse.
+
+---
+
 ## HOW TO UPDATE THIS FILE
 
 At **start of session**: read latest entry, understand state.
