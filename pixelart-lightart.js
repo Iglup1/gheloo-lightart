@@ -1173,10 +1173,13 @@
     const roomH = +settings.roomH || 63;
     const chunkSize = Math.max(4, +settings.chunkSize || 20);
     if (settings.__autoSingleChunk) return { roomW, roomH, chunkSize, cols: 1, rows: 1, autoSingle: true };
-    const cols = Math.max(1, Math.round(+settings.chunkCols || Math.ceil(roomW / chunkSize)));
-    const isDefaultLightRoom = Math.round(chunkSize) === 20 && cols === 2;
     const lightArt = settings.generatorMode === 'light_art';
-    // light_art: grid is always square (rows = cols) so art size = cols*chunk x cols*chunk
+    // light_art: cols derived from Art grootte / chunk tegels so 80÷20=4 cols automatically
+    const cols = lightArt
+      ? Math.max(1, Math.round(roomW / chunkSize))
+      : Math.max(1, Math.round(+settings.chunkCols || Math.ceil(roomW / chunkSize)));
+    const isDefaultLightRoom = Math.round(chunkSize) === 20 && cols === 2;
+    // light_art: rows = cols (square grid)
     const rows = isDefaultLightRoom ? 2 : lightArt ? cols : Math.max(1, Math.round(roomH / chunkSize));
     return { roomW, roomH, chunkSize, cols, rows };
   }
