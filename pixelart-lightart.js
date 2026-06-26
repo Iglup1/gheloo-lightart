@@ -695,7 +695,15 @@
       }
     }
 
-    // Pass 1: S light at every visible pixel — use sharpened colors for color accuracy
+    // Scaled radii: larger sizes get progressively bigger glow blobs in preview.
+    // These are in image-pixel (= tile) units. renderPreview scales to canvas.
+    const rS   = 1.5  + overlap * 1.5;   // ~2.6 at default overlap
+    const rM   = 4.0  + overlap * 3.0;   // ~6.2
+    const rL   = 8.0  + overlap * 5.0;   // ~11.6
+    const rXL  = 14.0 + overlap * 8.0;   // ~19.8
+    const rXXL = 22.0 + overlap * 11.0;  // ~29.9
+
+    // Pass 1: S — every pixel, sharpened color, single-tile detail
     for (let y = 0; y < h; y++) {
       for (let x = 0; x < w; x++) {
         const i = (y * w + x) * 4;
@@ -709,47 +717,89 @@
         if (!colors.length) continue;
         const maxMix = mixPower > 68 ? Math.min(colors.length, 2) : 1;
         for (let ci = 0; ci < maxMix; ci++) {
-          pushLight(raw, w, h, x, y, colors[ci], 'S', 0.9 + overlap * 0.35,
-            Math.min(0.28, baseOpacity * (0.5 + l * 0.9)),
+          pushLight(raw, w, h, x, y, colors[ci], 'S', rS,
+            Math.min(0.24, baseOpacity * (0.45 + l * 0.8)),
             0.16, 'base', ci);
         }
         if (raw.length >= maxLights) return;
       }
     }
 
-    // Pass 2: M glow — every 3rd pixel, vivid areas only (skip near-gray to avoid color bleed)
-    for (let y = 0; y < h; y += 3) {
-      for (let x = 0; x < w; x += 3) {
+    // Pass 2: M — every 2nd pixel, 2-color mix for additive blending.
+    // Two M lights of component colors overlap → correct mixed color in-game and preview.
+    for (let y = 0; y < h; y += 2) {
+      for (let x = 0; x < w; x += 2) {
         const rgb = sampleCell(work, w, h, x, y, 1);
+        if (rgb.a < 2) continue;
+        const l = lum(rgb.r, rgb.g, rgb.b);
+        if (l < 0.22) continue;
+        const s = satOf(rgb.r, rgb.g, rgb.b);
+        if (s < 0.10) continue;
+        const colors = chooseLightMix(rgb.r, rgb.g, rgb.b, l > 0.62 && s < 0.24, mixPower);
+        if (!colors.length) continue;
+        const numM = mixPower > 42 ? Math.min(colors.length, 2) : 1;
+        for (let ci = 0; ci < numM; ci++) {
+          pushLight(raw, w, h, x, y, colors[ci], 'M', rM,
+            Math.min(0.14, glowOpacity * (0.38 + l * 0.55) / numM),
+            0.20, 'mid', ci);
+        }
+        if (raw.length >= maxLights) return;
+      }
+    }
+
+    // Pass 3: L — every 4th pixel, soft zone bloom
+    for (let y = 0; y < h; y += 4) {
+      for (let x = 0; x < w; x += 4) {
+        const rgb = sampleCell(work, w, h, x, y, 2);
         if (rgb.a < 2) continue;
         const l = lum(rgb.r, rgb.g, rgb.b);
         if (l < 0.30) continue;
         const s = satOf(rgb.r, rgb.g, rgb.b);
         if (s < 0.12) continue;
-        const colors = chooseLightMix(rgb.r, rgb.g, rgb.b, l > 0.62 && s < 0.24, mixPower);
+        const colors = chooseLightMix(rgb.r, rgb.g, rgb.b, l > 0.65 && s < 0.25, mixPower);
         if (!colors.length) continue;
-        pushLight(raw, w, h, x, y, colors[0], 'M', 2 * (0.5 + overlap * 0.15),
-          Math.min(0.16, glowOpacity * (0.35 + l * 0.65)),
-          0.18, 'mid', 0);
+        pushLight(raw, w, h, x, y, colors[0], 'L', rL,
+          Math.min(0.09, glowOpacity * (0.28 + l * 0.40)),
+          0.22, 'zone', 0);
         if (raw.length >= maxLights) return;
       }
     }
 
-    // Pass 3: L bloom — sparse, only very bright saturated areas
-    if (stackPower > 58) {
-      for (let y = 0; y < h; y += 4) {
-        for (let x = 0; x < w; x += 4) {
-          const rgb = sampleCell(work, w, h, x, y, 2);
+    // Pass 4: XL — every 8th pixel, atmospheric glow over bright vivid areas
+    if (stackPower > 30) {
+      for (let y = 0; y < h; y += 8) {
+        for (let x = 0; x < w; x += 8) {
+          const rgb = sampleCell(work, w, h, x, y, 4);
           if (rgb.a < 2) continue;
           const l = lum(rgb.r, rgb.g, rgb.b);
-          if (l < 0.55) continue;
+          if (l < 0.38) continue;
+          const s = satOf(rgb.r, rgb.g, rgb.b);
+          if (s < 0.15) continue;
+          const colors = chooseLightMix(rgb.r, rgb.g, rgb.b, false, mixPower);
+          if (!colors.length) continue;
+          pushLight(raw, w, h, x, y, colors[0], 'XL', rXL,
+            Math.min(0.06, glowOpacity * (0.22 + l * 0.28)),
+            0.24, 'atmo', 0);
+          if (raw.length >= maxLights) return;
+        }
+      }
+    }
+
+    // Pass 5: XXL — every 16th pixel, deep atmosphere over dominant color zones
+    if (stackPower > 55) {
+      for (let y = 0; y < h; y += 16) {
+        for (let x = 0; x < w; x += 16) {
+          const rgb = sampleCell(work, w, h, x, y, 8);
+          if (rgb.a < 2) continue;
+          const l = lum(rgb.r, rgb.g, rgb.b);
+          if (l < 0.45) continue;
           const s = satOf(rgb.r, rgb.g, rgb.b);
           if (s < 0.18) continue;
-          const colors = chooseLightMix(rgb.r, rgb.g, rgb.b, l > 0.65 && s < 0.25, mixPower);
+          const colors = chooseLightMix(rgb.r, rgb.g, rgb.b, false, mixPower);
           if (!colors.length) continue;
-          pushLight(raw, w, h, x, y, colors[0], 'L', 3.2 * (0.65 + overlap * 0.16),
-            Math.min(0.11, glowOpacity * (0.30 + l * 0.38)),
-            0.22, 'glow', 0);
+          pushLight(raw, w, h, x, y, colors[0], 'XXL', rXXL,
+            Math.min(0.04, glowOpacity * (0.16 + l * 0.20)),
+            0.26, 'deep', 0);
           if (raw.length >= maxLights) return;
         }
       }
