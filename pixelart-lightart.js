@@ -932,7 +932,7 @@
     const selected = selectedChunksSet();
     for (let col = 0; col < info.cols; col++) {
       for (let rowTop = 0; rowTop < info.rows; rowTop++) {
-        const nr = col * info.rows + rowTop + 1;
+        const nr = chunkNumberForGrid(col, rowTop);
         const x = col * stepX, y = rowTop * stepY;
         if (selected && selected.has(nr)) {
           ctx.fillStyle = 'rgba(25,135,84,.18)';
@@ -1020,7 +1020,7 @@
     for (let x = 0; x < canvas.width - 1; x += stepX) {
       let rowTop = 0;
       for (let y = 0; y < canvas.height - 1; y += stepY) {
-        const nr = colIdx * Math.max(1, Math.round((+settings.roomH || 42) / chunk)) + rowTop + 1;
+        const nr = chunkNumberForGrid(colIdx, rowTop);
         if (selected && selected.has(nr)) {
           ctx.fillStyle = 'rgba(25,135,84,.18)';
           ctx.fillRect(x, y, stepX, stepY);
@@ -1174,10 +1174,10 @@
     const info = chunkGridInfo();
     if (Math.round(info.chunkSize) !== 20 || info.cols !== 2) return null;
     const anchors = {
-      1: { x: 21, y: 33 },
-      2: { x: 21, y: 62 },
-      3: { x: 51, y: 33 },
-      4: { x: 51, y: 62 }
+      1: { x: 2, y: 61 },
+      2: { x: 2, y: 32 },
+      3: { x: 28, y: 58 },
+      4: { x: 32, y: 32 }
     };
     return anchors[nr] || null;
   }
@@ -1200,16 +1200,21 @@
     });
     return set.size ? set : null;
   }
+  function chunkNumberForGrid(col, rowFromTop) {
+    const info = chunkGridInfo();
+    const rowFromBottom = Math.max(0, info.rows - 1 - rowFromTop);
+    return col * info.rows + rowFromBottom + 1;
+  }
   function chunkNumberForRoomPoint(lx, ly) {
     const info = chunkGridInfo();
     const col = clamp(Math.floor(lx / info.chunkSize), 0, info.cols - 1);
     const row = clamp(Math.floor(ly / info.chunkSize), 0, info.rows - 1);
-    return col * info.rows + row + 1;
+    return chunkNumberForGrid(col, row);
   }
   function chunkAnchor(col, rowFromTop) {
     const info = chunkGridInfo();
     const rowFromBottom = info.rows - 1 - rowFromTop;
-    const nr = col * info.rows + rowFromTop + 1;
+    const nr = chunkNumberForGrid(col, rowFromTop);
     const exact = exactChunkAnchor(nr);
     if (exact) return { x: exact.x, y: exact.y, rowFromBottom };
     const startX = Math.round(+settings.startX || 21);
@@ -1249,7 +1254,7 @@
     for (let row = 0; row < info.rows; row++) {
       for (let col = 0; col < info.cols; col++) {
         const a = chunkAnchor(col, row);
-        const nr = col * info.rows + row + 1;
+        const nr = chunkNumberForGrid(col, row);
         if (selected && !selected.has(nr)) continue;
         out.push({ kind: 'cylinder', nr, typeId: +settings.markerCylinderType, pageId: +settings.markerCylinderPage, offerId: +settings.markerCylinderOffer, x: a.x, y: a.y, rot: 0, state: '0' });
         out.push({ kind: 'corner', nr, typeId: +settings.markerCornerType, pageId: +settings.markerCornerPage, offerId: +settings.markerCornerOffer, x: a.x + 1, y: a.y, rot: +settings.markerRot || 2, state: '0' });

@@ -138,12 +138,21 @@ This is the compressed handoff from the long Codex/Kenjy conversation so Claude 
 
 - Room is treated as 63x63.
 - Chunk mode commonly uses 20x20 chunks.
-- A 2x2 layout means four chunks; Kenjy expects chunk numbering visually top-to-bottom by column where applicable, not confusing bottom-to-top labels.
-- Current exact marker anchors from Kenjy's room/object packet:
-  - chunk 1 marker anchor = `x:21, y:33`
-  - chunk 2 marker anchor = `x:21, y:62`
-  - chunk 3 marker anchor = `x:51, y:33`
-  - chunk 4 marker anchor = `x:51, y:62`
+- A 2x2 layout means four chunks. Kenjy's room numbers are vertical per column from bottom to top:
+  - chunk 1 = left/bottom
+  - chunk 2 = left/top
+  - chunk 3 = right/bottom
+  - chunk 4 = right/top
+- Exact outside-line coordinates from Kenjy's Wired Tool inspection:
+  - chunk 1 outside line starts at `x:2, y:42`
+  - chunk 2 outside line starts at `x:2, y:13`
+  - chunk 3 outside line starts at `x:28, y:39`
+  - chunk 4 outside line starts at `x:32, y:13`
+- `makeProjectedBuildObjects(...)` maps image top-left to `anchorY - 19`, so `exactChunkAnchor(...)` stores the bottom-left/light-mapper anchor as outside-line `y + 19`:
+  - chunk 1 mapper anchor = `x:2, y:61`
+  - chunk 2 mapper anchor = `x:2, y:32`
+  - chunk 3 mapper anchor = `x:28, y:58`
+  - chunk 4 mapper anchor = `x:32, y:32`
 - If the input only needs one chunk, build/preview only one chunk. Do not place the image into chunk 2/3/4 by accident.
 - Lights may extend slightly outside a chunk if needed for glow quality, because light furniture is bigger than one tile.
 - Kenjy gave room screenshots where each 20x20 chunk is framed by marker furniture and number labels. Markers are not decorative; they help camera/photo alignment.
@@ -215,4 +224,5 @@ This is the compressed handoff from the long Codex/Kenjy conversation so Claude 
   - Marker/camera objects had anchors at `x=21/51` and `y=33/62`, confirming chunk 4 should be `x:51, y:62`, not `x:48, y:60`.
   - 174 objects were outside the expected clipped 20x20 chunk boxes when compared to the marker anchors.
 - Root cause found in `pixelart-lightart.js:1409`: Light Art used `reserveTile(...)`, which spreads overlapping same-color lights to nearby tiles. That is wrong for Light Art because Kenjy wants lights to overlap/stack for strength and color mixing.
-- Fix direction: for `settings.generatorMode === 'light_art'`, use the calculated `{ x, y }` directly; only non-Light-Art modes should use `reserveTile(...)`.
+- Second root cause found after Kenjy shared Wired Tool screenshots: Codex had used marker/label coordinates instead of the actual outside-line light coordinates. The outside-line starts are `1=(2,42)`, `2=(2,13)`, `3=(28,39)`, `4=(32,13)`.
+- Fix direction: for `settings.generatorMode === 'light_art'`, use the calculated `{ x, y }` directly; only non-Light-Art modes should use `reserveTile(...)`. Chunk numbering must use bottom-to-top per column, and `exactChunkAnchor(...)` must use the derived mapper anchors `1=(2,61)`, `2=(2,32)`, `3=(28,58)`, `4=(32,32)`.

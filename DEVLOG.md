@@ -261,6 +261,38 @@ Fixed to: `y = anchorY - (logicalH - 1 - localY)` — image-top now maps to room
 
 ---
 
+## [2026-06-26] Codex - Session 11
+
+**Done:**
+- Corrected the chunk mapping based on Kenjy's Wired Tool outside-line coordinates instead of marker/label coordinates.
+- Fixed chunk numbering to match Kenjy's room: `1=left/bottom`, `2=left/top`, `3=right/bottom`, `4=right/top`.
+- Updated all chunk-number consumers so preview overlay, selection, marker specs, and room projection use the same numbering.
+- Updated shared context with the inspected outside-line coordinates and derived mapper anchors.
+
+**Changed files:**
+- `pixelart-lightart.js:935` - preview chunk overlay now uses shared `chunkNumberForGrid(...)`.
+- `pixelart-lightart.js:1023` - canvas/room chunk overlay now uses shared `chunkNumberForGrid(...)`.
+- `pixelart-lightart.js:1177` - chunk 1 mapper anchor set to `{ x: 2, y: 61 }`.
+- `pixelart-lightart.js:1178` - chunk 2 mapper anchor set to `{ x: 2, y: 32 }`.
+- `pixelart-lightart.js:1179` - chunk 3 mapper anchor set to `{ x: 28, y: 58 }`.
+- `pixelart-lightart.js:1180` - chunk 4 mapper anchor set to `{ x: 32, y: 32 }`.
+- `pixelart-lightart.js:1203` - added `chunkNumberForGrid(col, rowFromTop)` with bottom-to-top numbering per column.
+- `pixelart-lightart.js:1212` - room-point chunk lookup now uses `chunkNumberForGrid(...)`.
+- `pixelart-lightart.js:1217` - `chunkAnchor(...)` now resolves exact anchors using the same numbering.
+- `pixelart-lightart.js:1257` - marker specs now use the same numbering.
+- `SHARED_CONTEXT.md:141` - documented Kenjy's real chunk numbering.
+- `SHARED_CONTEXT.md:146` - documented inspected outside-line starts.
+- `SHARED_CONTEXT.md:151` - documented derived mapper anchors.
+- `SHARED_CONTEXT.md:227` - documented the second root cause: marker coords were used instead of outside-line light coords.
+
+**Verification:**
+- Ran `node --check pixelart-lightart.js` successfully.
+
+**Open / next:**
+- Retest `Plaats preview in kamer`; expected chunk placement now follows the outside-line boxes: chunk 1 from `x2/y42`, chunk 2 from `x2/y13`, chunk 3 from `x28/y39`, chunk 4 from `x32/y13`.
+
+---
+
 ## HOW TO UPDATE THIS FILE
 
 At **start of session**: read latest entry, understand state.
