@@ -1956,7 +1956,7 @@
           '<div class="row"><label>Naar rechts</label><input id="__la_chunk_rx" type="number" title="x verschil naar volgende chunk rechts" value="' + esc(settings.chunkRightX) + '"><input id="__la_chunk_ry" type="number" title="y verschil naar volgende chunk rechts" value="' + esc(settings.chunkRightY) + '"><label>Naar boven</label><input id="__la_chunk_ux" type="number" title="x verschil naar chunk erboven" value="' + esc(settings.chunkUpX) + '"><input id="__la_chunk_uy" type="number" title="y verschil naar chunk erboven" value="' + esc(settings.chunkUpY) + '"></div>' +
           '<div class="row"><button id="__la_plan" class="btn btn-secondary btn-sm flex-grow-1">Reload foto-preview</button></div>' +
           '<div class="sec">Koop en bouw</div><div class="prog"><div class="bar" id="__la_bar"></div></div><div id="__la_status">Klaar.</div>' +
-          '<div class="row"><button id="__la_place_preview" class="btn btn-primary btn-sm flex-grow-1">Plaats preview in kamer</button></div>' +
+          '<div class="row"><button id="__la_room_preview" class="btn btn-primary btn-sm flex-grow-1">Canvas kamer-preview</button><button id="__la_place_preview" class="btn btn-primary btn-sm flex-grow-1">Plaats preview in kamer</button></div>' +
           '<div class="row"><button id="__la_build" class="btn btn-warning btn-sm flex-grow-1">Koop+Bouw</button><button id="__la_info" class="btn btn-primary btn-sm">Plan info</button></div>' +
           '<div class="row"><button id="__la_stop" class="btn btn-danger btn-sm flex-grow-1">Stop</button></div>' +
           '<div class="row"><button id="__la_continue" class="btn btn-success btn-sm flex-grow-1">Continue</button></div>' +
@@ -2096,6 +2096,9 @@
       img.src = url;
     });
     root.querySelector('#__la_plan').addEventListener('click', function() { try { makePlan(root); } catch(ex) { root.querySelector('#__la_status').textContent = ex.message; } });
+    root.querySelector('#__la_room_preview').addEventListener('click', function() {
+      try { renderCurrentBuildPreview(root); } catch(ex) { root.querySelector('#__la_status').textContent = 'Kamer-preview fout: ' + ex.message; }
+    });
     root.querySelector('#__la_place_preview').addEventListener('click', function() {
       togglePlacePreview(root);
     });
