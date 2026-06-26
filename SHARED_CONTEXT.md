@@ -138,21 +138,25 @@ This is the compressed handoff from the long Codex/Kenjy conversation so Claude 
 
 - Room is treated as 63x63.
 - Chunk mode commonly uses 20x20 chunks.
-- A 2x2 layout means four chunks. Kenjy's room numbers are vertical per column from bottom to top:
-  - chunk 1 = left/bottom
-  - chunk 2 = left/top
-  - chunk 3 = right/bottom
-  - chunk 4 = right/top
-- Exact outside-line coordinates from Kenjy's Wired Tool inspection:
-  - chunk 1 outside line starts at `x:2, y:42`
-  - chunk 2 outside line starts at `x:2, y:13`
-  - chunk 3 outside line starts at `x:28, y:39`
-  - chunk 4 outside line starts at `x:32, y:13`
-- `makeProjectedBuildObjects(...)` maps image top-left to `anchorY - 19`, so `exactChunkAnchor(...)` stores the bottom-left/light-mapper anchor as outside-line `y + 19`:
-  - chunk 1 mapper anchor = `x:2, y:61`
-  - chunk 2 mapper anchor = `x:2, y:32`
-  - chunk 3 mapper anchor = `x:28, y:58`
-  - chunk 4 mapper anchor = `x:32, y:32`
+- A 2x2 layout means four chunks. Kenjy's outline packet uses `bs` state as the chunk id:
+  - chunk 1 = `bs 0`
+  - chunk 2 = `bs 1`
+  - chunk 3 = `bs 2`
+  - chunk 4 = `bs 3`
+- Exact left/top outline point from Kenjy's Wired Tool inspection and packet parse:
+  - chunk 1 left/top point = `x:2, y:42`
+  - chunk 2 left/top point = `x:2, y:13`
+  - chunk 3 left/top point = `x:32, y:13`
+  - chunk 4 left/top point = `x:28, y:39`
+- The outline packet proves the frame is a camera-2D diamond in room coordinates, not a plain `x+localX, y+localY` rectangle:
+  - chunk 1 `bs 0` bbox is `x:2..31, y:32..61`
+  - chunk 2 `bs 1` bbox is `x:2..31, y:3..32`
+  - chunk 3 `bs 2` bbox is `x:32..61, y:3..32`
+  - chunk 4 `bs 3` bbox is `x:28..58, y:29..59`
+- For Light Art, map image pixels from the left/top point with this 2D camera projection:
+  - `roomX = startX + localX * 0.5 + localY`
+  - `roomY = startY - localX * 0.5 + localY`
+- Marker/number anchors are separate from Light Art frame starts and should sit near the lower/label side of the frame.
 - If the input only needs one chunk, build/preview only one chunk. Do not place the image into chunk 2/3/4 by accident.
 - Lights may extend slightly outside a chunk if needed for glow quality, because light furniture is bigger than one tile.
 - Kenjy gave room screenshots where each 20x20 chunk is framed by marker furniture and number labels. Markers are not decorative; they help camera/photo alignment.
@@ -224,5 +228,5 @@ This is the compressed handoff from the long Codex/Kenjy conversation so Claude 
   - Marker/camera objects had anchors at `x=21/51` and `y=33/62`, confirming chunk 4 should be `x:51, y:62`, not `x:48, y:60`.
   - 174 objects were outside the expected clipped 20x20 chunk boxes when compared to the marker anchors.
 - Root cause found in `pixelart-lightart.js:1409`: Light Art used `reserveTile(...)`, which spreads overlapping same-color lights to nearby tiles. That is wrong for Light Art because Kenjy wants lights to overlap/stack for strength and color mixing.
-- Second root cause found after Kenjy shared Wired Tool screenshots: Codex had used marker/label coordinates instead of the actual outside-line light coordinates. The outside-line starts are `1=(2,42)`, `2=(2,13)`, `3=(28,39)`, `4=(32,13)`.
-- Fix direction: for `settings.generatorMode === 'light_art'`, use the calculated `{ x, y }` directly; only non-Light-Art modes should use `reserveTile(...)`. Chunk numbering must use bottom-to-top per column, and `exactChunkAnchor(...)` must use the derived mapper anchors `1=(2,61)`, `2=(2,32)`, `3=(28,58)`, `4=(32,32)`.
+- Second root cause found after Kenjy shared Wired Tool screenshots: Codex had used marker/label coordinates and plain room-grid rectangle mapping instead of the actual camera-2D outline. The outline starts are `1=(2,42)`, `2=(2,13)`, `3=(32,13)`, `4=(28,39)`.
+- Fix direction: for `settings.generatorMode === 'light_art'`, use the calculated `{ x, y }` directly; only non-Light-Art modes should use `reserveTile(...)`. Chunk numbering must follow `bs` state order `1/2/3/4`, and Light Art projection must use `roomX = startX + localX * 0.5 + localY`, `roomY = startY - localX * 0.5 + localY`.

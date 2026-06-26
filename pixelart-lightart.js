@@ -684,10 +684,14 @@
         if (!colors.length) continue;
         const maxMix = mixPower > 68 ? Math.min(colors.length, 2) : 1;
         for (let ci = 0; ci < maxMix; ci++) {
-          const ox = ci === 0 ? 0 : (ci % 2 === 0 ? 0.25 : -0.25);
-          pushLight(raw, w, h, x + ox, y, colors[ci], 'S', 0.9 + overlap * 0.4,
+          pushLight(raw, w, h, x, y, colors[ci], 'S', 0.9 + overlap * 0.35,
             Math.min(0.28, baseOpacity * (0.5 + l * 0.9)),
             0.16, 'base', ci);
+        }
+        if (stackPower > 38 && l > 0.20) {
+          pushLight(raw, w, h, x, y, colors[0], 'S', 0.85 + overlap * 0.22,
+            Math.min(0.24, baseOpacity * (0.32 + l * 0.55)),
+            0.12, 'base-stack', 2);
         }
         if (raw.length >= maxLights) return;
       }
@@ -711,18 +715,18 @@
     }
 
     // Pass 3: L lights for bloom (every 4th pixel, l >= 0.40, only if stackPower high enough)
-    if (stackPower > 40) {
+    if (stackPower > 58) {
       for (let y = 0; y < h; y += 4) {
         for (let x = 0; x < w; x += 4) {
           const rgb = sampleCell(work, w, h, x, y, 2);
           if (rgb.a < 2) continue;
           const l = lum(rgb.r, rgb.g, rgb.b);
-          if (l < 0.40) continue;
+          if (l < 0.55) continue;
           const s = satOf(rgb.r, rgb.g, rgb.b);
           const colors = chooseLightMix(rgb.r, rgb.g, rgb.b, l > 0.65 && s < 0.25, mixPower);
           if (!colors.length) continue;
-          pushLight(raw, w, h, x, y, colors[0], 'L', 4 * (0.65 + overlap * 0.20),
-            Math.min(0.18, glowOpacity * (0.45 + l * 0.6)),
+          pushLight(raw, w, h, x, y, colors[0], 'L', 3.2 * (0.65 + overlap * 0.16),
+            Math.min(0.13, glowOpacity * (0.35 + l * 0.42)),
             0.22, 'glow', 0);
           if (raw.length >= maxLights) return;
         }
@@ -1174,12 +1178,23 @@
     const info = chunkGridInfo();
     if (Math.round(info.chunkSize) !== 20 || info.cols !== 2) return null;
     const anchors = {
-      1: { x: 2, y: 61 },
-      2: { x: 2, y: 32 },
-      3: { x: 28, y: 58 },
-      4: { x: 32, y: 32 }
+      1: { x: 21, y: 61 },
+      2: { x: 21, y: 32 },
+      3: { x: 51, y: 32 },
+      4: { x: 47, y: 58 }
     };
     return anchors[nr] || null;
+  }
+  function exactLightArtFrameStart(nr) {
+    const info = chunkGridInfo();
+    if (Math.round(info.chunkSize) !== 20 || info.cols !== 2) return null;
+    const starts = {
+      1: { x: 2, y: 42 },
+      2: { x: 2, y: 13 },
+      3: { x: 32, y: 13 },
+      4: { x: 28, y: 39 }
+    };
+    return starts[nr] || null;
   }
   function selectedChunksSet() {
     if (settings.__autoSingleChunk) return new Set([1]);
@@ -1202,6 +1217,10 @@
   }
   function chunkNumberForGrid(col, rowFromTop) {
     const info = chunkGridInfo();
+    if (Math.round(info.chunkSize) === 20 && info.cols === 2 && info.rows === 2) {
+      const map = [[2, 3], [1, 4]];
+      return map[clamp(rowFromTop, 0, 1)][clamp(col, 0, 1)];
+    }
     const rowFromBottom = Math.max(0, info.rows - 1 - rowFromTop);
     return col * info.rows + rowFromBottom + 1;
   }
@@ -1401,10 +1420,16 @@
       const logicalH = chunkMode ? chunkSize : roomH;
       let x, y;
       if (settings.generatorMode === 'light_art') {
-        const sxRoom = (chunkMode ? chunkSize : roomW) / Math.max(1, logicalW);
-        const syRoom = (chunkMode ? chunkSize : roomH) / Math.max(1, logicalH);
-        x = clamp(Math.round(anchorX + (localX * sxRoom)), 0, 63);
-        y = clamp(Math.round(anchorY - (logicalH - 1 - localY) * syRoom), 0, 63);
+        const frameStart = chunkMode ? exactLightArtFrameStart(chunkNr) : null;
+        if (frameStart) {
+          x = clamp(Math.round(frameStart.x + (localX * 0.5) + localY), 0, 63);
+          y = clamp(Math.round(frameStart.y - (localX * 0.5) + localY), 0, 63);
+        } else {
+          const sxRoom = (chunkMode ? chunkSize : roomW) / Math.max(1, logicalW);
+          const syRoom = (chunkMode ? chunkSize : roomH) / Math.max(1, logicalH);
+          x = clamp(Math.round(anchorX + (localX * sxRoom)), 0, 63);
+          y = clamp(Math.round(anchorY - (logicalH - 1 - localY) * syRoom), 0, 63);
+        }
       } else {
         const dx = (localX - logicalW / 2) / xyStep;
         x = clamp(Math.round(anchorX + dx), 0, 63);

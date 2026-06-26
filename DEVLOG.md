@@ -293,6 +293,36 @@ Fixed to: `y = anchorY - (logicalH - 1 - localY)` — image-top now maps to room
 
 ---
 
+## [2026-06-26] Codex - Session 12
+
+**Done:**
+- Fixed the remaining Light Art chunk bug Kenjy pointed out: the chunk outline coordinates are left/top camera-frame points, not plain floor-grid anchors.
+- Mapped Light Art pixels with the 2D camera projection Kenjy described so a 20x20 chunk builds into the inspected isometric frame instead of random room slabs.
+- Kept marker/number anchors separate from the light frame starts.
+- Made Light Art generation more grid-stable: mix colors and strength stacks now stay on the same source pixel; large bloom is only used sparsely for bright regions.
+- Updated `SHARED_CONTEXT.md` so Claude sees the corrected `bs` state order, frame starts, bboxes, and projection formula.
+
+**Changed files:**
+- `pixelart-lightart.js:668` - Light Art raster generation now keeps color mixes stacked on-grid instead of offsetting them sideways.
+- `pixelart-lightart.js:694` - added small same-pixel stack lights for strength without moving the source coordinate.
+- `pixelart-lightart.js:715` - made large `L` bloom stricter/sparser to reduce out-of-frame blobs.
+- `pixelart-lightart.js:1177` - `exactChunkAnchor(...)` is now marker/number label placement only.
+- `pixelart-lightart.js:1188` - added `exactLightArtFrameStart(...)` with Kenjy's inspected starts: `1=(2,42)`, `2=(2,13)`, `3=(32,13)`, `4=(28,39)`.
+- `pixelart-lightart.js:1218` - default 2x2 chunk numbering now follows the room/bs layout: top row `2,3`, bottom row `1,4`.
+- `pixelart-lightart.js:1425` - Light Art `roomX` uses `startX + localX * 0.5 + localY`.
+- `pixelart-lightart.js:1426` - Light Art `roomY` uses `startY - localX * 0.5 + localY`.
+- `SHARED_CONTEXT.md:138` - replaced the old chunk explanation with Kenjy's `bs 0/1/2/3` layout and the camera-2D projection.
+- `SHARED_CONTEXT.md:231` - documented the actual root cause: marker/label coordinates plus rectangle mapping were wrong for the camera frame.
+
+**Verification:**
+- Ran `node --check pixelart-lightart.js` successfully.
+
+**Open / next:**
+- Kenjy should retest `Plaats preview in kamer`. Expected: the fake incoming Objects preview should sit inside the 2D camera outlines instead of spreading as four random blobs.
+- If it still looks skewed, compare the fake preview packet positions against the outline bboxes in `SHARED_CONTEXT.md:151`.
+
+---
+
 ## HOW TO UPDATE THIS FILE
 
 At **start of session**: read latest entry, understand state.
