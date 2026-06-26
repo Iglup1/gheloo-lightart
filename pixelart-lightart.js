@@ -844,30 +844,9 @@
       addLightArtRaster(raw, w, h, work, intensity, overlap, stackPower, mixPower);
       delete raw.__data;
       plan = raw.slice(0, clamp(+settings.maxLights || 65000, 1, 120000));
-      // Project plan to isometric screen coords so meubel preview matches in-room view
-      // isoX = roomX - roomY, isoY = (roomX + roomY) * 0.5
-      let pvW = w, pvH = h;
-      try {
-        const proj = makeProjectedBuildObjects(root, false);
-        if (proj.length === plan.length) {
-          let minIX = Infinity, minIY = Infinity, maxIX = -Infinity, maxIY = -Infinity;
-          const iso = proj.map(function(obj) {
-            const ix = obj.x - obj.y;
-            const iy = (obj.x + obj.y) * 0.5;
-            if (ix < minIX) minIX = ix;
-            if (iy < minIY) minIY = iy;
-            if (ix > maxIX) maxIX = ix;
-            if (iy > maxIY) maxIY = iy;
-            return { ix: ix, iy: iy };
-          });
-          iso.forEach(function(coord, i) {
-            plan[i].cx = coord.ix - minIX;
-            plan[i].cy = coord.iy - minIY;
-          });
-          pvW = Math.max(1, maxIX - minIX + 1);
-          pvH = Math.max(1, maxIY - minIY + 1);
-        }
-      } catch(_) {}
+      // Use original image-pixel coords for meubel preview: shows stitched chunk layout
+      const pvW = w, pvH = h;
+      plan.forEach(function(p) { p.cx = p.px; p.cy = p.py; });
       previewFrame = { w: pvW, h: pvH, work };
       renderPreview(root, pvW, pvH);
       root.querySelector('#__la_meta').textContent = imageName + ' | bouwgrid ' + w + 'x' + h + ' | ' + plan.length + ' lampen' + (settings.__autoSingleChunk ? ' | auto 1 chunk' : '');
