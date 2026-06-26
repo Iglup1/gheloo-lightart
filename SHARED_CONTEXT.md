@@ -65,3 +65,140 @@ Every agent must read this file before changing `pixelart-lightart.js`.
 ## New shared-info rule
 
 When Kenjy gives any AI packets, screenshots, explanations, camera/chunk coordinates, or test results that the other AI might need, that AI must update this file or `DEVLOG.md` before ending the session.
+
+## Claude onboarding snapshot - what already happened
+
+This is the compressed handoff from the long Codex/Kenjy conversation so Claude does not burn time rediscovering it.
+
+### Repository and workflow
+
+- The real project is now the GitHub repo `https://github.com/Iglup1/gheloo-lightart`.
+- Do not work from loose files in `Gheloo-main/extensions`; those were earlier copies.
+- Do not edit the Gheloo logger/host itself. Only inspect it if needed.
+- The extension is JavaScript-only pasted/loaded into Gheloo's JS extension system.
+- Every session starts with reading `DEVLOG.md`, `PROJECT_BRIEFING.md`, `SHARED_CONTEXT.md`, and the agent instruction file.
+- Every session ends with `DEVLOG.md`, commit, and push.
+- If Kenjy gives Claude or Codex any packet, screenshot, room layout, image result, object id, or test observation, put the reusable facts here before ending.
+
+### What Kenjy is trying to build
+
+- Main goal: a Light Art generator for Leet/Habbo rooms.
+- User uploads an image; script generates a furniture plan using Leet light furniture.
+- Preview in the room must be fake incoming packets so Kenjy can see the plan instantly without actually placing furniture.
+- Real build must still buy/check inventory, place markers, set build settings, validate `ObjectAdd`, retry, checkpoint, and resume.
+- The old Python version had more advanced light overlap, color mixing, chunk/mega-art behavior, and watchdog behavior. Claude should use it only as conceptual reference if available, but this repo is now the JS implementation source of truth.
+
+### Important code entry points
+
+- `pixelart-lightart.js:271` - `injectObjectsPacket(items)` creates one fake incoming `{in:Objects}` packet for preview objects.
+- `pixelart-lightart.js:535` - `chooseLightMix(...)` decides which light color/state mix to use.
+- `pixelart-lightart.js:668` - `addLightArtRaster(...)` is the current Light Art generation algorithm.
+- `pixelart-lightart.js:950` - `renderPreview(...)` draws source + furniture preview canvases.
+- `pixelart-lightart.js:1117` - `buyMissing(...)` checks inventory and buys missing furni.
+- `pixelart-lightart.js:1176` - `exactChunkAnchor(nr)` has chunk placement anchors.
+- `pixelart-lightart.js:1230` - `markerSpecs()` creates chunk camera/number markers.
+- `pixelart-lightart.js:1318` - `makeProjectedBuildObjects(root, withInventory)` maps plan items to room coordinates.
+- `pixelart-lightart.js:1421` - `makeMarkerPreviewObjects()` creates fake marker objects for room preview.
+- `pixelart-lightart.js:1466` - `placeWithWatchdog(...)` handles real placement retry and `ObjectAdd` validation.
+- `pixelart-lightart.js:1529` - `placeGrouped(...)` groups real build by build settings.
+- `pixelart-lightart.js:1645` - `setBuildSetting(...)` sends `:bh`, `:bs`, `:bd` and waits for confirmation.
+- `pixelart-lightart.js:1740` - `togglePlacePreview(root)` toggles fake in-room preview.
+- `pixelart-lightart.js:1959` - UI currently still has both `Canvas kamer-preview` and `Plaats preview in kamer`; Kenjy generally wants the in-room packet preview, not a separate canvas room preview, unless specifically debugging chunk placement.
+
+### Light color and mixing facts
+
+- Leet light state/color mapping:
+  - `bs 0` white
+  - `bs 1` red
+  - `bs 2` orange
+  - `bs 3` yellow
+  - `bs 4` green
+  - `bs 5` cyan
+  - `bs 6` purple
+  - `bs 7` pink
+- `bd` rotation does not visually matter for Light Art lights, but packets still contain rotation.
+- `bh` can matter for alignment: some lights at `bh 0.5` visually sit between tiles and look smoother horizontally.
+- If setting height to zero, send `:bh 0`; do not send bare `:bh`, because bare `:bh` disables custom height.
+- Kenjy showed additive color-mixing expectation: overlapping red/green/blue lights can create yellow/cyan/magenta/white, but the generator must avoid washing everything to white.
+- Previous bad result: too many red blobs where the source did not need red. The algorithm should penalize unwanted red/white and preserve intended purples/greens/yellows.
+- Big lights are useful as glow layers over smaller detail lights, not as the only representation. A 20x20 chunk can contain about 400 small light positions before extra overlap/glow layers.
+
+### Preview expectations
+
+- Source preview should remain detailed. Do not over-pixelate the source image.
+- Furniture preview should simulate what the lights will look like in the hotel: blurred glows, overlap, color mixing, and furniture size differences.
+- Kenjy wants an in-room preview button that sends fake incoming `{in:Objects}` with all planned objects at the correct coordinates.
+- This fake preview should not use outgoing placement packets except possibly buying preview-needed furniture if a later workflow explicitly requires real inventory. The latest clarified intent was: generate one big incoming packet like:
+  - `{in:Objects}{i:1}{i:<ownerId>}{s:"kadet"}{i:<count>}...`
+- Preview removal should send fake incoming `{in:ObjectRemove}{s:"<id>"}...` for preview object ids.
+- Chunk/camera markers should be included in the fake preview when chunk mode is enabled so Kenjy knows where to take photos.
+- Kenjy specifically disliked results where the in-room preview generated sparse random blobs instead of a recognizable image. The algorithm should be self-checked visually before claiming improvement.
+
+### Chunk and room layout expectations
+
+- Room is treated as 63x63.
+- Chunk mode commonly uses 20x20 chunks.
+- A 2x2 layout means four chunks; Kenjy expects chunk numbering visually top-to-bottom by column where applicable, not confusing bottom-to-top labels.
+- If the input only needs one chunk, build/preview only one chunk. Do not place the image into chunk 2/3/4 by accident.
+- Lights may extend slightly outside a chunk if needed for glow quality, because light furniture is bigger than one tile.
+- Kenjy gave room screenshots where each 20x20 chunk is framed by marker furniture and number labels. Markers are not decorative; they help camera/photo alignment.
+- Marker purchases:
+  - standing half cylinder 14: `{out:PurchaseFromCatalog}{i:2026}{i:6572}{i:0}{b:false}{b:true}`
+  - diagonal trim 4: `{out:PurchaseFromCatalog}{i:348}{i:21567}{i:0}{b:false}{b:true}`
+  - number markers: `{out:PurchaseFromCatalog}{i:-1}{i:240903}{i:0}{b:false}{b:true}`
+
+### Real build reliability expectations
+
+- Buying must check inventory first. Kenjy repeatedly saw scripts buying lights he already owned. Do not buy by plan count blindly.
+- Purchases can be batched, but the inventory diff must account for type ids and existing items.
+- Build should minimize chat commands. `:bh`, `:bs`, and `:bd` are slow and can desync; group items to reduce setting changes.
+- If settings must change, wait about one second / wait for confirmation before placing. Earlier versions spammed `:bh/:bs/:bd`, causing "Kies tussen 0 en 63" or missed state changes.
+- Whisper confirmations known from game:
+  - `Custom bouwhoogte is veranderd naar: 1! Typ :bh om de custom bouwhoogte uit te schakelen.`
+  - `Custom draaipositie is veranderd naar: 1! Typ :bd om de custom draaipositie uit te schakelen.`
+  - `Custom staat is veranderd naar: 1! Typ :bs om de custom staat uit te schakelen.`
+  - `Custom bouwhoogte is uitgeschakeld!`
+  - `Custom draaipositie is uitgeschakeld!`
+  - `Custom staat is uitgeschakeld!`
+- `ObjectAdd` must be treated as the real placement acknowledgement. Example shape Kenjy gave:
+  - `{in:ObjectAdd}{i:62165551}{i:886600852}{i:46}{i:41}{i:1}{s:"2.0"}{s:"0.001"}{i:1}{i:0}{s:"3"}{i:-1}{i:1}{i:4502029}{s:"kadet"}`
+  - This example corresponds to object id `62165551`, type id `886600852`, x `46`, y `41`, rotation `1`, z `2.0`, state `3`.
+- If `ObjectAdd` appears with wrong z/state/rotation, pick it up and retry:
+  - `{out:PickupObject}{i:10}{i:<objectId>}`
+- If no valid `ObjectAdd` arrives after watchdog retries, stop and save checkpoint/log so Kenjy can continue later.
+- Continue button should be green and resume from checkpoint/log context.
+
+### Known UI expectations
+
+- Kenjy likes the Habbo/Nitro-style UI: blue header, grey tab buttons, yellow `Koop+Build`, red `Stop`, green `Continue`.
+- Tabs should be horizontal like `Generator | Color | Settings | Saves`.
+- Generator tab should contain image/mode/art-size/chunk controls and the run buttons near the relevant area.
+- Settings tab is for build settings, not source image size.
+- Names must be noob-friendly:
+  - avoid unclear labels like `Render W`, `Alpha`, `Steps`, `Cols`, `Bleed`, `Right`, `Up` unless explained or renamed.
+- When resizing the UI vertically, it should reveal more content below, not just show blank space or crop the right edge.
+- Source preview and furniture preview should both remain visible while changing color settings.
+- Color settings should allow red/green/blue strength separately, plus broader grading controls.
+
+### Things already fixed or partially fixed
+
+- Source of truth moved to GitHub repo.
+- Extension file is `pixelart-lightart.js`.
+- Fake incoming room preview exists via `injectObjectsPacket`.
+- Fake preview cleanup exists via object remove.
+- Chunk marker preview objects exist.
+- Y-axis mapping was fixed so image-top maps to room-top.
+- A shared workflow now exists:
+  - `DEVLOG.md` for session-by-session handoff.
+  - `PROJECT_BRIEFING.md` for stable project overview and code map.
+  - `SHARED_CONTEXT.md` for packets, screenshots, object ids, and Kenjy explanations.
+  - `CODEX_INSTRUCTIONS.md` / `CLAUDE_INSTRUCTIONS.md` for agent rules.
+
+### Things still risky / likely next work
+
+- Light Art quality is still not where Kenjy wants it. Main work is better algorithmic simulation of real light overlap and color mixing.
+- The generator should be tested on a recognizable image and judged visually before pushing major algorithm changes.
+- Inventory checking/buying may still miscount lights if type ids/placement ids are wrong.
+- Real build may still stop after a few items if ObjectAdd matching is too strict or settings are not confirmed.
+- UI may still contain stale `Canvas kamer-preview` and sizing/cropping issues.
+- Line numbers in `PROJECT_BRIEFING.md` and this file must be updated after large edits to `pixelart-lightart.js`.

@@ -183,6 +183,34 @@ Fixed to: `y = anchorY - (logicalH - 1 - localY)` — image-top now maps to room
 
 ---
 
+## [2026-06-26] Codex - Session 9
+
+**Done:**
+- Simulated the new shared-context workflow by adding a compact Claude onboarding snapshot with the important facts Kenjy already gave Codex.
+- Added historical context about the Light Art goal, preview/build expectations, known packets, light color states, chunk behavior, UI expectations, and current risks.
+- Linked the onboarding snapshot from `PROJECT_BRIEFING.md` so Claude sees it before spending time on Light Art work.
+
+**Changed files:**
+- `SHARED_CONTEXT.md:69` - added Claude onboarding snapshot for the long Kenjy/Codex conversation.
+- `SHARED_CONTEXT.md:73` - repository/workflow facts and the "do not edit logger" rule.
+- `SHARED_CONTEXT.md:83` - what Kenjy is trying to build.
+- `SHARED_CONTEXT.md:91` - important `pixelart-lightart.js` code entry points.
+- `SHARED_CONTEXT.md:108` - light state/color mapping and color-mixing expectations.
+- `SHARED_CONTEXT.md:126` - fake incoming room-preview expectations.
+- `SHARED_CONTEXT.md:137` - chunk/room layout expectations and marker purchase packets.
+- `SHARED_CONTEXT.md:150` - real build reliability, whispers, ObjectAdd, pickup, watchdog, and resume expectations.
+- `SHARED_CONTEXT.md:171` - UI expectations.
+- `SHARED_CONTEXT.md:183` - what has already been fixed or partially fixed.
+- `SHARED_CONTEXT.md:197` - risky/next-work areas.
+- `PROJECT_BRIEFING.md:34` - points future agents to `SHARED_CONTEXT.md:69` before Light Art work.
+- `DEVLOG.md` - added this handoff entry.
+
+**Open / next:**
+- Claude should read `SHARED_CONTEXT.md:69` before changing `pixelart-lightart.js`; that section is meant to stop duplicate questions and coin-burning.
+- Continue actual Light Art algorithm/build fixes in `pixelart-lightart.js`.
+
+---
+
 ## HOW TO UPDATE THIS FILE
 
 At **start of session**: read latest entry, understand state.

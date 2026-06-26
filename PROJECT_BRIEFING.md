@@ -31,6 +31,7 @@ The main target right now is Light Art:
 - Real build still needs buying, inventory checks, setting commands, watchdog, retries, checkpoints, and resume.
 - Explanations must include file + line references so Kenjy does not have to re-explain context between agents.
 - Packets, screenshots, test results, image notes, room-layout facts, and algorithm explanations from Kenjy must be recorded in `SHARED_CONTEXT.md` or `DEVLOG.md` so the other AI can continue without asking Kenjy for the same material again.
+- Before doing Light Art work, read the onboarding snapshot in `SHARED_CONTEXT.md:69`; it condenses the long Kenjy/Codex conversation into practical implementation facts.
 
 ## Current important code locations
 
