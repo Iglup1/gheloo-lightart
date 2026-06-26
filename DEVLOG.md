@@ -91,6 +91,24 @@ Fixed to: `y = anchorY - (logicalH - 1 - localY)` — image-top now maps to room
 
 ---
 
+## [2026-06-26] Codex — Session 5
+
+**Done:**
+- Added `CLAUDE_BRIEFING.md`, a paste-ready instruction handoff Kenjy can send to Claude.
+- Added a workflow rule that when Kenjy tells Codex "Claude should do X", Codex must automatically communicate that through `DEVLOG.md` instead of relying on Kenjy to repeat it.
+
+**Changed files:**
+- `CLAUDE_BRIEFING.md:1` — new Claude-facing briefing with repo workflow, reporting style, project rules, current Light Art focus, and handoff behavior.
+- `CODEX_INSTRUCTIONS.md:14` — added automatic Claude handoff rule for Codex.
+- `CODEX_INSTRUCTIONS.md:49` — added requirement to keep `CLAUDE_BRIEFING.md` updated when collaboration rules change.
+- `DEVLOG.md` — added this handoff entry.
+
+**Open / next:**
+- If Kenjy says "Claude moet ..." in a Codex session, add that request to the latest `DEVLOG.md` entry or create a new handoff entry and push it.
+- Claude should read `CLAUDE_BRIEFING.md` plus latest `DEVLOG.md` before editing.
+
+---
+
 ## HOW TO UPDATE THIS FILE
 
 At **start of session**: read latest entry, understand state.
