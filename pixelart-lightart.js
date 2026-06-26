@@ -843,9 +843,24 @@
     if (lightArtPlan) {
       addLightArtRaster(raw, w, h, work, intensity, overlap, stackPower, mixPower);
       delete raw.__data;
-      previewFrame = { w, h, work };
       plan = raw.slice(0, clamp(+settings.maxLights || 65000, 1, 120000));
-      renderPreview(root, w, h);
+      // Project plan to room coordinates so meubel preview matches in-room layout
+      let pvW = w, pvH = h;
+      try {
+        const proj = makeProjectedBuildObjects(root, false);
+        if (proj.length === plan.length) {
+          const maxRY = Math.max(63, Math.max.apply(null, proj.map(function(o) { return o.y; })));
+          const maxRX = Math.max(63, Math.max.apply(null, proj.map(function(o) { return o.x; })));
+          proj.forEach(function(obj, i) {
+            plan[i].cx = obj.x;
+            plan[i].cy = maxRY - obj.y;
+          });
+          pvW = maxRX + 1;
+          pvH = maxRY + 1;
+        }
+      } catch(_) {}
+      previewFrame = { w: pvW, h: pvH, work };
+      renderPreview(root, pvW, pvH);
       root.querySelector('#__la_meta').textContent = imageName + ' | bouwgrid ' + w + 'x' + h + ' | ' + plan.length + ' lampen' + (settings.__autoSingleChunk ? ' | auto 1 chunk' : '');
       return;
     }
