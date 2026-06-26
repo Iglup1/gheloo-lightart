@@ -37,6 +37,28 @@ Shift handoff log. Every agent reads this at start, updates at end.
 
 ---
 
+## [2026-06-26] Claude — Session 2
+
+**Done:**
+- Fixed critical y-axis flip bug in `makeProjectedBuildObjects` for light_art mode
+- Fixed lx/ly normalization (light_art now uses direct pixel coords, not maxPx stretch)
+- Removed "Canvas kamer-preview" button (user confirmed not needed)
+- Added distinct toggle CSS for "Plaats preview in kamer": light blue = inactive, dark blue = active
+
+**Root cause of bad room output:**
+The formula was `y = anchorY - localY`, which placed image-top at room-bottom (upside-down per chunk).
+Fixed to: `y = anchorY - (logicalH - 1 - localY)` — image-top now maps to room-top (lower y = upper screen).
+
+**Changed files:** `pixelart-lightart.js`
+
+**Open / next:**
+- Test in-game: load Joker image, chunk 2×2×20, verify lights land in correct positions
+- Chunk numbering already correct in original (1=top-left y=33, 2=bottom-left y=62, 3=top-right, 4=bottom-right)
+- Preview button toggle works via `injectObjectsPacket` + `injectObjectRemove` — no actual building
+- Algorithm quality may need further tuning after coordinate fix is verified
+
+---
+
 ## HOW TO UPDATE THIS FILE
 
 At **start of session**: read latest entry, understand state.
