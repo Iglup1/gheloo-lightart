@@ -1429,21 +1429,22 @@
       const logicalH = chunkMode ? chunkSize : roomH;
       let x, y;
       if (settings.generatorMode === 'light_art') {
-        if (!withInventory) {
-          // Client-side preview: image coords as room coords directly — no 63 limit
-          x = p.px; y = p.py;
+        // Same chunk-frame isometric projection for both preview and real build.
+        // Preview (withInventory=false): no coordinate clamp — client-side accepts any value.
+        // Real build (withInventory=true): clamp to 0-63 room tile range.
+        const frameStart = chunkMode ? exactLightArtFrameStart(chunkNr) : null;
+        if (frameStart) {
+          const rawX = Math.round(frameStart.x + (localX * 0.5) + localY);
+          const rawY = Math.round(frameStart.y - (localX * 0.5) + localY);
+          x = withInventory ? clamp(rawX, 0, 63) : rawX;
+          y = withInventory ? clamp(rawY, 0, 63) : rawY;
         } else {
-          // Real build: isometric projection into 0-63 room tiles
-          const frameStart = chunkMode ? exactLightArtFrameStart(chunkNr) : null;
-          if (frameStart) {
-            x = clamp(Math.round(frameStart.x + (localX * 0.5) + localY), 0, 63);
-            y = clamp(Math.round(frameStart.y - (localX * 0.5) + localY), 0, 63);
-          } else {
-            const sxRoom = (chunkMode ? chunkSize : roomW) / Math.max(1, logicalW);
-            const syRoom = (chunkMode ? chunkSize : roomH) / Math.max(1, logicalH);
-            x = clamp(Math.round(anchorX + (localX * sxRoom)), 0, 63);
-            y = clamp(Math.round(anchorY - (logicalH - 1 - localY) * syRoom), 0, 63);
-          }
+          const sxRoom = (chunkMode ? chunkSize : roomW) / Math.max(1, logicalW);
+          const syRoom = (chunkMode ? chunkSize : roomH) / Math.max(1, logicalH);
+          const rawX = Math.round(anchorX + (localX * sxRoom));
+          const rawY = Math.round(anchorY - (logicalH - 1 - localY) * syRoom);
+          x = withInventory ? clamp(rawX, 0, 63) : rawX;
+          y = withInventory ? clamp(rawY, 0, 63) : rawY;
         }
       } else {
         const dx = (localX - logicalW / 2) / xyStep;
