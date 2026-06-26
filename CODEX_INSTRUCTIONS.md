@@ -44,4 +44,5 @@ https://github.com/Iglup1/gheloo-lightart
 
 - Always read DEVLOG.md before starting work
 - Always update DEVLOG.md and push before ending session
+- Always include concrete file + line references for important changes in both the final user summary and DEVLOG.md, e.g. `pixelart-lightart.js:1405`. Mention what changed there and why. This is required so Codex, Claude, and Kenjy can understand each other without Kenjy having to re-explain context every session.
 - The owner (Kenjy) is not technical — explain changes in plain Dutch when reporting back

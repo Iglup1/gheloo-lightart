@@ -75,6 +75,22 @@ Fixed to: `y = anchorY - (logicalH - 1 - localY)` — image-top now maps to room
 
 ---
 
+## [2026-06-26] Codex — Session 4
+
+**Done:**
+- Added a collaboration rule requiring concrete file + line references in final summaries and `DEVLOG.md`.
+- This is explicitly for both Codex and Claude, so Kenjy does not have to keep re-explaining what changed or where.
+
+**Changed files:**
+- `CODEX_INSTRUCTIONS.md:47` — added the line-reference reporting requirement.
+- `DEVLOG.md` — added this handoff entry.
+
+**Open / next:**
+- Claude and Codex should include references like `pixelart-lightart.js:1405` whenever they explain important changes.
+- Continue testing the latest `pixelart-lightart.js`; Claude pushed a small code update before this entry was added.
+
+---
+
 ## HOW TO UPDATE THIS FILE
 
 At **start of session**: read latest entry, understand state.
