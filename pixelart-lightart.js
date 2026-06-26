@@ -1175,7 +1175,9 @@
     if (settings.__autoSingleChunk) return { roomW, roomH, chunkSize, cols: 1, rows: 1, autoSingle: true };
     const cols = Math.max(1, Math.round(+settings.chunkCols || Math.ceil(roomW / chunkSize)));
     const isDefaultLightRoom = Math.round(chunkSize) === 20 && cols === 2;
-    const rows = isDefaultLightRoom ? 2 : Math.max(1, Math.round(roomH / chunkSize));
+    const lightArt = settings.generatorMode === 'light_art';
+    // light_art: grid is always square (rows = cols) so art size = cols*chunk x cols*chunk
+    const rows = isDefaultLightRoom ? 2 : lightArt ? cols : Math.max(1, Math.round(roomH / chunkSize));
     return { roomW, roomH, chunkSize, cols, rows };
   }
   function exactChunkAnchor(nr) {
@@ -1982,7 +1984,7 @@
           '<div class="row"><label>Transparantie</label><input id="__la_alpha" type="range" min="1" max="255" value="' + esc(settings.alpha) + '" title="hogere waarde negeert meer half-transparante pixels"><label><input id="__la_crop" type="checkbox"' + (settings.crop ? ' checked' : '') + '> rand wegknippen</label></div>' +
           '<div class="row"><label>Details</label><input id="__la_coarse" type="number" title="grote glow-stappen" value="' + esc(settings.coarseStep) + '"><input id="__la_mid" type="number" title="middelste lamp-stappen" value="' + esc(settings.midStep) + '"><input id="__la_fine" type="number" title="kleine detail-stappen" value="' + esc(settings.detailStep) + '"></div>' +
           '<div class="sec">Chunks</div>' +
-          '<div class="row"><label><input id="__la_chunk_mode" type="checkbox"' + (settings.chunkMode ? ' checked' : '') + '> in stukken</label><label>Chunk tegels</label><input id="__la_chunk_size" type="number" value="' + esc(settings.chunkSize) + '"><label>Per rij</label><input id="__la_chunk_cols" type="number" value="' + esc(settings.chunkCols) + '"><label>Rand overlap</label><input id="__la_chunk_bleed" type="number" value="' + esc(settings.chunkBleed) + '"></div>' +
+          '<div class="row"><label><input id="__la_chunk_mode" type="checkbox"' + (settings.chunkMode ? ' checked' : '') + '> in stukken</label><label>Chunk tegels</label><input id="__la_chunk_size" type="number" value="' + esc(settings.chunkSize) + '"><label>Chunks per zijde</label><input id="__la_chunk_cols" type="number" min="1" max="8" value="' + esc(settings.chunkCols) + '" title="2 = 4 chunks (40x40), 4 = 16 chunks (80x80)"><label>Rand overlap</label><input id="__la_chunk_bleed" type="number" value="' + esc(settings.chunkBleed) + '"></div>' +
           '<div class="row"><label>Welke stukken</label><input id="__la_chunk_select" type="text" placeholder="leeg = auto, bv. 1 of 1,2,4,5" value="' + esc(settings.chunkSelection) + '"></div>' +
           '<div class="row"><label>Naar rechts</label><input id="__la_chunk_rx" type="number" title="x verschil naar volgende chunk rechts" value="' + esc(settings.chunkRightX) + '"><input id="__la_chunk_ry" type="number" title="y verschil naar volgende chunk rechts" value="' + esc(settings.chunkRightY) + '"><label>Naar boven</label><input id="__la_chunk_ux" type="number" title="x verschil naar chunk erboven" value="' + esc(settings.chunkUpX) + '"><input id="__la_chunk_uy" type="number" title="y verschil naar chunk erboven" value="' + esc(settings.chunkUpY) + '"></div>' +
           '<div class="row"><button id="__la_plan" class="btn btn-secondary btn-sm flex-grow-1">Reload foto-preview</button></div>' +
