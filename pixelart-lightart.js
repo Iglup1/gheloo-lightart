@@ -847,13 +847,6 @@
       // Use original image-pixel coords for meubel preview: shows stitched chunk layout
       const pvW = w, pvH = h;
       plan.forEach(function(p) { p.cx = p.px; p.cy = p.py; });
-      // Cache room coords at generation time so room preview is stable after settings changes
-      try {
-        const proj = makeProjectedBuildObjects(root, false);
-        if (proj.length === plan.length) {
-          proj.forEach(function(obj, i) { plan[i].rx = obj.x; plan[i].ry = obj.y; });
-        }
-      } catch(_) {}
       previewFrame = { w: pvW, h: pvH, work };
       renderPreview(root, pvW, pvH);
       root.querySelector('#__la_meta').textContent = imageName + ' | bouwgrid ' + w + 'x' + h + ' | ' + plan.length + ' lampen' + (settings.__autoSingleChunk ? ' | auto 1 chunk' : '');
@@ -1436,10 +1429,11 @@
       const logicalH = chunkMode ? chunkSize : roomH;
       let x, y;
       if (settings.generatorMode === 'light_art') {
-        if (p.rx !== undefined) {
-          // Use room coords cached at generation time — stable after settings changes
-          x = p.rx; y = p.ry;
+        if (!withInventory) {
+          // Client-side preview: image coords as room coords directly — no 63 limit
+          x = p.px; y = p.py;
         } else {
+          // Real build: isometric projection into 0-63 room tiles
           const frameStart = chunkMode ? exactLightArtFrameStart(chunkNr) : null;
           if (frameStart) {
             x = clamp(Math.round(frameStart.x + (localX * 0.5) + localY), 0, 63);
