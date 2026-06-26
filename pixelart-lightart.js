@@ -918,12 +918,13 @@
   }
   function drawChunkOverlayLogical(ctx, w, h) {
     if (!settings.chunkMode) return;
-    const roomW = +settings.roomW || 42;
-    const roomH = +settings.roomH || 42;
     const chunk = Math.max(1, +settings.chunkSize || 20);
     const info = chunkGridInfo();
-    const stepX = (chunk / roomW) * w;
-    const stepY = (chunk / roomH) * h;
+    const lightArt = settings.generatorMode === 'light_art';
+    const refW = lightArt ? info.cols * chunk : (+settings.roomW || 42);
+    const refH = lightArt ? info.rows * chunk : (+settings.roomH || 42);
+    const stepX = (chunk / refW) * w;
+    const stepY = (chunk / refH) * h;
     ctx.save();
     ctx.strokeStyle = 'rgba(255,255,255,.48)';
     ctx.fillStyle = 'rgba(255,255,255,.85)';
