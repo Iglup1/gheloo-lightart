@@ -847,6 +847,13 @@
       // Use original image-pixel coords for meubel preview: shows stitched chunk layout
       const pvW = w, pvH = h;
       plan.forEach(function(p) { p.cx = p.px; p.cy = p.py; });
+      // Cache room coords at generation time so room preview is stable after settings changes
+      try {
+        const proj = makeProjectedBuildObjects(root, false);
+        if (proj.length === plan.length) {
+          proj.forEach(function(obj, i) { plan[i].rx = obj.x; plan[i].ry = obj.y; });
+        }
+      } catch(_) {}
       previewFrame = { w: pvW, h: pvH, work };
       renderPreview(root, pvW, pvH);
       root.querySelector('#__la_meta').textContent = imageName + ' | bouwgrid ' + w + 'x' + h + ' | ' + plan.length + ' lampen' + (settings.__autoSingleChunk ? ' | auto 1 chunk' : '');
@@ -1429,15 +1436,20 @@
       const logicalH = chunkMode ? chunkSize : roomH;
       let x, y;
       if (settings.generatorMode === 'light_art') {
-        const frameStart = chunkMode ? exactLightArtFrameStart(chunkNr) : null;
-        if (frameStart) {
-          x = clamp(Math.round(frameStart.x + (localX * 0.5) + localY), 0, 63);
-          y = clamp(Math.round(frameStart.y - (localX * 0.5) + localY), 0, 63);
+        if (p.rx !== undefined) {
+          // Use room coords cached at generation time — stable after settings changes
+          x = p.rx; y = p.ry;
         } else {
-          const sxRoom = (chunkMode ? chunkSize : roomW) / Math.max(1, logicalW);
-          const syRoom = (chunkMode ? chunkSize : roomH) / Math.max(1, logicalH);
-          x = clamp(Math.round(anchorX + (localX * sxRoom)), 0, 63);
-          y = clamp(Math.round(anchorY - (logicalH - 1 - localY) * syRoom), 0, 63);
+          const frameStart = chunkMode ? exactLightArtFrameStart(chunkNr) : null;
+          if (frameStart) {
+            x = clamp(Math.round(frameStart.x + (localX * 0.5) + localY), 0, 63);
+            y = clamp(Math.round(frameStart.y - (localX * 0.5) + localY), 0, 63);
+          } else {
+            const sxRoom = (chunkMode ? chunkSize : roomW) / Math.max(1, logicalW);
+            const syRoom = (chunkMode ? chunkSize : roomH) / Math.max(1, logicalH);
+            x = clamp(Math.round(anchorX + (localX * sxRoom)), 0, 63);
+            y = clamp(Math.round(anchorY - (logicalH - 1 - localY) * syRoom), 0, 63);
+          }
         }
       } else {
         const dx = (localX - logicalW / 2) / xyStep;
