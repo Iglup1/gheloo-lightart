@@ -2096,13 +2096,6 @@
       img.src = url;
     });
     root.querySelector('#__la_plan').addEventListener('click', function() { try { makePlan(root); } catch(ex) { root.querySelector('#__la_status').textContent = ex.message; } });
-    root.querySelector('#__la_room_preview').addEventListener('click', function() {
-      try {
-        renderCurrentBuildPreview(root);
-      } catch(ex) {
-        root.querySelector('#__la_status').textContent = 'Kamer-preview fout: ' + ex.message;
-      }
-    });
     root.querySelector('#__la_place_preview').addEventListener('click', function() {
       togglePlacePreview(root);
     });
