@@ -109,6 +109,30 @@ Fixed to: `y = anchorY - (logicalH - 1 - localY)` — image-top now maps to room
 
 ---
 
+## [2026-06-26] Codex - Session 6
+
+**Done:**
+- Added `PROJECT_BRIEFING.md`, a shared current-state briefing explaining what has already been built, where the important code lives, and what assumptions are stale/current.
+- Updated Codex and Claude instructions so both agents must read `PROJECT_BRIEFING.md` before changing code.
+
+**Changed files:**
+- `PROJECT_BRIEFING.md:1` - new shared project-state briefing.
+- `PROJECT_BRIEFING.md:7` - source-of-truth and "do not edit logger" rules.
+- `PROJECT_BRIEFING.md:22` - important `pixelart-lightart.js` line references for preview, generator, chunks, markers, build, watchdog, and UI.
+- `PROJECT_BRIEFING.md:42` - summary of what has already been fixed.
+- `PROJECT_BRIEFING.md:52` - current caution points, including stale old devlog note about `Canvas kamer-preview`.
+- `CODEX_INSTRUCTIONS.md:11` - Codex must read `DEVLOG.md` and `PROJECT_BRIEFING.md` at session start.
+- `CODEX_INSTRUCTIONS.md:47` - Codex must read `PROJECT_BRIEFING.md` before code changes.
+- `CLAUDE_BRIEFING.md:11` - Claude must read `PROJECT_BRIEFING.md` at session start.
+- `CLAUDE_BRIEFING.md:38` - Claude-specific reminder to read `PROJECT_BRIEFING.md` before changing code.
+- `DEVLOG.md` - added this handoff entry.
+
+**Open / next:**
+- Keep `PROJECT_BRIEFING.md` updated when major behavior or important line locations change.
+- Claude and Codex should now start with three reads: `DEVLOG.md`, `PROJECT_BRIEFING.md`, and their instruction/briefing file.
+
+---
+
 ## HOW TO UPDATE THIS FILE
 
 At **start of session**: read latest entry, understand state.

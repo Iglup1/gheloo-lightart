@@ -8,6 +8,7 @@ Kenjy may paste this into Claude when handing over the project.
 - Start every session with:
   - `git pull --ff-only`
   - read `DEVLOG.md`
+  - read `PROJECT_BRIEFING.md`
   - inspect the latest commit if needed
 - End every session with:
   - update `DEVLOG.md`
@@ -34,6 +35,7 @@ This is required because Kenjy is coordinating two agents and should not have to
 
 - The source of truth is this GitHub repo: `https://github.com/Iglup1/gheloo-lightart`.
 - Work in `pixelart-lightart.js`.
+- Read `PROJECT_BRIEFING.md` before changing code. It summarizes what has already been built, current important line references, and known stale/active assumptions.
 - Do not edit Gheloo logger/host files unless Kenjy explicitly asks.
 - The extension is JavaScript only.
 - Use the host APIs already provided by Gheloo:

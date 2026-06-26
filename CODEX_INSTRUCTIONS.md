@@ -8,7 +8,7 @@ We communicate via GitHub commits and DEVLOG.md.
 
 ## Workflow
 
-1. **Start of every session:** Pull latest from GitHub. Read `DEVLOG.md` — last entry tells you current state and what's next.
+1. **Start of every session:** Pull latest from GitHub. Read `DEVLOG.md` and `PROJECT_BRIEFING.md` before changing code. The last `DEVLOG.md` entry tells you current handoff state; `PROJECT_BRIEFING.md` summarizes what has already been built and where.
 2. **Do the work** the owner asks.
 3. **End of every session:** Update `DEVLOG.md` with a new entry (date, what you did, current state, open items). Commit all changed files. Push to GitHub.
 4. If Kenjy says Claude should do something, automatically communicate it by adding a clear handoff item to `DEVLOG.md` with concrete file + line references where possible. Do not rely on Kenjy to repeat it manually.
@@ -44,6 +44,7 @@ https://github.com/Iglup1/gheloo-lightart
 ## Important
 
 - Always read DEVLOG.md before starting work
+- Always read PROJECT_BRIEFING.md before changing code
 - Always update DEVLOG.md and push before ending session
 - Always include concrete file + line references for important changes in both the final user summary and DEVLOG.md, e.g. `pixelart-lightart.js:1405`. Mention what changed there and why. This is required so Codex, Claude, and Kenjy can understand each other without Kenjy having to re-explain context every session.
 - Keep `CLAUDE_BRIEFING.md` up to date when collaboration rules change; Kenjy can paste it to Claude as the human-readable handoff instructions.
