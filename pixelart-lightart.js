@@ -670,12 +670,37 @@
     const baseOpacity = 0.12 + intensity * 0.14;
     const glowOpacity = 0.09 + intensity * 0.11;
 
-    // Pass 1: S light at every visible pixel — deterministic, no jitter/noise skip
+    // Pre-sharpen: counteract in-game glow blur by boosting color contrast at boundaries.
+    // Each S light has a large in-game radius — sharpening makes boundary pixels more vivid
+    // so adjacent lights of different colors don't wash into a gray/wrong blend.
+    const sharp = new Uint8ClampedArray(work.length);
+    const sharpAmt = 1.8;
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const i = (y * w + x) * 4;
+        if (work[i + 3] < 2) { sharp[i + 3] = 0; continue; }
+        let sr = 0, sg = 0, sb = 0, cnt = 0;
+        for (let dy = -2; dy <= 2; dy++) {
+          for (let dx = -2; dx <= 2; dx++) {
+            const ni = (clamp(y + dy, 0, h - 1) * w + clamp(x + dx, 0, w - 1)) * 4;
+            if (work[ni + 3] < 2) continue;
+            sr += work[ni]; sg += work[ni + 1]; sb += work[ni + 2]; cnt++;
+          }
+        }
+        if (!cnt) { sharp[i + 3] = 0; continue; }
+        sharp[i]     = byte(work[i]     + (work[i]     - sr / cnt) * sharpAmt);
+        sharp[i + 1] = byte(work[i + 1] + (work[i + 1] - sg / cnt) * sharpAmt);
+        sharp[i + 2] = byte(work[i + 2] + (work[i + 2] - sb / cnt) * sharpAmt);
+        sharp[i + 3] = 255;
+      }
+    }
+
+    // Pass 1: S light at every visible pixel — use sharpened colors for color accuracy
     for (let y = 0; y < h; y++) {
       for (let x = 0; x < w; x++) {
         const i = (y * w + x) * 4;
         if (work[i + 3] < 2) continue;
-        const r = work[i], g = work[i + 1], b = work[i + 2];
+        const r = sharp[i], g = sharp[i + 1], b = sharp[i + 2];
         const l = lum(r, g, b);
         const s = satOf(r, g, b);
         if (l < 0.05 && s < 0.18) continue;
@@ -688,33 +713,29 @@
             Math.min(0.28, baseOpacity * (0.5 + l * 0.9)),
             0.16, 'base', ci);
         }
-        if (stackPower > 38 && l > 0.20) {
-          pushLight(raw, w, h, x, y, colors[0], 'S', 0.85 + overlap * 0.22,
-            Math.min(0.24, baseOpacity * (0.32 + l * 0.55)),
-            0.12, 'base-stack', 2);
-        }
         if (raw.length >= maxLights) return;
       }
     }
 
-    // Pass 2: M lights for glow (every 2nd pixel, l >= 0.20)
-    for (let y = 0; y < h; y += 2) {
-      for (let x = 0; x < w; x += 2) {
+    // Pass 2: M glow — every 3rd pixel, vivid areas only (skip near-gray to avoid color bleed)
+    for (let y = 0; y < h; y += 3) {
+      for (let x = 0; x < w; x += 3) {
         const rgb = sampleCell(work, w, h, x, y, 1);
         if (rgb.a < 2) continue;
         const l = lum(rgb.r, rgb.g, rgb.b);
-        if (l < 0.20) continue;
+        if (l < 0.30) continue;
         const s = satOf(rgb.r, rgb.g, rgb.b);
+        if (s < 0.12) continue;
         const colors = chooseLightMix(rgb.r, rgb.g, rgb.b, l > 0.62 && s < 0.24, mixPower);
         if (!colors.length) continue;
         pushLight(raw, w, h, x, y, colors[0], 'M', 2 * (0.5 + overlap * 0.15),
-          Math.min(0.22, glowOpacity * (0.4 + l * 0.8)),
+          Math.min(0.16, glowOpacity * (0.35 + l * 0.65)),
           0.18, 'mid', 0);
         if (raw.length >= maxLights) return;
       }
     }
 
-    // Pass 3: L lights for bloom (every 4th pixel, l >= 0.40, only if stackPower high enough)
+    // Pass 3: L bloom — sparse, only very bright saturated areas
     if (stackPower > 58) {
       for (let y = 0; y < h; y += 4) {
         for (let x = 0; x < w; x += 4) {
@@ -723,10 +744,11 @@
           const l = lum(rgb.r, rgb.g, rgb.b);
           if (l < 0.55) continue;
           const s = satOf(rgb.r, rgb.g, rgb.b);
+          if (s < 0.18) continue;
           const colors = chooseLightMix(rgb.r, rgb.g, rgb.b, l > 0.65 && s < 0.25, mixPower);
           if (!colors.length) continue;
           pushLight(raw, w, h, x, y, colors[0], 'L', 3.2 * (0.65 + overlap * 0.16),
-            Math.min(0.13, glowOpacity * (0.35 + l * 0.42)),
+            Math.min(0.11, glowOpacity * (0.30 + l * 0.38)),
             0.22, 'glow', 0);
           if (raw.length >= maxLights) return;
         }
@@ -1819,7 +1841,7 @@
     try {
       if (!plan.length || packetPreviewMode || roomPreviewOriginalPlan) makePlan(root);
       collectSettings(root);
-      const items = makeMarkerPreviewObjects().concat(makeProjectedBuildObjects(root, false));
+      const items = makeProjectedBuildObjects(root, false);
       const fakeBase = 700000000 + (Date.now() % 900000000);
       previewPlacementIds = items.map(function(item, idx) {
         item.id = fakeBase + idx;
