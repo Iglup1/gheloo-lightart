@@ -154,6 +154,35 @@ Fixed to: `y = anchorY - (logicalH - 1 - localY)` — image-top now maps to room
 
 ---
 
+## [2026-06-26] Codex - Session 8
+
+**Done:**
+- Added `SHARED_CONTEXT.md` as the shared place for packets, screenshots/photo notes, room layouts, catalog/object facts, color facts, and test observations Kenjy gives to one AI but both agents need.
+- Updated Codex and Claude instructions so both agents must read `SHARED_CONTEXT.md` before changing code and update it when Kenjy shares reusable technical context.
+- Added a rule that important code-line explanations should be reflected in `PROJECT_BRIEFING.md` or `SHARED_CONTEXT.md` when useful for the other AI.
+
+**Changed files:**
+- `SHARED_CONTEXT.md:1` - new shared context file.
+- `SHARED_CONTEXT.md:17` - current packet/game facts, including light `bs` color meanings and `:bh 0` behavior.
+- `SHARED_CONTEXT.md:34` - catalog/furniture facts for chunk markers and number markers.
+- `SHARED_CONTEXT.md:50` - Light Art visual target and overlap/color expectations.
+- `SHARED_CONTEXT.md:58` - build reliability target for settings, ObjectAdd, retries, and checkpoints.
+- `PROJECT_BRIEFING.md:5` - project briefing must now be read together with `DEVLOG.md` and `SHARED_CONTEXT.md`.
+- `PROJECT_BRIEFING.md:33` - packets, screenshots, test results, room facts, and algorithm explanations must be shared.
+- `PROJECT_BRIEFING.md:71` - reminder to keep `SHARED_CONTEXT.md` updated.
+- `CODEX_INSTRUCTIONS.md:11` - Codex startup now includes `SHARED_CONTEXT.md`.
+- `CODEX_INSTRUCTIONS.md:15` - Codex must record reusable packets/screenshots/test facts in `SHARED_CONTEXT.md`.
+- `CODEX_INSTRUCTIONS.md:52` - Codex must update shared line explanations when useful for the other AI.
+- `CLAUDE_INSTRUCTIONS.md:29` - Claude startup now includes `SHARED_CONTEXT.md`.
+- `CLAUDE_INSTRUCTIONS.md:52` - Claude must record reusable packets/screenshots/test facts in `SHARED_CONTEXT.md`.
+- `CLAUDE_INSTRUCTIONS.md:54` - Claude must update shared line explanations when useful for the other AI.
+
+**Open / next:**
+- When Kenjy gives either AI packets, screenshots, image examples, chunk coordinates, catalog/object ids, or build logs, put the reusable facts in `SHARED_CONTEXT.md` before ending the session.
+- Continue Light Art quality/build reliability work in `pixelart-lightart.js`.
+
+---
+
 ## HOW TO UPDATE THIS FILE
 
 At **start of session**: read latest entry, understand state.

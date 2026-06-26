@@ -2,7 +2,7 @@
 
 This file is the shared "what has already happened" briefing for Codex, Claude, or any other AI helping on this project.
 
-Both agents must read this file before changing code, together with `DEVLOG.md`.
+Both agents must read this file before changing code, together with `DEVLOG.md` and `SHARED_CONTEXT.md`.
 
 ## Project purpose
 
@@ -30,6 +30,7 @@ The main target right now is Light Art:
 - The in-room preview must not really build furniture. It should inject fake incoming room objects.
 - Real build still needs buying, inventory checks, setting commands, watchdog, retries, checkpoints, and resume.
 - Explanations must include file + line references so Kenjy does not have to re-explain context between agents.
+- Packets, screenshots, test results, image notes, room-layout facts, and algorithm explanations from Kenjy must be recorded in `SHARED_CONTEXT.md` or `DEVLOG.md` so the other AI can continue without asking Kenjy for the same material again.
 
 ## Current important code locations
 
@@ -67,6 +68,7 @@ The main target right now is Light Art:
 - If code changes line numbers, update this briefing when the referenced sections move in a meaningful way.
 - `Canvas kamer-preview` exists in the current UI at `pixelart-lightart.js:1959`; old devlog text saying it was removed may be stale.
 - Keep `CLAUDE_INSTRUCTIONS.md`, `CODEX_INSTRUCTIONS.md`, and `DEVLOG.md` consistent when collaboration rules change.
+- Keep `SHARED_CONTEXT.md` updated when Kenjy shares packets, screenshots, color facts, object ids, catalog ids, room/chunk coordinates, or test results.
 
 ## How to hand off new Claude tasks
 
@@ -76,3 +78,5 @@ If Kenjy says "Claude moet ...", Codex must add that request to `DEVLOG.md` with
 - relevant files and line refs,
 - what is already known,
 - what should be tested next.
+
+If Kenjy shares packet text, image examples, screenshots, or gameplay observations, add the reusable facts to `SHARED_CONTEXT.md` and mention the update in `DEVLOG.md`.
