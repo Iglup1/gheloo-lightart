@@ -1,8 +1,20 @@
 # Project briefing - current state
 
-This file is the shared "what has already happened" briefing for Codex and Claude.
+This file is the shared "what has already happened" briefing for Codex, Claude, or any other AI helping on this project.
 
 Both agents must read this file before changing code, together with `DEVLOG.md`.
+
+## Project purpose
+
+Build and improve a JavaScript-only Gheloo extension that turns an uploaded image into Leet/Habbo room art.
+
+The main target right now is Light Art:
+
+- Generate a furniture plan from an image using Leet light furniture.
+- Make the furniture preview look close to what the room will show, including light overlap and color mixing.
+- Let Kenjy preview the plan in-room by injecting fake incoming `{in:Objects}` packets, not by placing real furniture.
+- When actually building, buy only missing furniture, reuse inventory, place chunk markers, set `:bh`/`:bs`/`:bd` carefully, watch `ObjectAdd`, retry safely, checkpoint progress, and resume after failures.
+- Keep the extension easy to adjust: clear settings names, clear code sections, and clear handoff notes.
 
 ## Source of truth
 
@@ -54,7 +66,7 @@ Both agents must read this file before changing code, together with `DEVLOG.md`.
 - Kenjy is still visually testing Light Art quality. If the preview looks too blurry, too sparse, or too unlike the source image, tune `addLightArtRaster(...)` and validate with in-game preview.
 - If code changes line numbers, update this briefing when the referenced sections move in a meaningful way.
 - `Canvas kamer-preview` exists in the current UI at `pixelart-lightart.js:1959`; old devlog text saying it was removed may be stale.
-- Keep `CLAUDE_BRIEFING.md`, `CODEX_INSTRUCTIONS.md`, and `DEVLOG.md` consistent when collaboration rules change.
+- Keep `CLAUDE_INSTRUCTIONS.md`, `CODEX_INSTRUCTIONS.md`, and `DEVLOG.md` consistent when collaboration rules change.
 
 ## How to hand off new Claude tasks
 

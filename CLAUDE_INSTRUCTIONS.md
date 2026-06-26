@@ -1,6 +1,23 @@
-# Claude briefing — gheloo-lightart
+# Instructions for Claude
 
 Kenjy may paste this into Claude when handing over the project.
+
+## Who you are
+
+You are one of two AI agents working on this project. The other is Codex.
+You work different shifts and cannot talk directly, so GitHub commits, `DEVLOG.md`, and `PROJECT_BRIEFING.md` are the shared memory.
+
+## Project purpose
+
+Build and improve a JavaScript-only Gheloo extension that turns an uploaded image into Leet/Habbo room art.
+
+The current main target is Light Art:
+
+- Generate a furniture plan from an image using Leet light furniture.
+- Make the furniture preview visually close to the in-room result, including light overlap and color mixing.
+- Preview in-room by injecting fake incoming `{in:Objects}` packets, not by placing real furniture.
+- For real builds: buy only missing furniture, reuse inventory, place chunk markers, set `:bh`/`:bs`/`:bd` carefully, watch `ObjectAdd`, retry safely, checkpoint progress, and resume after failures.
+- Keep settings, UI labels, code sections, and handoff notes clear enough that a new AI can continue without Kenjy re-explaining everything.
 
 ## How we collaborate
 

@@ -94,18 +94,18 @@ Fixed to: `y = anchorY - (logicalH - 1 - localY)` — image-top now maps to room
 ## [2026-06-26] Codex — Session 5
 
 **Done:**
-- Added `CLAUDE_BRIEFING.md`, a paste-ready instruction handoff Kenjy can send to Claude.
+- Added `CLAUDE_INSTRUCTIONS.md`, a paste-ready instruction handoff Kenjy can send to Claude.
 - Added a workflow rule that when Kenjy tells Codex "Claude should do X", Codex must automatically communicate that through `DEVLOG.md` instead of relying on Kenjy to repeat it.
 
 **Changed files:**
-- `CLAUDE_BRIEFING.md:1` — new Claude-facing briefing with repo workflow, reporting style, project rules, current Light Art focus, and handoff behavior.
+- `CLAUDE_INSTRUCTIONS.md:1` — new Claude-facing briefing with repo workflow, reporting style, project rules, current Light Art focus, and handoff behavior.
 - `CODEX_INSTRUCTIONS.md:14` — added automatic Claude handoff rule for Codex.
-- `CODEX_INSTRUCTIONS.md:49` — added requirement to keep `CLAUDE_BRIEFING.md` updated when collaboration rules change.
+- `CODEX_INSTRUCTIONS.md:50` — added requirement to keep `CLAUDE_INSTRUCTIONS.md` updated when collaboration rules change.
 - `DEVLOG.md` — added this handoff entry.
 
 **Open / next:**
 - If Kenjy says "Claude moet ..." in a Codex session, add that request to the latest `DEVLOG.md` entry or create a new handoff entry and push it.
-- Claude should read `CLAUDE_BRIEFING.md` plus latest `DEVLOG.md` before editing.
+- Claude should read `CLAUDE_INSTRUCTIONS.md` plus latest `DEVLOG.md` before editing.
 
 ---
 
@@ -117,19 +117,40 @@ Fixed to: `y = anchorY - (logicalH - 1 - localY)` — image-top now maps to room
 
 **Changed files:**
 - `PROJECT_BRIEFING.md:1` - new shared project-state briefing.
-- `PROJECT_BRIEFING.md:7` - source-of-truth and "do not edit logger" rules.
-- `PROJECT_BRIEFING.md:22` - important `pixelart-lightart.js` line references for preview, generator, chunks, markers, build, watchdog, and UI.
-- `PROJECT_BRIEFING.md:42` - summary of what has already been fixed.
-- `PROJECT_BRIEFING.md:52` - current caution points, including stale old devlog note about `Canvas kamer-preview`.
+- `PROJECT_BRIEFING.md:19` - source-of-truth and "do not edit logger" rules.
+- `PROJECT_BRIEFING.md:34` - important `pixelart-lightart.js` line references for preview, generator, chunks, markers, build, watchdog, and UI.
+- `PROJECT_BRIEFING.md:54` - summary of what has already been fixed.
+- `PROJECT_BRIEFING.md:64` - current caution points, including stale old devlog note about `Canvas kamer-preview`.
 - `CODEX_INSTRUCTIONS.md:11` - Codex must read `DEVLOG.md` and `PROJECT_BRIEFING.md` at session start.
 - `CODEX_INSTRUCTIONS.md:47` - Codex must read `PROJECT_BRIEFING.md` before code changes.
-- `CLAUDE_BRIEFING.md:11` - Claude must read `PROJECT_BRIEFING.md` at session start.
-- `CLAUDE_BRIEFING.md:38` - Claude-specific reminder to read `PROJECT_BRIEFING.md` before changing code.
+- `CLAUDE_INSTRUCTIONS.md:28` - Claude must read `PROJECT_BRIEFING.md` at session start.
+- `CLAUDE_INSTRUCTIONS.md:55` - Claude-specific reminder to read `PROJECT_BRIEFING.md` before changing code.
 - `DEVLOG.md` - added this handoff entry.
 
 **Open / next:**
 - Keep `PROJECT_BRIEFING.md` updated when major behavior or important line locations change.
 - Claude and Codex should now start with three reads: `DEVLOG.md`, `PROJECT_BRIEFING.md`, and their instruction/briefing file.
+
+---
+
+## [2026-06-26] Codex - Session 7
+
+**Done:**
+- Renamed `CLAUDE_BRIEFING.md` to `CLAUDE_INSTRUCTIONS.md` so Claude and Codex instruction files use the same naming style.
+- Updated references from `CLAUDE_BRIEFING.md` to `CLAUDE_INSTRUCTIONS.md`.
+- Added a clear project-purpose section so any AI can understand the goal without Kenjy re-explaining it.
+
+**Changed files:**
+- `CLAUDE_INSTRUCTIONS.md:1` - renamed/retitled the Claude handoff file to match `CODEX_INSTRUCTIONS.md`.
+- `CLAUDE_INSTRUCTIONS.md:10` - added the project purpose and current Light Art target.
+- `PROJECT_BRIEFING.md:7` - added a shared project-purpose section for all agents.
+- `PROJECT_BRIEFING.md:69` - updated collaboration-file references to `CLAUDE_INSTRUCTIONS.md`.
+- `CODEX_INSTRUCTIONS.md:50` - updated the Claude instruction filename.
+- `DEVLOG.md` - renamed Claude instruction references and added this handoff entry.
+
+**Open / next:**
+- New agents should read `DEVLOG.md`, `PROJECT_BRIEFING.md`, and their own instruction file before editing.
+- Continue Light Art quality/build reliability work in `pixelart-lightart.js`.
 
 ---
 
