@@ -998,7 +998,7 @@
         ctx.fill();
       });
       ctx.restore();
-      if (settings.generatorMode !== 'light_art') drawChunkOverlayLogical(ctx, w, h);
+      drawChunkOverlayLogical(ctx, w, h);
     });
   }
   function drawChunkOverlay(ctx, canvas, w, h, scale) {
