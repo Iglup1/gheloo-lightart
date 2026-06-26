@@ -1396,6 +1396,18 @@
       const isLA = settings.generatorMode === 'light_art';
       const lx = isLA ? p.px : (maxPx ? (p.px / maxPx) * mapW : p.px);
       const ly = isLA ? p.py : (maxPy ? (p.py / maxPy) * mapH : p.py);
+
+      // Light Art preview: project whole art as one isometric plane, no chunk split.
+      // startY = mapW/2 keeps roomY >= 0 for all pixels. Client-side accepts any coords.
+      if (isLA && !withInventory) {
+        const fsX = 2;
+        const fsY = Math.ceil(mapW / 2) + 2;
+        const id = p.id || (out.length + 1);
+        const z = normalizeHeight(baseBh);
+        out.push({ id, typeId: p.typeId, x: Math.round(fsX + lx * 0.5 + ly), y: Math.round(fsY - lx * 0.5 + ly), z, rotation, state: p.state, size: p.size });
+        return;
+      }
+
       const chunkNr = chunkNumberForRoomPoint(lx, ly);
       if (chunkMode && selected && !selected.has(chunkNr)) return;
       let id = p.id || (out.length + 1);
