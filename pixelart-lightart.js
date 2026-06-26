@@ -844,19 +844,28 @@
       addLightArtRaster(raw, w, h, work, intensity, overlap, stackPower, mixPower);
       delete raw.__data;
       plan = raw.slice(0, clamp(+settings.maxLights || 65000, 1, 120000));
-      // Project plan to room coordinates so meubel preview matches in-room layout
+      // Project plan to isometric screen coords so meubel preview matches in-room view
+      // isoX = roomX - roomY, isoY = (roomX + roomY) * 0.5
       let pvW = w, pvH = h;
       try {
         const proj = makeProjectedBuildObjects(root, false);
         if (proj.length === plan.length) {
-          const maxRY = Math.max(63, Math.max.apply(null, proj.map(function(o) { return o.y; })));
-          const maxRX = Math.max(63, Math.max.apply(null, proj.map(function(o) { return o.x; })));
-          proj.forEach(function(obj, i) {
-            plan[i].cx = obj.x;
-            plan[i].cy = maxRY - obj.y;
+          let minIX = Infinity, minIY = Infinity, maxIX = -Infinity, maxIY = -Infinity;
+          const iso = proj.map(function(obj) {
+            const ix = obj.x - obj.y;
+            const iy = (obj.x + obj.y) * 0.5;
+            if (ix < minIX) minIX = ix;
+            if (iy < minIY) minIY = iy;
+            if (ix > maxIX) maxIX = ix;
+            if (iy > maxIY) maxIY = iy;
+            return { ix: ix, iy: iy };
           });
-          pvW = maxRX + 1;
-          pvH = maxRY + 1;
+          iso.forEach(function(coord, i) {
+            plan[i].cx = coord.ix - minIX;
+            plan[i].cy = coord.iy - minIY;
+          });
+          pvW = Math.max(1, maxIX - minIX + 1);
+          pvH = Math.max(1, maxIY - minIY + 1);
         }
       } catch(_) {}
       previewFrame = { w: pvW, h: pvH, work };
@@ -1010,7 +1019,7 @@
         ctx.fill();
       });
       ctx.restore();
-      drawChunkOverlayLogical(ctx, w, h);
+      if (settings.generatorMode !== 'light_art') drawChunkOverlayLogical(ctx, w, h);
     });
   }
   function drawChunkOverlay(ctx, canvas, w, h, scale) {
