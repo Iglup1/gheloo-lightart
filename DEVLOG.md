@@ -211,6 +211,31 @@ Fixed to: `y = anchorY - (logicalH - 1 - localY)` — image-top now maps to room
 
 ---
 
+## [2026-06-26] Claude — Session 10
+
+**Done:**
+- Read `CLAUDE_INSTRUCTIONS.md`, `DEVLOG.md`, `PROJECT_BRIEFING.md`, `SHARED_CONTEXT.md` (pulled latest from GitHub first).
+- Rewrote `addLightArtRaster` at `pixelart-lightart.js:668` with a deterministic 3-pass algorithm:
+  - Pass 1 (lines 673-694): S light at every visible non-dark pixel, no random jitter or noise thresholds. Uses `chooseLightMix` directly (correct color penalties already built in). Up to 2 colors per pixel when `mixPower > 68`.
+  - Pass 2 (lines 696-711): M glow light every 2nd pixel for pixels with luminance >= 0.20.
+  - Pass 3 (lines 713-730): L bloom light every 4th pixel for luminance >= 0.40, only when `stackPower > 40`.
+- Old algorithm used `noise01()` thresholds and `jitter()` offsets — these caused random sparse blobs instead of a recognizable image.
+- New algorithm is fully deterministic: same image always gives same output, every visible pixel gets an S light.
+
+**Root cause of old bad output:**
+`noise01(x, y, 503) > threshold` randomly skipped pixels in pass 2 and 3. Combined with `jitter()` displacing pass 1 lights slightly, result was scattered random dots instead of clean pixel art.
+
+**Changed files:**
+- `pixelart-lightart.js:668-731` — full rewrite of `addLightArtRaster`
+
+**Open / next:**
+- Test in-game with Joker image + 2×2×20 chunk mode. Preview should now show recognizable image.
+- If image is still too sparse, lower `darkCut` threshold in settings (controls which dark pixels get skipped at `pixelart-lightart.js:825`).
+- If too many lights for budget, raise `maxLights` or reduce `stackPower` to skip pass 3.
+- Chunk coordinate mapping (Y-axis fix from session 2) remains in place — `pixelart-lightart.js:1405`.
+
+---
+
 ## HOW TO UPDATE THIS FILE
 
 At **start of session**: read latest entry, understand state.

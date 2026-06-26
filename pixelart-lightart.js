@@ -667,68 +667,65 @@
   }
   function addLightArtRaster(raw, w, h, work, intensity, overlap, stackPower, mixPower) {
     const maxLights = clamp(+settings.maxLights || 65000, 1, 120000);
-    const baseStep = 1;
-    const midStep = Math.max(2, Math.min(6, Math.round(+settings.midStep || 3)));
-    const glowStep = Math.max(4, Math.min(10, Math.round(+settings.coarseStep || 6)));
-    const baseOpacity = 0.11 + intensity * 0.13;
-    const glowOpacity = 0.08 + intensity * 0.10;
-    function pixelAt(x, y) {
-      const xx = clamp(Math.round(x), 0, w - 1);
-      const yy = clamp(Math.round(y), 0, h - 1);
-      const i = (yy * w + xx) * 4;
-      return { r: work[i], g: work[i + 1], b: work[i + 2], a: work[i + 3] };
-    }
-    for (let y = 0; y < h; y += baseStep) {
-      for (let x = 0; x < w; x += baseStep) {
-        const rgb = pixelAt(x, y);
-        if (rgb.a < 2) continue;
-        const l = lum(rgb.r, rgb.g, rgb.b);
-        const s = satOf(rgb.r, rgb.g, rgb.b);
-        if (l < 0.045 && s < 0.18) continue;
+    const baseOpacity = 0.12 + intensity * 0.14;
+    const glowOpacity = 0.09 + intensity * 0.11;
+
+    // Pass 1: S light at every visible pixel — deterministic, no jitter/noise skip
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const i = (y * w + x) * 4;
+        if (work[i + 3] < 2) continue;
+        const r = work[i], g = work[i + 1], b = work[i + 2];
+        const l = lum(r, g, b);
+        const s = satOf(r, g, b);
+        if (l < 0.05 && s < 0.18) continue;
         const allowWhite = l > 0.58 && s < 0.22;
-        const colors = dominantLightColor(rgb.r, rgb.g, rgb.b, allowWhite, mixPower);
+        const colors = chooseLightMix(r, g, b, allowWhite, mixPower);
         if (!colors.length) continue;
-        colors.forEach(function(code, idx) {
-          const offset = (idx - (colors.length - 1) / 2) * 0.28;
-          pushLight(raw, w, h, x + offset, y - offset, code, 'S', 0.95 + overlap * 0.45, Math.min(0.30, baseOpacity * (0.45 + l * 0.95) / (1 + idx * 0.35)), 0.18, 'tile', idx);
-        });
-        if (raw.length >= maxLights) return;
-      }
-    }
-    for (let y = Math.floor(midStep / 2); y < h; y += midStep) {
-      for (let x = Math.floor(midStep / 2); x < w; x += midStep) {
-        const rgb = sampleCell(work, w, h, x, y, Math.max(1, midStep / 2));
-        const l = lum(rgb.r, rgb.g, rgb.b);
-        const s = satOf(rgb.r, rgb.g, rgb.b);
-        const d = detailAt(work, w, h, x, y) / 255;
-        if (rgb.a < 2 || l < 0.13 || (s < 0.10 && l < 0.32)) continue;
-        if (noise01(x, y, 503) > Math.min(0.92, l * 1.10 + d * 0.45 + s * 0.25)) continue;
-        const colors = dominantLightColor(rgb.r, rgb.g, rgb.b, l > 0.62 && s < 0.24, mixPower);
-        colors.forEach(function(code, idx) {
-          const j = jitter(x + idx * 19, y - idx * 23, 0.35);
-          pushLight(raw, w, h, x + j.x, y + j.y, code, d > 0.34 ? 'S' : 'M', midStep * (0.44 + overlap * 0.18), Math.min(0.24, glowOpacity * (0.45 + l * 0.75)), 0.20, 'mid', idx);
-        });
-        if (stackPower > 45 && l > 0.40 && raw.length < maxLights) {
-          const code = colors[0];
-          if (code !== undefined) pushLight(raw, w, h, x, y, code, 'M', midStep * (0.32 + overlap * 0.14), Math.min(0.19, glowOpacity * 0.72), 0.16, 'mid-stack', 1);
+        const maxMix = mixPower > 68 ? Math.min(colors.length, 2) : 1;
+        for (let ci = 0; ci < maxMix; ci++) {
+          const ox = ci === 0 ? 0 : (ci % 2 === 0 ? 0.25 : -0.25);
+          pushLight(raw, w, h, x + ox, y, colors[ci], 'S', 0.9 + overlap * 0.4,
+            Math.min(0.28, baseOpacity * (0.5 + l * 0.9)),
+            0.16, 'base', ci);
         }
         if (raw.length >= maxLights) return;
       }
     }
-    for (let y = Math.floor(glowStep / 2); y < h; y += glowStep) {
-      for (let x = Math.floor(glowStep / 2); x < w; x += glowStep) {
-        const rgb = sampleCell(work, w, h, x, y, Math.max(2, glowStep / 2));
+
+    // Pass 2: M lights for glow (every 2nd pixel, l >= 0.20)
+    for (let y = 0; y < h; y += 2) {
+      for (let x = 0; x < w; x += 2) {
+        const rgb = sampleCell(work, w, h, x, y, 1);
+        if (rgb.a < 2) continue;
         const l = lum(rgb.r, rgb.g, rgb.b);
+        if (l < 0.20) continue;
         const s = satOf(rgb.r, rgb.g, rgb.b);
-        if (rgb.a < 2 || l < 0.30 || s < 0.10) continue;
-        if (noise01(x, y, 907) > Math.min(0.80, l * 0.86 + s * 0.24)) continue;
-        const colors = dominantLightColor(rgb.r, rgb.g, rgb.b, false, mixPower).slice(0, 1);
-        const size = l > 0.58 ? 'L' : 'M';
-        colors.forEach(function(code) {
-          const j = jitter(x + 700, y + 900, glowStep * 0.10);
-          pushLight(raw, w, h, x + j.x, y + j.y, code, size, glowStep * (0.58 + overlap * 0.22), Math.min(0.20, glowOpacity * (0.55 + l * 0.55)), 0.28, 'soft-glow', 0);
-        });
+        const colors = chooseLightMix(rgb.r, rgb.g, rgb.b, l > 0.62 && s < 0.24, mixPower);
+        if (!colors.length) continue;
+        pushLight(raw, w, h, x, y, colors[0], 'M', 2 * (0.5 + overlap * 0.15),
+          Math.min(0.22, glowOpacity * (0.4 + l * 0.8)),
+          0.18, 'mid', 0);
         if (raw.length >= maxLights) return;
+      }
+    }
+
+    // Pass 3: L lights for bloom (every 4th pixel, l >= 0.40, only if stackPower high enough)
+    if (stackPower > 40) {
+      for (let y = 0; y < h; y += 4) {
+        for (let x = 0; x < w; x += 4) {
+          const rgb = sampleCell(work, w, h, x, y, 2);
+          if (rgb.a < 2) continue;
+          const l = lum(rgb.r, rgb.g, rgb.b);
+          if (l < 0.40) continue;
+          const s = satOf(rgb.r, rgb.g, rgb.b);
+          const colors = chooseLightMix(rgb.r, rgb.g, rgb.b, l > 0.65 && s < 0.25, mixPower);
+          if (!colors.length) continue;
+          pushLight(raw, w, h, x, y, colors[0], 'L', 4 * (0.65 + overlap * 0.20),
+            Math.min(0.18, glowOpacity * (0.45 + l * 0.6)),
+            0.22, 'glow', 0);
+          if (raw.length >= maxLights) return;
+        }
       }
     }
   }
