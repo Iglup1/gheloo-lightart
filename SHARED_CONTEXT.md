@@ -405,6 +405,17 @@ This is the compressed handoff from the long Codex/Kenjy conversation so Claude 
   - The older multi-light recipe chooser is no longer active inside `chooseLightMix(...)`.
 - Blend should now affect density, light size, and glow overlap, not invent extra color recipes.
 
+### 2026-06-27 Light Art axis/BH insight
+
+- Kenjy clarified an important projection rule:
+  - The photo x-axis cannot really be fine-tuned freely in the room; in this build formation it effectively moves in about 0.5 tile increments.
+  - The photo y-axis can be made much smoother with `:bh`, so vertical image detail should use build-height fractions where possible.
+- Implementation direction:
+  - Light Art projection now rounds/snap-fines `localX` to 0.5 steps.
+  - The fractional part of `localY` is converted into `z = baseBh + yFrac * bhStep`.
+  - This is in `makeProjectedBuildObjects(...)` around `pixelart-lightart.js:1778` and `pixelart-lightart.js:1821`.
+- This should make blended/jittered lights smoother vertically without trying to fake impossible x-axis precision.
+
 ### Latest chunk-outline bug report from Kenjy
 
 - Kenjy sent an `{in:Objects}` packet with 330 objects after testing Claude's latest build. Parsed facts:

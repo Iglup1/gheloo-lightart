@@ -931,6 +931,34 @@ Fixed to: `y = anchorY - (logicalH - 1 - localY)` — image-top now maps to room
 
 ---
 
+## [2026-06-27] Codex - Session 19
+
+**Done:**
+- Kenjy reported Blender still behaves strangely and explained the Light Art axis constraint:
+  x-axis is only coarse/roughly 0.5 tile precision, while y-axis can be smoothed with `:bh`.
+- Reduced high-blend overexposure by limiting XXL density/upgrades and disabling duplicate large same-color strength stacks at very high Blender.
+- Kept the high-blend sparkle layer small (`S`) instead of letting it become `M` in flat areas.
+- Changed Light Art projection so fractional `localY` becomes build height (`z`) while `localX` is snapped to 0.5.
+- Documented the x-axis/BH insight in `SHARED_CONTEXT.md`.
+
+**Changed files:**
+- `pixelart-lightart.js:852` - high Blender uses less XXL/XL overgrowth.
+- `pixelart-lightart.js:864` - duplicate large strength stacks disabled above high Blender.
+- `pixelart-lightart.js:939` - size upgrade thresholds raised to avoid yellow/white blob floods.
+- `pixelart-lightart.js:977` - sparkle pass now stays `S`.
+- `pixelart-lightart.js:1778` / `pixelart-lightart.js:1821` - Light Art projection maps vertical fractional detail into `bh`.
+- `SHARED_CONTEXT.md` - added axis/BH projection notes.
+
+**Verification:**
+- Ran `node --check pixelart-lightart.js` successfully.
+
+**Open / next:**
+- Retest Blender at 0/17/39/58/81/100.
+- If high Blender still whites out, continue reducing large-light density rather than changing color choice.
+- If projection visually shifts, tune `bhStep` default or expose a clearer "vertical smoothness" label.
+
+---
+
 ## HOW TO UPDATE THIS FILE
 
 At **start of session**: read latest entry, understand state.

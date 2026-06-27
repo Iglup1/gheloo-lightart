@@ -863,15 +863,15 @@
     // Blob passes: step shrinks as blend rises (denser blobs at higher blend).
     const mStep   = blend < 0.05 ? 0 : Math.max(2, Math.round(8 - blendEase * 5));
     const lStep   = blend < 0.16 ? 0 : Math.max(2, Math.round(12 - blendEase * 8));
-    const xlStep  = blend < 0.38 ? 0 : Math.max(3, Math.round(18 - blendEase * 12));
-    const xxlStep = blend < 0.68 ? 0 : Math.max(5, Math.round(28 - blendEase * 18));
+    const xlStep  = blend < 0.42 ? 0 : Math.max(5, Math.round(22 - blendEase * 13));
+    const xxlStep = blend < 0.88 ? 0 : Math.max(14, Math.round(34 - blendEase * 16));
 
     let done = false;
 
     function placeWithSecondary(x, y, colors, sz, radius, opac, spread) {
       pushLight(raw, w, h, x, y, colors[0], sz, radius, opac, 0.18, sz, 0);
       if (raw.length >= maxLights) { done = true; return; }
-      if (blend > 0.35 && opac > 0.006 && (sz === 'M' || sz === 'L' || sz === 'XL')) {
+      if (blend > 0.35 && blend < 0.72 && opac > 0.006 && (sz === 'M' || sz === 'L' || sz === 'XL')) {
         pushLight(raw, w, h, x, y, colors[0], sz, radius * (0.68 + blendEase * 0.14), opac * (0.20 + blendEase * 0.22), 0.14, sz + '-strength', 2);
         if (raw.length >= maxLights) { done = true; return; }
       }
@@ -945,12 +945,12 @@
           const bp = getFlat(px, py) * blend;
           let sz = baseSz, r = baseR;
           if (baseSz === 'M') {
-            if (bp > 0.74) { sz = 'XL'; r = rXL; }
+            if (bp > 0.88) { sz = 'XL'; r = rXL; }
             else if (bp > 0.38) { sz = 'L'; r = rL; }
           } else if (baseSz === 'L') {
-            if (bp > 0.62) { sz = 'XL'; r = rXL; }
+            if (bp > 0.78) { sz = 'XL'; r = rXL; }
           } else if (baseSz === 'XL') {
-            if (bp > 0.88) { sz = 'XXL'; r = rXXL; }
+            if (bp > 0.96) { sz = 'XXL'; r = rXXL; }
           }
           const allowW = l > 0.62 && s < 0.22;
           const colors = chooseLightMix(cr, cg, cb, allowW, mixPower);
@@ -980,8 +980,8 @@
           const colors = chooseLightMix(cr, cg, cb, false, Math.max(55, mixPower));
           if (!colors.length) continue;
           const j = jitter(gx + colors[0] * 19, gy + colors.length * 37, 0.45 + blendEase * 0.65);
-          const sz = blend > 0.70 && flat > 0.55 && noise01(gx, gy, 977) > 0.62 ? 'M' : 'S';
-          const rr = sz === 'M' ? rM : rS;
+          const sz = 'S';
+          const rr = rS;
           const opac = intensity * (0.030 + blendEase * 0.035) * (0.35 + l * 0.75) * (0.70 + s * 0.40);
           placeWithSecondary(clamp(gx + j.x, 0, w - 1), clamp(gy + j.y, 0, h - 1), colors, sz, rr, opac, 0.85 + blendEase * 0.55);
         }
@@ -1778,8 +1778,11 @@
         const fsX = 2;
         const fsY = Math.ceil(mapW / 2) + 2;
         const id = p.id || (out.length + 1);
-        const z = normalizeHeight(baseBh);
-        out.push({ id, typeId: p.typeId, x: Math.round(fsX + lx * 0.5 + ly), y: Math.round(fsY - lx * 0.5 + ly), z, rotation, state: p.state, size: p.size });
+        const sxFine = Math.round(lx * 2) / 2;
+        const yBase = Math.floor(ly);
+        const yFrac = clamp(ly - yBase, 0, 0.99);
+        const z = normalizeHeight(baseBh + yFrac * bhStep);
+        out.push({ id, typeId: p.typeId, x: Math.round(fsX + sxFine * 0.5 + yBase), y: Math.round(fsY - sxFine * 0.5 + yBase), z, rotation, state: p.state, size: p.size });
         return;
       }
 
@@ -1815,21 +1818,26 @@
       const logicalW = chunkMode ? chunkSize : roomW;
       const logicalH = chunkMode ? chunkSize : roomH;
       let x, y;
+      let z = normalizeHeight(baseBh);
       if (settings.generatorMode === 'light_art') {
         // Same chunk-frame isometric projection for both preview and real build.
         // Preview (withInventory=false): no coordinate clamp — client-side accepts any value.
         // Real build (withInventory=true): clamp to 0-63 room tile range.
+        const sxFine = Math.round(localX * 2) / 2;
+        const yBase = Math.floor(localY);
+        const yFrac = clamp(localY - yBase, 0, 0.99);
+        z = normalizeHeight(baseBh + yFrac * bhStep);
         const frameStart = chunkMode ? exactLightArtFrameStart(chunkNr) : null;
         if (frameStart) {
-          const rawX = Math.round(frameStart.x + (localX * 0.5) + localY);
-          const rawY = Math.round(frameStart.y - (localX * 0.5) + localY);
+          const rawX = Math.round(frameStart.x + (sxFine * 0.5) + yBase);
+          const rawY = Math.round(frameStart.y - (sxFine * 0.5) + yBase);
           x = withInventory ? clamp(rawX, 0, 63) : rawX;
           y = withInventory ? clamp(rawY, 0, 63) : rawY;
         } else {
           const sxRoom = (chunkMode ? chunkSize : roomW) / Math.max(1, logicalW);
           const syRoom = (chunkMode ? chunkSize : roomH) / Math.max(1, logicalH);
-          const rawX = Math.round(anchorX + (localX * sxRoom));
-          const rawY = Math.round(anchorY - (logicalH - 1 - localY) * syRoom);
+          const rawX = Math.round(anchorX + (sxFine * sxRoom));
+          const rawY = Math.round(anchorY - (logicalH - 1 - yBase) * syRoom);
           x = withInventory ? clamp(rawX, 0, 63) : rawX;
           y = withInventory ? clamp(rawY, 0, 63) : rawY;
         }
@@ -1838,7 +1846,6 @@
         x = clamp(Math.round(anchorX + dx), 0, 63);
         y = clamp(Math.round(anchorY - dx), 0, 63);
       }
-      const z = normalizeHeight(baseBh);
       const spot = settings.generatorMode === 'light_art' ? { x, y } : reserveTile(p.typeId, p.state, p.size, x, y, z);
       out.push({ id, typeId: p.typeId, x: spot.x, y: spot.y, z, rotation, state: p.state, size: p.size });
     });
