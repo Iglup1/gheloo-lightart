@@ -574,6 +574,25 @@ Fixed to: `y = anchorY - (logicalH - 1 - localY)` — image-top now maps to room
 - If preview still looks like a blob: M/L alpha may need to go higher (try 0.60)
 - If M/L spots too bright/washed out: lower to 0.30
 
+## [2026-06-27] Claude — Session 16 continued (fix: S tile sizing, M distinct circles)
+
+**Kenjy's feedback**: Preview is a solid orange flat blob. Room shows individual hexagonal tile spots + distinct M/L glow circles. Kenjy: "each chunk is 20×20, just place the sprite at the light's position." Root cause was clear: S ds=3.75 meant each S ball was 4 tiles wide → massive S overlap → blob.
+
+**Fix (commit `5eac84c`)**:
+- `LIGHT_GLOW_DRAW_SIZE.S`: 3.75 → **1.0** (one tile wide). Adjacent S at spacing=1 → sprites just TOUCH at edges → individual tile glow dots visible = hex-like pattern (matches room).
+- `LIGHT_GLOW_DRAW_SIZE.M`: 7.8 → **5.0** (M step=6, M blob 5.0 → 13.75 canvas px < 16.5 canvas px spacing → M circles DISTINCT, not overlapping).
+- `LIGHT_GLOW_DRAW_SIZE.L/XL/XXL`: 10/11.25/25 → 8/12/22 (proportional to game visual size per tile).
+- S alpha: `clamp(opacity*4.0, 0.01, 0.50)` → bright pixels = 50% individual tile dot, dark = dim/invisible.
+- M/L/XL/XXL alpha: 0.40/0.35/0.28/0.22 (prominent large circles).
+- Background: back to `#050505` (dark gaps between S tile dots provide natural hex texture).
+- Sprite vs gradient alpha: same (sizes now correct for both).
+
+**Expected result**: Face area = field of small orange circles touching edge-to-edge + distinct larger M/L circles on top. Matches room's hexagonal floor pattern.
+
+**Changed files:**
+- `pixelart-lightart.js:172` — LIGHT_GLOW_DRAW_SIZE corrected
+- `pixelart-lightart.js:1094-1110` — unified alpha, S=50% max, M=40% fixed
+
 ---
 
 ## HOW TO UPDATE THIS FILE
