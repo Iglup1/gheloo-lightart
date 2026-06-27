@@ -762,7 +762,26 @@ Fixed to: `y = anchorY - (logicalH - 1 - localY)` — image-top now maps to room
 - Test image pan + scale workflow (drag to position, Ctrl+drag to resize)
 - Test chunk selection filter in meubel preview
 - Algorithm still may need tuning based on user feedback
+## [2026-06-27] Codex - Session 13
 
+**Done:**
+- Resumed after Kenjy reported Claude forgot to push the last hour of local work to GitHub.
+- Compared GitHub `pixelart-lightart.js` with the live Gheloo extension file in `Gheloo-main\extensions`.
+- Synced the live extension file back into this repo so GitHub now contains Claude's local Blender/source-pan/sprite-preview work.
+- Added the compact handoff details to `SHARED_CONTEXT.md`, including workflow rules and current algorithm concepts.
+
+**Changed files:**
+- `pixelart-lightart.js` - replaced repo version with the live local extension from `Gheloo-main\extensions\pixelart-lightart.js`.
+- `SHARED_CONTEXT.md` - added the 2026-06-27 compact handoff from Claude's local session.
+- `DEVLOG.md` - added this sync entry.
+
+**Verification:**
+- Ran `node --check` on the live extension before sync successfully.
+
+**Open / next:**
+- Run `node --check pixelart-lightart.js` after sync and commit/push this source-of-truth update.
+- Kenjy said more photos are coming; use those to judge Blender/light quality before making further algorithm changes.
+- Watch for conflict between Claude's row-major chunk numbering and Kenjy's exact 2x2 camera-frame packet mapping.
 ---
 
 ## HOW TO UPDATE THIS FILE

@@ -282,6 +282,30 @@ This is the compressed handoff from the long Codex/Kenjy conversation so Claude 
 - UI may still contain stale `Canvas kamer-preview` and sizing/cropping issues.
 - Line numbers in `PROJECT_BRIEFING.md` and this file must be updated after large edits to `pixelart-lightart.js`.
 
+### 2026-06-27 compact handoff from Claude local session
+
+- Claude worked locally in `C:\Users\prepa\OneDrive\Bureaublad\Gheloo-main\extensions\pixelart-lightart.js` but forgot to push to GitHub for about the last hour. Codex synced that live file back into this repo before continuing.
+- Keep these workflow rules from Kenjy:
+  - Do not edit the Gheloo logger/host files.
+  - Do not re-add `loader.js` or `raw.githubusercontent.com` fetches because CSP blocks them.
+  - After every code change, copy `pixelart-lightart.js` to clipboard, update `DEVLOG.md`, commit, and push.
+  - When Kenjy shares photos, sizes, packets, or test results, update this file or `DEVLOG.md` immediately.
+- The local Claude version added or changed:
+  - `randomizer`/`Blender` setting for Light Art blend amount.
+  - `imgPanX`, `imgPanY`, `imgScale` for panning/scaling the source image inside the fixed build grid.
+  - `localVariance(...)` and `flatMap` precomputation so flat color areas get larger blobs while edges keep S lights.
+  - Additive preview rendering using actual/approximated light sprites and `globalCompositeOperation = 'lighter'`.
+  - Source canvas draws high-quality source image and chunk boundaries only, without chunk numbers.
+  - `drawChunkBoundariesOnly(...)`, `sourceImageRef`, and source-canvas drag controls.
+- Important algorithm notes from Kenjy/Claude compact:
+  - 8 light states: white `0`, red `1`, orange `2`, yellow `3`, green `4`, cyan `5`, purple `6`, pink `7`.
+  - S/M/L/XL/XXL glow sizes in preview are controlled through `LIGHT_GLOW_DRAW_SIZE`.
+  - Blender `0` should behave like crisp pixel art with mostly S lights.
+  - Higher Blender should reduce S lights in flat zones and use larger M/L/XL/XXL lights for broad blended areas.
+  - Use additive color mixing; overlapping lights should create new perceived colors, but avoid unwanted cyan/white fallthrough in wrong areas.
+  - Row-major chunk numbering was introduced locally: `rowFromTop * cols + col + 1`.
+- Current risk after sync: Claude's local changes may conflict with Kenjy's earlier exact 2x2 camera-frame mapping. Before changing chunk projection again, compare against Kenjy's real outline packets and screenshots.
+
 ### Latest chunk-outline bug report from Kenjy
 
 - Kenjy sent an `{in:Objects}` packet with 330 objects after testing Claude's latest build. Parsed facts:
