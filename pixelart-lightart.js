@@ -173,10 +173,11 @@
     XL:  { srcW:319, srcH:320, frames: {0:{x:323,y:10},1:{x:1286,y:10},2:{x:1607,y:10},3:{x:644,y:10},4:{x:965,y:10},5:{x:2249,y:10},6:{x:2,y:10},7:{x:1928,y:10}} },
     XXL: { srcW:447, srcH:448, frames: {0:{x:1349,y:6},1:{x:1798,y:6},2:{x:2247,y:6},3:{x:3145,y:6},4:{x:2,y:6},5:{x:451,y:6},6:{x:900,y:6},7:{x:2696,y:6}} }
   };
-  // Draw size in IMAGE-PIXEL space (canvas transform scales automatically).
-  // Derived from Kenjy's in-game photo measurements ÷ 16 px/tile:
-  // S=60/16=3.75, M=125/16=7.8, L=160/16=10.0, XL=180/16=11.25, XXL=400/16=25.0
-  var LIGHT_GLOW_DRAW_SIZE = { S: 3.75, M: 7.8, L: 10.0, XL: 11.25, XXL: 25.0 };
+  // Draw size in IMAGE-PIXEL space = tile units. 1 image px = 1 tile.
+  // S: 1.0 tile wide → adjacent S sprites at spacing 1 just touch at edges → individual tile glow dots (hex pattern).
+  // M: 5.0 tiles wide, step=6 → M blobs just DON'T overlap (13.75 canvas px < 16.5 spacing) → distinct circles.
+  // L/XL/XXL progressively larger, matching in-game visual relative to tile size.
+  var LIGHT_GLOW_DRAW_SIZE = { S: 1.0, M: 5.0, L: 8.0, XL: 12.0, XXL: 22.0 };
   var lightSpriteSheets = {}; // { 'S': ImageBitmap, ... }
   var lightSpriteStatus = 'idle'; // 'idle'|'loading'|'done'
   window.__la_shutdown = function() {
@@ -1084,7 +1085,7 @@
       });
     }
     const ctx = canvas.getContext('2d');
-    ctx.fillStyle = '#0d0800'; // Very dark amber — simulates unlit floor tile base color
+    ctx.fillStyle = '#050505';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     drawPreviewViewport(ctx, canvas, w, h, function() {
       ctx.save();
@@ -1094,17 +1095,13 @@
         var x = p.cx, y = p.cy;
         var ds = LIGHT_GLOW_DRAW_SIZE[p.size] || 3.75;
         var dotR = ds * 0.5;
-        // Sprite alpha: calibrated for real Habbo sprite opacity (with correct falloff in PNG).
-        // Gradient alpha: S much lower (gradient has no real falloff shape → too much ambient).
-        // M/L/XL/XXL: same for both (prominent distinct spots).
-        var sprAlpha, grdAlpha;
-        if (p.size === 'S') {
-          sprAlpha = clamp((p.opacity || 0.14) * 1.5, 0.003, 0.10);
-          grdAlpha = clamp((p.opacity || 0.14) * 0.35, 0.001, 0.022);
-        } else if (p.size === 'M') { sprAlpha = grdAlpha = 0.44;
-        } else if (p.size === 'L') { sprAlpha = grdAlpha = 0.38;
-        } else if (p.size === 'XL') { sprAlpha = grdAlpha = 0.30;
-        } else { sprAlpha = grdAlpha = 0.22; }
+        // S: 1 tile wide → alpha scaled by luminance. Bright face pixel = 50% → clear tile dot.
+        // Dark pixel = dim dot. Adjacent S just touch at edges → individual tile glow pattern (no blob).
+        // M/L/XL/XXL: distinct large circles at their step spacing (5.0 < step 6 → M circles don't overlap).
+        var dotAlpha = p.size === 'S'
+          ? clamp((p.opacity || 0.14) * 4.0, 0.01, 0.50)
+          : p.size === 'M' ? 0.40 : p.size === 'L' ? 0.35 : p.size === 'XL' ? 0.28 : 0.22;
+        var sprAlpha = dotAlpha, grdAlpha = dotAlpha;
         if (useSprites && lightSpriteSheets[p.size]) {
           var meta = LIGHT_GLOW_FRAMES[p.size];
           var frame = meta.frames[p.colorCode] || meta.frames[0];
