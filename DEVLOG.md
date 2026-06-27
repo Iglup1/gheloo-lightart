@@ -762,6 +762,9 @@ Fixed to: `y = anchorY - (logicalH - 1 - localY)` — image-top now maps to room
 - Test image pan + scale workflow (drag to position, Ctrl+drag to resize)
 - Test chunk selection filter in meubel preview
 - Algorithm still may need tuning based on user feedback
+
+---
+
 ## [2026-06-27] Codex - Session 13
 
 **Done:**
@@ -782,6 +785,32 @@ Fixed to: `y = anchorY - (logicalH - 1 - localY)` — image-top now maps to room
 - Run `node --check pixelart-lightart.js` after sync and commit/push this source-of-truth update.
 - Kenjy said more photos are coming; use those to judge Blender/light quality before making further algorithm changes.
 - Watch for conflict between Claude's row-major chunk numbering and Kenjy's exact 2x2 camera-frame packet mapping.
+
+---
+
+## [2026-06-27] Codex - Session 14
+
+**Done:**
+- Received the rest of Claude's compact handoff from Kenjy.
+- Verified that the supposedly pending "flat suppression + size upgrade" Light Art fix is already present in the current GitHub code.
+- Added the missing compact details to `SHARED_CONTEXT.md`, especially why S lights were dominating and how `flatMap`/`blobPower` should solve large flat areas.
+
+**Changed files:**
+- `SHARED_CONTEXT.md` - added remaining compact details: root cause of poor blending, S-domination fix, color mixing mechanism, and size upgrade thresholds.
+- `DEVLOG.md` - added this context-only session entry.
+
+**Verification:**
+- Confirmed current code contains:
+  - `pixelart-lightart.js:696` `localVariance(...)`
+  - `pixelart-lightart.js:757` `flatMap`
+  - `pixelart-lightart.js:774` `sFlatCut`
+  - `pixelart-lightart.js:824` `runBlobPass(...)`
+  - `pixelart-lightart.js:841` `bp = getFlat(px, py) * blend`
+- No code change was needed for this compact update.
+
+**Open / next:**
+- Wait for Kenjy's new screenshots/photos and judge the current Blender output before tuning the algorithm further.
+
 ---
 
 ## HOW TO UPDATE THIS FILE

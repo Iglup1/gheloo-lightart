@@ -306,6 +306,35 @@ This is the compressed handoff from the long Codex/Kenjy conversation so Claude 
   - Row-major chunk numbering was introduced locally: `rowFromTop * cols + col + 1`.
 - Current risk after sync: Claude's local changes may conflict with Kenjy's earlier exact 2x2 camera-frame mapping. Before changing chunk projection again, compare against Kenjy's real outline packets and screenshots.
 
+### 2026-06-27 remaining compact details from Claude
+
+- The "flat suppression + size upgrade" work from Claude's compact is now present in GitHub, not pending:
+  - `pixelart-lightart.js:696` has `localVariance(...)`.
+  - `pixelart-lightart.js:757` builds `flatMap`.
+  - `pixelart-lightart.js:774` uses `sFlatCut` so S lights are skipped in flat areas at medium/high Blender.
+  - `pixelart-lightart.js:824` has `runBlobPass(...)`.
+  - `pixelart-lightart.js:841` computes `blobPower = flatness * blend` as `bp`.
+  - `pixelart-lightart.js:858` to `pixelart-lightart.js:864` runs M/L/XL/XXL passes.
+- Root cause of poor blending:
+  - Good "kleuren op elkaar" requires multiple light sizes layered at different scales.
+  - Single-pass approaches picked one size/color per cell and stepped through the image once, so they did not create enough layered additive blending.
+- Root cause of S domination:
+  - At high Blender, S at step 1 covered every visible pixel and visually drowned out M/L/XL.
+  - Fix is the current `flatMap` + `sFlatCut`: flat regions skip S so bigger lights can carry the face/background color fields.
+- Color mixing mechanism:
+  - M/L/XL passes use `sampleCell(...)` with a radius around the blob step.
+  - At color transitions this averages nearby pixels and creates a different hue than the exact S pixel.
+  - Overlapping exact S + averaged blob colors creates the perceived blend.
+- Size upgrade logic:
+  - `bp = flatness * blend`.
+  - M upgrades to L when `bp > 0.55`.
+  - M upgrades to XL when `bp > 0.80`.
+  - L upgrades to XL when `bp > 0.85`.
+- User feedback behind this:
+  - Blender 0-100 screenshots showed faces/couple images; user said Blender must be better because colors need to overlap.
+  - User preferred slowly increasing blend where bigger lights are used for large areas but not so much that detail disappears.
+  - User explicitly approved committing/updating GitHub/devlog/shared context for this.
+
 ### Latest chunk-outline bug report from Kenjy
 
 - Kenjy sent an `{in:Objects}` packet with 330 objects after testing Claude's latest build. Parsed facts:
