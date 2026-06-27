@@ -526,6 +526,31 @@ Fixed to: `y = anchorY - (logicalH - 1 - localY)` — image-top now maps to room
 - If CSP blocks leet.city fetch: try with `credentials:'omit'` or embed sprites as base64
 - Goal: meubel preview 1:1 with room preview — these are the actual Habbo light sprites now
 
+## [2026-06-27] Claude — Session 16 continued (fix: preview invisible)
+
+**Problem**: After sprite implementation, meubel preview was completely blank.
+
+**Root cause**: S dotR was 0.35 image px → at canvas scale ~2.75 → radius = 0.96 canvas px = subpixel, invisible. Also sprite draw sizes (S=2.67) were wrong — too small when sprites load, causing nothing visible.
+
+**Fix (commit `0381a72`)**:
+- `LIGHT_GLOW_DRAW_SIZE`: corrected from photo measurements ÷ 16px/tile:
+  - S=3.75 (was 2.67), M=7.8 (was 5.6), L=10.0 (was 7.2), XL=11.25 (was 8.0), XXL=25.0 (was 17.8)
+- `dotR = ds * 0.5` (half of draw size) → S radius = 1.875 image px = 5.16 canvas px at scale 2.75 → VISIBLE
+- Alpha unified for both sprite and gradient branches: S = `clamp(opacity * 1.5, 0.003, 0.10)`
+  - Bright pixels: 10% per dot × 5 overlapping dots at face center = ~30% accumulated = visible warm orange
+  - Dark pixels: 0.3-1% = invisible = correct (dark areas appear black)
+- Gradient stops sharpened: 0→0.40→0.65→0.85→1.0 (quick falloff matching Kenjy's description)
+
+**Changed files:**
+- `pixelart-lightart.js:172` — LIGHT_GLOW_DRAW_SIZE corrected values
+- `pixelart-lightart.js:1094-1133` — unified alpha, correct dotR, fixed sprite/gradient both use ds
+
+**Open / next:**
+- Kenjy must test: does preview now show warm orange face pattern?
+- If still blob-like: lower alpha cap from 0.10 to 0.05
+- If too dim: raise from 0.10 to 0.15
+- If sprites loaded: they use real Habbo glow shape. If not loaded: gradient approximation with same sizes
+
 ---
 
 ## HOW TO UPDATE THIS FILE
