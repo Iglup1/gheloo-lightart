@@ -695,23 +695,21 @@
       }
     }
 
-    // Realistic glow radii in image-pixel (= tile) units so meubel preview matches
-    // the real in-game glow effect. S lights have ~18 tile radius in-game;
-    // overlap slider scales how much glow spread is shown.
-    const rS   = 5  + overlap * 14;   // ~15 at default overlap — near real S radius
-    const rM   = 12 + overlap * 30;   // ~34 — near real M radius
-    const rL   = 22 + overlap * 60;   // ~65 — near real L radius
-    const rXL  = 40 + overlap * 86;   // ~102
-    const rXXL = 65 + overlap * 105;  // ~141
+    // Glow radii in image-pixel (= tile) units. Medium scale: large enough to
+    // show realistic overlap/blending in the preview but image stays recognizable.
+    const rS   = 2.0 + overlap * 3.5;   // ~4.5 at default overlap
+    const rM   = 5.5 + overlap * 9.0;   // ~12.0
+    const rL   = 11  + overlap * 18;    // ~24
+    const rXL  = 20  + overlap * 30;    // ~42
+    const rXXL = 35  + overlap * 48;    // ~70
 
-    // Opacities are kept small because large glow circles overlap heavily in
-    // lighter-blend mode — many lights * small opacity = correct total brightness.
-    // intensity slider scales all opacities so user can adjust overall brightness.
-    const opS   = intensity * 0.009;   // ~0.008 at default
+    // Opacities scaled so many overlapping circles sum to correct brightness.
+    // Larger radius → fewer lights per point needed → lower opacity per light.
+    const opS   = intensity * 0.038;
     const opM   = intensity * 0.006;
-    const opL   = intensity * 0.0035;
-    const opXL  = intensity * 0.0018;
-    const opXXL = intensity * 0.0010;
+    const opL   = intensity * 0.005;
+    const opXL  = intensity * 0.003;
+    const opXXL = intensity * 0.002;
 
     // Pass 1: S — every pixel, detail + color accuracy via sharpened image
     for (let y = 0; y < h; y++) {
@@ -1890,6 +1888,10 @@
     try {
       if (!plan.length || packetPreviewMode || roomPreviewOriginalPlan) makePlan(root);
       collectSettings(root);
+      // Buy missing furniture before injecting preview
+      root.querySelector('#__la_status').textContent = 'Inventory controleren en ontbrekende meubels kopen...';
+      await buyMissing(root);
+      if (stopRequested) return;
       const items = makeProjectedBuildObjects(root, false);
       const fakeBase = 700000000 + (Date.now() % 900000000);
       previewPlacementIds = items.map(function(item, idx) {
@@ -1902,7 +1904,7 @@
       if (!previewPlacementActive) previewPlacementIds = [];
       updatePreviewToggle(root);
       root.querySelector('#__la_status').textContent = previewPlacementActive
-        ? 'Preview als incoming Objects packet geplaatst: ' + previewPlacementIds.length + ' meubels incl. markers.'
+        ? 'Preview geplaatst: ' + previewPlacementIds.length + ' meubels.'
         : 'Preview packet kon niet worden geinjecteerd.';
       logBuild(root, 'preview Objects geinjecteerd', { total: previewPlacementIds.length });
     } catch (ex) {
