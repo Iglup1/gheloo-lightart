@@ -724,52 +724,66 @@
     }
 
     // ── BUBBLE ART MODE (rand ≥ 40) ──────────────────────────────────────────
-    // Organic jitter grid + mixed sizes + ALWAYS place secondary color for
-    // additive color blending → creates more perceived colors than 8 base lights.
+    // Halftone-style: fixed grid with tiny organic jitter, large overlapping circles.
+    // Image stays recognizable — jitter is minimal, size varies with luminance.
+    // Secondary color always placed for additive blending → richer perceived colors.
     if (rand >= 40) {
       const bubbleness = Math.min(1, (rand - 40) / 60); // 0 at rand=40, 1 at rand=100
-      const step = Math.max(3, Math.round(6 - bubbleness * 3)); // 6px→3px
-      const jitter = step * (0.3 + bubbleness * 0.7);          // ±30%→±100% of step
+      // Step 5→4: coarse enough that M/L circles clearly overlap neighbors.
+      const step = Math.max(4, Math.round(5 - bubbleness));
+      // Tiny jitter (12% of step): just organic feel, image stays recognizable.
+      const jitterAmt = step * 0.12;
+      const half = step * 0.5;
+
       for (let gy = 0; gy < h; gy += step) {
         for (let gx = 0; gx < w; gx += step) {
           if (raw.length >= maxLights) return;
-          const x = clamp(gx + (Math.random() - 0.5) * jitter * 2, 0, w - 1);
-          const y = clamp(gy + (Math.random() - 0.5) * jitter * 2, 0, h - 1);
+          // Start from cell center + tiny jitter
+          const x = clamp(gx + half + (Math.random() - 0.5) * jitterAmt * 2, 0, w - 1);
+          const y = clamp(gy + half + (Math.random() - 0.5) * jitterAmt * 2, 0, h - 1);
           const px = Math.round(x), py = Math.round(y);
-          const rgb = sampleCell(work, w, h, px, py, Math.max(1, Math.round(step * 0.6)));
+          const rgb = sampleCell(work, w, h, px, py, step);
           if (rgb.a < 2) continue;
           const l = lum(rgb.r, rgb.g, rgb.b);
-          if (l < 0.03) continue; // skip only truly black / invisible
+          if (l < 0.03) continue;
           const s = satOf(rgb.r, rgb.g, rgb.b);
           const allowW = l > 0.65 && s < 0.18;
           const colors = chooseLightMix(rgb.r, rgb.g, rgb.b, allowW, mixPower);
           if (!colors.length) continue;
-          // Size: bubbleness=0: 50%S/50%M → bubbleness=1: 10%S/35%M/40%L/15%XL
-          const rr = Math.random();
-          const pS = 0.50 - bubbleness * 0.40;
-          const pM = 0.50 - bubbleness * 0.15;
-          const pL = bubbleness * 0.40;
+
+          // Halftone principle: brighter area → bigger bubble.
+          // At high bubbleness: never S, prefer L/XL for bright zones.
           let size, radius, opac;
-          if (rr < pS) {
-            size = 'S';  radius = rS;  opac = intensity * 0.17 * l;
-          } else if (rr < pS + pM) {
-            size = 'M';  radius = rM;  opac = intensity * 0.11 * (0.3 + l * 0.7);
-          } else if (rr < pS + pM + pL) {
-            size = 'L';  radius = rL;  opac = intensity * 0.040 * (0.35 + l * 0.65);
+          const rr = Math.random();
+          if (l > 0.65 && bubbleness > 0.4) {
+            // Bright area — large bubble
+            size = rr < 0.45 ? 'L' : rr < 0.80 ? 'XL' : 'M';
+          } else if (l > 0.35 || bubbleness > 0.6) {
+            // Mid area or high rand — medium bubble
+            size = rr < 0.60 ? 'M' : rr < 0.88 ? 'L' : (bubbleness > 0.6 ? 'M' : 'S');
           } else {
-            size = 'XL'; radius = rXL; opac = intensity * 0.023 * (0.4 + l * 0.6);
+            // Dark/subtle area — small bubble (S only at low rand)
+            size = rr < 0.65 ? 'M' : (bubbleness > 0.5 ? 'M' : 'S');
           }
+
+          radius = size === 'XL' ? rXL : size === 'L' ? rL : size === 'M' ? rM : rS;
+          opac   = size === 'XL' ? intensity * 0.022 * (0.4 + l * 0.6)
+                 : size === 'L'  ? intensity * 0.038 * (0.35 + l * 0.65)
+                 : size === 'M'  ? intensity * 0.11  * (0.3  + l * 0.7)
+                 :                 intensity * 0.16  * l;
+
           pushLight(raw, w, h, x, y, colors[0], size, radius, opac, 0.18, 'bubble', 0);
           if (raw.length >= maxLights) return;
-          // Secondary color ALWAYS placed when available — overlapping circles additively
-          // blend → reddish-orange, lime, magenta, etc. Placed close so they overlap well.
+
+          // Secondary color ALWAYS placed — overlapping different-colored circles
+          // additively blend → perceived new colors (orange+red=warm, cyan+green=lime…).
+          // Placed within same cell so overlap is guaranteed.
           if (colors.length > 1) {
-            const spread = step * (0.5 + bubbleness * 0.5); // closer at low bubbleness
-            const ox = clamp(x + (Math.random() - 0.5) * spread * 2, 0, w - 1);
-            const oy = clamp(y + (Math.random() - 0.5) * spread * 2, 0, h - 1);
+            const ox = clamp(x + (Math.random() - 0.5) * step, 0, w - 1);
+            const oy = clamp(y + (Math.random() - 0.5) * step, 0, h - 1);
             const sz2 = size === 'XL' ? 'L' : size === 'L' ? 'M' : 'S';
             const r2  = sz2 === 'L' ? rL : sz2 === 'M' ? rM : rS;
-            const o2  = (sz2 === 'L' ? intensity * 0.030 : sz2 === 'M' ? intensity * 0.080 : intensity * 0.12) * (0.3 + l * 0.7) * 0.65;
+            const o2  = (sz2 === 'L' ? intensity * 0.028 : sz2 === 'M' ? intensity * 0.075 : intensity * 0.11) * (0.3 + l * 0.7) * 0.65;
             pushLight(raw, w, h, ox, oy, colors[1], sz2, r2, o2, 0.18, 'blend', 1);
             if (raw.length >= maxLights) return;
           }
