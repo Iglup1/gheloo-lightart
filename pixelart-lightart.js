@@ -691,18 +691,18 @@
       }
     }
 
-    // Radii calibrated so preview glow matches perceived in-room glow scale.
-    // rS small (tight circles = high contrast between lit/dark areas in preview).
-    // rM/rL/rXL progressively larger for visible overlapping glow depth.
-    const rS   = 2.5 + overlap * 1.0;   // ~3.2 at overlap=0.72
-    const rM   = 8.0 + overlap * 6.0;   // ~12.3 at default
-    const rL   = 15  + overlap * 10;    // ~22.2 at default
-    const rXL  = 26  + overlap * 18;    // ~39.0 at default
-    const rXXL = 44  + overlap * 32;    // ~67.0 at default
+    // Radii match actual in-game glow appearance per light size.
+    // Reference: single S light in room ≈ 5-tile glow radius visible on floor.
+    // M/L/XL progressively larger, matching reference color photos.
+    const rS   = 5.0 + overlap * 2.0;   // ~6.4 at overlap=0.72
+    const rM   = 14  + overlap * 6.0;   // ~18.3 at default
+    const rL   = 25  + overlap * 10;    // ~32.2 at default
+    const rXL  = 40  + overlap * 18;    // ~53.0 at default
+    const rXXL = 65  + overlap * 30;    // ~86.6 at default
 
-    // Pass 1: S — every pixel, primary detail layer.
-    // l² opacity: dark pixels (l=0.15) → 5% brightness, skin (l=0.5) → 58%,
-    // bright (l=0.7) → saturates to vivid. Clean dark background guaranteed.
+    // Pass 1: S — every pixel, fine detail layer.
+    // rS=6.4 → each S circle covers ~130 image pixels (overlap≈55 at 39% fill).
+    // Calibrated: l=0.5 face → 50% brightness, l=0.15 bg → 5%, l=0.7 skin → saturates.
     for (let y = 0; y < h; y++) {
       for (let x = 0; x < w; x++) {
         const i = (y * w + x) * 4;
@@ -714,16 +714,16 @@
         const allowWhite = l > 0.62 && s < 0.22;
         const colors = chooseLightMix(r, g, b, allowWhite, mixPower);
         if (!colors.length) continue;
-        pushLight(raw, w, h, x, y, colors[0], 'S', rS, intensity * 0.40 * l * l, 0.14, 'detail', 0);
+        pushLight(raw, w, h, x, y, colors[0], 'S', rS, intensity * 0.16 * l * l, 0.14, 'detail', 0);
         if (raw.length >= maxLights) return;
       }
     }
 
-    // Pass 2: M — every 4th pixel, glow depth layer with 2-color mixing.
-    // Larger in-game glow than S → creates visible overlapping glow blobs in room.
-    for (let y = 0; y < h; y += 4) {
-      for (let x = 0; x < w; x += 4) {
-        const rgb = sampleCell(work, w, h, x, y, 2);
+    // Pass 2: M — every 6th pixel, visible glow depth layer with 2-color mixing.
+    // Step 6 → ~70 M lights per 80×80 face image. Each M circle clearly larger than S.
+    for (let y = 0; y < h; y += 6) {
+      for (let x = 0; x < w; x += 6) {
+        const rgb = sampleCell(work, w, h, x, y, 3);
         if (rgb.a < 2) continue;
         const l = lum(rgb.r, rgb.g, rgb.b);
         if (l < 0.18) continue;
@@ -733,16 +733,16 @@
         if (!colors.length) continue;
         const numM = mixPower > 45 ? Math.min(colors.length, 2) : 1;
         for (let ci = 0; ci < numM; ci++) {
-          pushLight(raw, w, h, x, y, colors[ci], 'M', rM, intensity * 0.055 * (0.3 + l * 0.7) / numM, 0.20, 'mid', ci);
+          pushLight(raw, w, h, x, y, colors[ci], 'M', rM, intensity * 0.088 * (0.3 + l * 0.7) / numM, 0.20, 'mid', ci);
         }
         if (raw.length >= maxLights) return;
       }
     }
 
-    // Pass 3: L — every 8th pixel, zone atmosphere
-    for (let y = 0; y < h; y += 8) {
-      for (let x = 0; x < w; x += 8) {
-        const rgb = sampleCell(work, w, h, x, y, 3);
+    // Pass 3: L — every 12th pixel, zone atmosphere
+    for (let y = 0; y < h; y += 12) {
+      for (let x = 0; x < w; x += 12) {
+        const rgb = sampleCell(work, w, h, x, y, 5);
         if (rgb.a < 2) continue;
         const l = lum(rgb.r, rgb.g, rgb.b);
         if (l < 0.25) continue;
@@ -750,42 +750,42 @@
         if (s < 0.12) continue;
         const colors = chooseLightMix(rgb.r, rgb.g, rgb.b, false, mixPower);
         if (!colors.length) continue;
-        pushLight(raw, w, h, x, y, colors[0], 'L', rL, intensity * 0.022 * (0.3 + l * 0.7), 0.22, 'zone', 0);
+        pushLight(raw, w, h, x, y, colors[0], 'L', rL, intensity * 0.030 * (0.3 + l * 0.7), 0.22, 'zone', 0);
         if (raw.length >= maxLights) return;
       }
     }
 
-    // Pass 4: XL — every 16th pixel, bright vivid zone accents
+    // Pass 4: XL — every 20th pixel, bright vivid zone accents
     if (stackPower > 35) {
-      for (let y = 0; y < h; y += 16) {
-        for (let x = 0; x < w; x += 16) {
-          const rgb = sampleCell(work, w, h, x, y, 7);
+      for (let y = 0; y < h; y += 20) {
+        for (let x = 0; x < w; x += 20) {
+          const rgb = sampleCell(work, w, h, x, y, 9);
           if (rgb.a < 2) continue;
           const l = lum(rgb.r, rgb.g, rgb.b);
-          if (l < 0.45) continue;
+          if (l < 0.40) continue;
           const s = satOf(rgb.r, rgb.g, rgb.b);
           if (s < 0.15) continue;
           const colors = chooseLightMix(rgb.r, rgb.g, rgb.b, false, mixPower);
           if (!colors.length) continue;
-          pushLight(raw, w, h, x, y, colors[0], 'XL', rXL, intensity * 0.012 * (0.4 + l * 0.6), 0.24, 'atmo', 0);
+          pushLight(raw, w, h, x, y, colors[0], 'XL', rXL, intensity * 0.018 * (0.4 + l * 0.6), 0.24, 'atmo', 0);
           if (raw.length >= maxLights) return;
         }
       }
     }
 
-    // Pass 5: XXL — every 28th pixel, atmospheric peak glow
+    // Pass 5: XXL — every 30th pixel, atmospheric peak glow
     if (stackPower > 55) {
-      for (let y = 0; y < h; y += 28) {
-        for (let x = 0; x < w; x += 28) {
-          const rgb = sampleCell(work, w, h, x, y, 12);
+      for (let y = 0; y < h; y += 30) {
+        for (let x = 0; x < w; x += 30) {
+          const rgb = sampleCell(work, w, h, x, y, 13);
           if (rgb.a < 2) continue;
           const l = lum(rgb.r, rgb.g, rgb.b);
-          if (l < 0.55) continue;
+          if (l < 0.50) continue;
           const s = satOf(rgb.r, rgb.g, rgb.b);
           if (s < 0.18) continue;
           const colors = chooseLightMix(rgb.r, rgb.g, rgb.b, false, mixPower);
           if (!colors.length) continue;
-          pushLight(raw, w, h, x, y, colors[0], 'XXL', rXXL, intensity * 0.007 * (0.4 + l * 0.6), 0.26, 'deep', 0);
+          pushLight(raw, w, h, x, y, colors[0], 'XXL', rXXL, intensity * 0.010 * (0.4 + l * 0.6), 0.26, 'deep', 0);
           if (raw.length >= maxLights) return;
         }
       }
