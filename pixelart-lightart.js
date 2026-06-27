@@ -667,14 +667,10 @@
   }
   function addLightArtRaster(raw, w, h, work, intensity, overlap, stackPower, mixPower) {
     const maxLights = clamp(+settings.maxLights || 65000, 1, 120000);
-    const baseOpacity = 0.12 + intensity * 0.14;
-    const glowOpacity = 0.09 + intensity * 0.11;
 
-    // Pre-sharpen: counteract in-game glow blur by boosting color contrast at boundaries.
-    // Each S light has a large in-game radius — sharpening makes boundary pixels more vivid
-    // so adjacent lights of different colors don't wash into a gray/wrong blend.
+    // Pre-sharpen source for S detail pass: boost color contrast at color boundaries.
     const sharp = new Uint8ClampedArray(work.length);
-    const sharpAmt = 1.1;
+    const sharpAmt = 1.2;
     for (let y = 0; y < h; y++) {
       for (let x = 0; x < w; x++) {
         const i = (y * w + x) * 4;
@@ -695,108 +691,101 @@
       }
     }
 
-    // Glow radii in image-pixel (= tile) units. Medium scale: large enough to
-    // show realistic overlap/blending in the preview but image stays recognizable.
-    const rS   = 2.0 + overlap * 3.5;   // ~4.5 at default overlap
-    const rM   = 5.5 + overlap * 9.0;   // ~12.0
-    const rL   = 11  + overlap * 18;    // ~24
-    const rXL  = 20  + overlap * 30;    // ~42
-    const rXXL = 35  + overlap * 48;    // ~70
+    // Glow radii in image-pixel units. M is primary: big enough to create visible
+    // overlap in both meubel preview and in-room glow. S is fine detail on top.
+    const rS   = 1.8 + overlap * 2.0;   // ~3.2 at default overlap=0.72
+    const rM   = 5.0 + overlap * 5.0;   // ~8.6 at default
+    const rL   = 11  + overlap * 11;    // ~19  at default
+    const rXL  = 20  + overlap * 20;    // ~34  at default
+    const rXXL = 35  + overlap * 35;    // ~60  at default
 
-    // Opacities scaled so many overlapping circles sum to correct brightness.
-    // Larger radius → fewer lights per point needed → lower opacity per light.
-    const opS   = intensity * 0.038;
-    const opM   = intensity * 0.006;
-    const opL   = intensity * 0.005;
-    const opXL  = intensity * 0.003;
-    const opXXL = intensity * 0.002;
-
-    // Pass 1: S — every pixel, detail + color accuracy via sharpened image
+    // Pass 1: M — every visible pixel, primary color layer.
+    // M lights have large in-game glow → overlapping M blobs create the image in-room.
+    // Luminance-squared scale: dark areas stay dark, bright areas fully lit.
     for (let y = 0; y < h; y++) {
       for (let x = 0; x < w; x++) {
         const i = (y * w + x) * 4;
         if (work[i + 3] < 2) continue;
-        const r = sharp[i], g = sharp[i + 1], b = sharp[i + 2];
+        const r = work[i], g = work[i + 1], b = work[i + 2];
         const l = lum(r, g, b);
         const s = satOf(r, g, b);
         if (l < 0.05 && s < 0.18) continue;
-        const allowWhite = l > 0.58 && s < 0.22;
+        const allowWhite = l > 0.60 && s < 0.22;
         const colors = chooseLightMix(r, g, b, allowWhite, mixPower);
         if (!colors.length) continue;
-        const maxMix = mixPower > 68 ? Math.min(colors.length, 2) : 1;
-        for (let ci = 0; ci < maxMix; ci++) {
-          pushLight(raw, w, h, x, y, colors[ci], 'S', rS, opS * (0.6 + l * 0.7), 0.16, 'base', ci);
-        }
+        const lScale = l * (0.3 + l * 0.7);
+        pushLight(raw, w, h, x, y, colors[0], 'M', rM, intensity * 0.014 * lScale, 0.18, 'base', 0);
         if (raw.length >= maxLights) return;
       }
     }
 
-    // Pass 2: M — every 2nd pixel, 2-color additive mix for blended region colors
-    for (let y = 0; y < h; y += 2) {
-      for (let x = 0; x < w; x += 2) {
-        const rgb = sampleCell(work, w, h, x, y, 1);
-        if (rgb.a < 2) continue;
-        const l = lum(rgb.r, rgb.g, rgb.b);
-        if (l < 0.20) continue;
-        const s = satOf(rgb.r, rgb.g, rgb.b);
-        if (s < 0.08) continue;
-        const colors = chooseLightMix(rgb.r, rgb.g, rgb.b, l > 0.62 && s < 0.24, mixPower);
+    // Pass 2: S — every 3rd pixel, sharp detail using sharpened colors.
+    // 2-color mix where mixPower allows it.
+    for (let y = 0; y < h; y += 3) {
+      for (let x = 0; x < w; x += 3) {
+        const i = (y * w + x) * 4;
+        if (sharp[i + 3] < 2) continue;
+        const r = sharp[i], g = sharp[i + 1], b = sharp[i + 2];
+        const l = lum(r, g, b);
+        const s = satOf(r, g, b);
+        if (l < 0.08 && s < 0.20) continue;
+        const colors = chooseLightMix(r, g, b, l > 0.60 && s < 0.22, mixPower);
         if (!colors.length) continue;
-        const numM = mixPower > 42 ? Math.min(colors.length, 2) : 1;
-        for (let ci = 0; ci < numM; ci++) {
-          pushLight(raw, w, h, x, y, colors[ci], 'M', rM, opM * (0.5 + l * 0.6) / numM, 0.20, 'mid', ci);
+        const maxMix = mixPower > 55 ? Math.min(colors.length, 2) : 1;
+        for (let ci = 0; ci < maxMix; ci++) {
+          pushLight(raw, w, h, x, y, colors[ci], 'S', rS, intensity * 0.052 * l * l, 0.14, 'detail', ci);
         }
         if (raw.length >= maxLights) return;
       }
     }
 
-    // Pass 3: L — every 5th pixel, smooth zone transitions
+    // Pass 3: L — every 5th pixel, zone atmosphere
     for (let y = 0; y < h; y += 5) {
       for (let x = 0; x < w; x += 5) {
         const rgb = sampleCell(work, w, h, x, y, 2);
         if (rgb.a < 2) continue;
         const l = lum(rgb.r, rgb.g, rgb.b);
-        if (l < 0.35) continue;
+        if (l < 0.25) continue;
         const s = satOf(rgb.r, rgb.g, rgb.b);
         if (s < 0.12) continue;
         const colors = chooseLightMix(rgb.r, rgb.g, rgb.b, false, mixPower);
         if (!colors.length) continue;
-        pushLight(raw, w, h, x, y, colors[0], 'L', rL, opL * (0.5 + l * 0.5), 0.22, 'zone', 0);
+        pushLight(raw, w, h, x, y, colors[0], 'L', rL, intensity * 0.006 * (0.4 + l * 0.6), 0.22, 'zone', 0);
         if (raw.length >= maxLights) return;
       }
     }
 
-    // Pass 4: XL — every 10th pixel, bright vivid highlights only
+    // Pass 4: XL — every 10th pixel, bright vivid accents
     if (stackPower > 35) {
       for (let y = 0; y < h; y += 10) {
         for (let x = 0; x < w; x += 10) {
-          const rgb = sampleCell(work, w, h, x, y, 5);
+          const rgb = sampleCell(work, w, h, x, y, 4);
           if (rgb.a < 2) continue;
           const l = lum(rgb.r, rgb.g, rgb.b);
-          if (l < 0.55) continue;
+          if (l < 0.50) continue;
           const s = satOf(rgb.r, rgb.g, rgb.b);
-          if (s < 0.18) continue;
+          if (s < 0.16) continue;
           const colors = chooseLightMix(rgb.r, rgb.g, rgb.b, false, mixPower);
           if (!colors.length) continue;
-          pushLight(raw, w, h, x, y, colors[0], 'XL', rXL, opXL * (0.5 + l * 0.5), 0.24, 'atmo', 0);
+          pushLight(raw, w, h, x, y, colors[0], 'XL', rXL, intensity * 0.003 * (0.4 + l * 0.6), 0.24, 'atmo', 0);
           if (raw.length >= maxLights) return;
         }
       }
     }
 
-    // Pass 5: XXL — every 18th pixel, vivid peak zones only
+    // Pass 5: XXL — every 18th pixel, atmospheric peak glow
     if (stackPower > 55) {
       for (let y = 0; y < h; y += 18) {
         for (let x = 0; x < w; x += 18) {
-          const rgb = sampleCell(work, w, h, x, y, 9);
+          const rgb = sampleCell(work, w, h, x, y, 8);
           if (rgb.a < 2) continue;
           const l = lum(rgb.r, rgb.g, rgb.b);
-          if (l < 0.65) continue;
+          if (l < 0.60) continue;
           const s = satOf(rgb.r, rgb.g, rgb.b);
-          if (s < 0.22) continue;
+          if (s < 0.20) continue;
           const colors = chooseLightMix(rgb.r, rgb.g, rgb.b, false, mixPower);
           if (!colors.length) continue;
-          pushLight(raw, w, h, x, y, colors[0], 'XXL', rXXL, opXXL * (0.5 + l * 0.5), 0.26, 'deep', 0);
+          pushLight(raw, w, h, x, y, colors[0], 'XXL', rXXL, intensity * 0.0018 * (0.4 + l * 0.6), 0.26, 'deep', 0);
           if (raw.length >= maxLights) return;
         }
       }
@@ -1055,7 +1044,7 @@
         const inner = render.inner;
         const outer = render.outer;
         const x = p.cx, y = p.cy, r = Math.max(1.5, p.radius);
-        const alpha = clamp((p.opacity || 0.14) * (p.colorCode === 0 ? 0.55 : 0.78), 0.001, 0.38);
+        const alpha = clamp((p.opacity || 0.14) * (p.colorCode === 0 ? 0.55 : 0.78), 0, 0.38);
         const grad = ctx.createRadialGradient(x, y, 0, x, y, r * (1 + (p.edge || 0.2) * 2.4));
         grad.addColorStop(0, 'rgba(' + inner[0] + ',' + inner[1] + ',' + inner[2] + ',' + alpha + ')');
         grad.addColorStop(0.38, 'rgba(' + c.r + ',' + c.g + ',' + c.b + ',' + (alpha * 0.62) + ')');
