@@ -674,7 +674,7 @@
     // Each S light has a large in-game radius — sharpening makes boundary pixels more vivid
     // so adjacent lights of different colors don't wash into a gray/wrong blend.
     const sharp = new Uint8ClampedArray(work.length);
-    const sharpAmt = 1.8;
+    const sharpAmt = 1.1;
     for (let y = 0; y < h; y++) {
       for (let x = 0; x < w; x++) {
         const i = (y * w + x) * 4;
@@ -740,65 +740,65 @@
         const numM = mixPower > 42 ? Math.min(colors.length, 2) : 1;
         for (let ci = 0; ci < numM; ci++) {
           pushLight(raw, w, h, x, y, colors[ci], 'M', rM,
-            Math.min(0.14, glowOpacity * (0.38 + l * 0.55) / numM),
+            Math.min(0.08, glowOpacity * (0.28 + l * 0.38) / numM),
             0.20, 'mid', ci);
         }
         if (raw.length >= maxLights) return;
       }
     }
 
-    // Pass 3: L — every 4th pixel, soft zone bloom
-    for (let y = 0; y < h; y += 4) {
-      for (let x = 0; x < w; x += 4) {
+    // Pass 3: L — every 5th pixel, smooth color transitions in medium-bright areas
+    for (let y = 0; y < h; y += 5) {
+      for (let x = 0; x < w; x += 5) {
         const rgb = sampleCell(work, w, h, x, y, 2);
         if (rgb.a < 2) continue;
         const l = lum(rgb.r, rgb.g, rgb.b);
-        if (l < 0.30) continue;
+        if (l < 0.42) continue;
         const s = satOf(rgb.r, rgb.g, rgb.b);
-        if (s < 0.12) continue;
-        const colors = chooseLightMix(rgb.r, rgb.g, rgb.b, l > 0.65 && s < 0.25, mixPower);
+        if (s < 0.15) continue;
+        const colors = chooseLightMix(rgb.r, rgb.g, rgb.b, false, mixPower);
         if (!colors.length) continue;
         pushLight(raw, w, h, x, y, colors[0], 'L', rL,
-          Math.min(0.09, glowOpacity * (0.28 + l * 0.40)),
+          Math.min(0.06, glowOpacity * (0.22 + l * 0.28)),
           0.22, 'zone', 0);
         if (raw.length >= maxLights) return;
       }
     }
 
-    // Pass 4: XL — every 8th pixel, atmospheric glow over bright vivid areas
-    if (stackPower > 30) {
-      for (let y = 0; y < h; y += 8) {
-        for (let x = 0; x < w; x += 8) {
-          const rgb = sampleCell(work, w, h, x, y, 4);
+    // Pass 4: XL — only bright highlights (l >= 0.62, s >= 0.22), sparse smoothing
+    if (stackPower > 40) {
+      for (let y = 0; y < h; y += 10) {
+        for (let x = 0; x < w; x += 10) {
+          const rgb = sampleCell(work, w, h, x, y, 5);
           if (rgb.a < 2) continue;
           const l = lum(rgb.r, rgb.g, rgb.b);
-          if (l < 0.38) continue;
+          if (l < 0.62) continue;
           const s = satOf(rgb.r, rgb.g, rgb.b);
-          if (s < 0.15) continue;
+          if (s < 0.22) continue;
           const colors = chooseLightMix(rgb.r, rgb.g, rgb.b, false, mixPower);
           if (!colors.length) continue;
           pushLight(raw, w, h, x, y, colors[0], 'XL', rXL,
-            Math.min(0.06, glowOpacity * (0.22 + l * 0.28)),
+            Math.min(0.04, glowOpacity * (0.16 + l * 0.18)),
             0.24, 'atmo', 0);
           if (raw.length >= maxLights) return;
         }
       }
     }
 
-    // Pass 5: XXL — every 16th pixel, deep atmosphere over dominant color zones
-    if (stackPower > 55) {
-      for (let y = 0; y < h; y += 16) {
-        for (let x = 0; x < w; x += 16) {
-          const rgb = sampleCell(work, w, h, x, y, 8);
+    // Pass 5: XXL — only very bright vivid peaks (l >= 0.74, s >= 0.28)
+    if (stackPower > 60) {
+      for (let y = 0; y < h; y += 18) {
+        for (let x = 0; x < w; x += 18) {
+          const rgb = sampleCell(work, w, h, x, y, 9);
           if (rgb.a < 2) continue;
           const l = lum(rgb.r, rgb.g, rgb.b);
-          if (l < 0.45) continue;
+          if (l < 0.74) continue;
           const s = satOf(rgb.r, rgb.g, rgb.b);
-          if (s < 0.18) continue;
+          if (s < 0.28) continue;
           const colors = chooseLightMix(rgb.r, rgb.g, rgb.b, false, mixPower);
           if (!colors.length) continue;
           pushLight(raw, w, h, x, y, colors[0], 'XXL', rXXL,
-            Math.min(0.04, glowOpacity * (0.16 + l * 0.20)),
+            Math.min(0.03, glowOpacity * (0.12 + l * 0.14)),
             0.26, 'deep', 0);
           if (raw.length >= maxLights) return;
         }
