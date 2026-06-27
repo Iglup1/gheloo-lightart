@@ -80,6 +80,7 @@
     randomizer: 50,
     imgPanX: 0,
     imgPanY: 0,
+    imgScale: 1.0,
     maxLights: 15500,
     startX: 21,
     startY: 62,
@@ -159,6 +160,7 @@
   let placeRemoveAcks = [];
   let previewFrame = { w: 1, h: 1, work: null };
   let sourceFrame = { w: 1, h: 1, work: null };
+  let sourceImageRef = null; // { src, box, w, h } — for high-quality source canvas render
   let previewView = { zoom: 1, x: 0, y: 0 };
   let buildLog = loadBuildLog();
   let checkpoint = loadCheckpoint();
@@ -887,15 +889,19 @@
     ctx.imageSmoothingEnabled = true;
     if (lightArtPlan) {
       // Maintain aspect ratio — do NOT stretch image to fill grid.
-      // User pans the image within the fixed grid via imgPanX/Y.
+      // User pans + scales the image within the fixed grid.
       const imgAspect = box.w / box.h;
       const gridAspect = w / h;
-      let drawW, drawH;
-      if (imgAspect > gridAspect) { drawW = w; drawH = Math.round(w / imgAspect); }
-      else { drawH = h; drawW = Math.round(h * imgAspect); }
+      let fitW, fitH;
+      if (imgAspect > gridAspect) { fitW = w; fitH = w / imgAspect; }
+      else { fitH = h; fitW = h * imgAspect; }
+      const imgSc = Math.max(0.1, +(settings.imgScale || 1.0));
+      const drawW = Math.round(fitW * imgSc);
+      const drawH = Math.round(fitH * imgSc);
       const panX = +(settings.imgPanX || 0);
       const panY = +(settings.imgPanY || 0);
       ctx.drawImage(src, box.x, box.y, box.w, box.h, panX, panY, drawW, drawH);
+      sourceImageRef = { src, box, w, h }; // stored for high-quality source canvas rendering
     } else {
       ctx.drawImage(src, box.x, box.y, box.w, box.h, 0, 0, w, h);
     }
@@ -1005,6 +1011,24 @@
     drawFn(scale);
     ctx.restore();
   }
+  function drawChunkBoundariesOnly(ctx, w, h) {
+    if (!settings.chunkMode) return;
+    const chunk = Math.max(1, +settings.chunkSize || 20);
+    const info = chunkGridInfo();
+    const lightArt = settings.generatorMode === 'light_art';
+    const refW = lightArt ? info.cols * chunk : (+settings.roomW || 42);
+    const refH = lightArt ? info.rows * chunk : (+settings.roomH || 42);
+    const stepX = (chunk / refW) * w;
+    const stepY = (chunk / refH) * h;
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255,255,255,.48)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([5, 4]);
+    for (let x = 0; x <= w + 0.1; x += stepX) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke(); }
+    for (let y = 0; y <= h + 0.1; y += stepY) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke(); }
+    ctx.setLineDash([]);
+    ctx.restore();
+  }
   function drawChunkOverlayLogical(ctx, w, h) {
     if (!settings.chunkMode) return;
     const chunk = Math.max(1, +settings.chunkSize || 20);
@@ -1083,17 +1107,31 @@
     const sctx = source.getContext('2d');
     sctx.fillStyle = '#050505';
     sctx.fillRect(0, 0, source.width, source.height);
-    if (sourceFrame.work) {
-      const off = document.createElement('canvas');
-      off.width = sourceFrame.w; off.height = sourceFrame.h;
-      const ox = off.getContext('2d');
-      const img = ox.createImageData(sourceFrame.w, sourceFrame.h);
-      img.data.set(sourceFrame.work);
-      ox.putImageData(img, 0, 0);
-      drawPreviewViewport(sctx, source, sourceFrame.w, sourceFrame.h, function() {
-        sctx.drawImage(off, 0, 0);
-        drawChunkOverlayLogical(sctx, sourceFrame.w, sourceFrame.h);
-      });
+    if (sourceImageRef) {
+      // Draw source canvas directly from original image — no pixelation.
+      // Chunk numbers go on meubel preview only; bron+color shows just the image + subtle boundaries.
+      const { src: srcEl, box: srcBox, w: gw, h: gh } = sourceImageRef;
+      const panX = +(settings.imgPanX || 0);
+      const panY = +(settings.imgPanY || 0);
+      const imgSc = Math.max(0.1, +(settings.imgScale || 1.0));
+      const imgAspect = srcBox.w / srcBox.h;
+      const gridAspect = gw / gh;
+      let fitW, fitH;
+      if (imgAspect > gridAspect) { fitW = gw; fitH = gw / imgAspect; }
+      else { fitH = gh; fitW = gh * imgAspect; }
+      const drawW = fitW * imgSc;
+      const drawH = fitH * imgSc;
+      const fit = Math.min(source.width / Math.max(1, gw), source.height / Math.max(1, gh));
+      const tx = (source.width - gw * fit) / 2;
+      const ty = (source.height - gh * fit) / 2;
+      sctx.save();
+      sctx.translate(tx, ty);
+      sctx.scale(fit, fit);
+      sctx.imageSmoothingEnabled = true;
+      sctx.imageSmoothingQuality = 'high';
+      sctx.drawImage(srcEl, srcBox.x, srcBox.y, srcBox.w, srcBox.h, panX, panY, drawW, drawH);
+      drawChunkBoundariesOnly(sctx, gw, gh); // lines only, no numbers
+      sctx.restore();
     }
     const ctx = canvas.getContext('2d');
     ctx.fillStyle = '#0d0800'; // Dark amber = unlit floor tile base
@@ -2296,31 +2334,41 @@
         redrawCurrentPreview();
       });
     }
-    // Source canvas: drag moves image within grid (not viewport).
-    // Dblclick resets image to top-left origin.
+    // Source canvas: drag=pan, Ctrl+drag=proportional rescale, dblclick=reset.
     (function() {
       const cv = root.querySelector('#__la_source');
       cv.style.cursor = 'grab';
-      let dragging = false, sx = 0, sy = 0, ox = 0, oy = 0;
+      let dragging = false, dragMode = 'pan', sx = 0, sy = 0, ox = 0, oy = 0, oScale = 1;
       cv.addEventListener('mousedown', function(e) {
         dragging = true; sx = e.clientX; sy = e.clientY;
-        ox = +(settings.imgPanX || 0); oy = +(settings.imgPanY || 0);
-        cv.style.cursor = 'grabbing';
+        if (e.ctrlKey) {
+          dragMode = 'scale'; oScale = Math.max(0.1, +(settings.imgScale || 1.0));
+          cv.style.cursor = 'ew-resize';
+        } else {
+          dragMode = 'pan'; ox = +(settings.imgPanX || 0); oy = +(settings.imgPanY || 0);
+          cv.style.cursor = 'grabbing';
+        }
       });
       document.addEventListener('mousemove', function(e) {
         if (!dragging) return;
-        const fw = previewFrame ? previewFrame.w : 60;
-        const fh = previewFrame ? previewFrame.h : 60;
+        const ref = sourceImageRef || previewFrame;
+        const fw = ref ? ref.w : 60;
+        const fh = ref ? ref.h : 60;
         const fit = Math.min(cv.width / Math.max(1, fw), cv.height / Math.max(1, fh));
-        const sc = fit; // no zoom on source canvas
-        settings.imgPanX = Math.round(ox + (e.clientX - sx) / sc);
-        settings.imgPanY = Math.round(oy + (e.clientY - sy) / sc);
+        if (dragMode === 'scale') {
+          // Drag right = bigger, left = smaller, proportional both sides.
+          const delta = (e.clientX - sx) / cv.width;
+          settings.imgScale = Math.max(0.1, Math.min(10, oScale + delta * 4));
+        } else {
+          settings.imgPanX = Math.round(ox + (e.clientX - sx) / fit);
+          settings.imgPanY = Math.round(oy + (e.clientY - sy) / fit);
+        }
         clearTimeout(timer);
         timer = setTimeout(function() { try { makePlan(root); } catch(ex) {} }, 80);
       });
       document.addEventListener('mouseup', function() { dragging = false; cv.style.cursor = 'grab'; });
       cv.addEventListener('dblclick', function() {
-        settings.imgPanX = 0; settings.imgPanY = 0;
+        settings.imgPanX = 0; settings.imgPanY = 0; settings.imgScale = 1.0;
         try { makePlan(root); } catch(ex) {}
       });
     })();
