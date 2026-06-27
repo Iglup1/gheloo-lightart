@@ -243,6 +243,10 @@
   }
   function sleep(ms) { return new Promise(function(resolve) { setTimeout(resolve, ms); }); }
   function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+  function num(v, fallback) {
+    const n = parseFloat(String(v).replace(',', '.'));
+    return Number.isFinite(n) ? n : fallback;
+  }
   function byte(v) { return clamp(Math.round(v), 0, 255); }
   function lum(r, g, b) { return (r * 0.299 + g * 0.587 + b * 0.114) / 255; }
   function satOf(r, g, b) {
@@ -711,13 +715,15 @@
 
   function addLightArtRaster(raw, w, h, work, intensity, overlap, stackPower, mixPower, blender) {
     const maxLights = clamp(+settings.maxLights || 65000, 1, 120000);
-    const blend = clamp(+blender || 50, 0, 100) / 100; // 0–1
+    const blend = clamp(num(blender, 50), 0, 100) / 100; // 0..1
+    const blendEase = blend * blend * (3 - 2 * blend);
+    const detailBias = 1 - blendEase;
 
-    const rS   = 5.0 + overlap * 2.0;
-    const rM   = 14  + overlap * 6.0;
-    const rL   = 25  + overlap * 10;
-    const rXL  = 40  + overlap * 18;
-    const rXXL = 60  + overlap * 28;
+    const rS   = 4.4 + overlap * 1.4;
+    const rM   = 11  + overlap * (4.5 + blendEase * 3.5);
+    const rL   = 19  + overlap * (7.5 + blendEase * 6.5);
+    const rXL  = 31  + overlap * (11  + blendEase * 10);
+    const rXXL = 46  + overlap * (16  + blendEase * 18);
 
     // Pre-sharpen (5×5 unsharp mask) — used for S at low blend for crisp pixel art.
     const sharp = new Uint8ClampedArray(work.length);
@@ -753,14 +759,14 @@
 
     // Precompute flatness map (variance → 0=edge, 1=perfectly flat).
     // Used to suppress S in flat zones and upgrade M→L/XL in flat zones.
-    const varR = Math.max(3, Math.round(3 + blend * 8));
+    const varR = Math.max(3, Math.round(3 + blendEase * 10));
     let flatMap = null;
-    if (blend > 0.20) {
+    if (blend > 0.08) {
       flatMap = new Float32Array(w * h);
       for (let fy = 0; fy < h; fy++) {
         for (let fx = 0; fx < w; fx++) {
           const v = localVariance(work, w, h, fx, fy, varR);
-          flatMap[fy * w + fx] = 1 - clamp((v - 0.05) / 0.08, 0, 1);
+          flatMap[fy * w + fx] = 1 - clamp((v - 0.035) / (0.12 - blendEase * 0.035), 0, 1);
         }
       }
     }
@@ -771,34 +777,40 @@
 
     // S pass: suppressed in flat areas when blend is medium/high.
     // Threshold rises with blend so at blend=1 only the sharpest edges get S.
-    const sFlatCut = blend > 0.20 ? 0.55 + blend * 0.35 : 2; // 2 = never skip
+    const sFlatCut = blend > 0.08 ? 0.72 - blendEase * 0.37 : 2; // 2 = never skip
 
     // Blob passes: step shrinks as blend rises (denser blobs at higher blend).
-    const mStep   = blend < 0.10 ? 0 : Math.max(2, Math.round(10 - blend * 8));
-    const lStep   = blend < 0.30 ? 0 : Math.max(4, Math.round(18 - blend * 13));
-    const xlStep  = blend < 0.55 ? 0 : Math.max(8, Math.round(28 - blend * 19));
-    const xxlStep = blend < 0.80 ? 0 : Math.max(12, Math.round(38 - blend * 24));
+    const mStep   = blend < 0.05 ? 0 : Math.max(2, Math.round(9 - blendEase * 6));
+    const lStep   = blend < 0.18 ? 0 : Math.max(3, Math.round(15 - blendEase * 10));
+    const xlStep  = blend < 0.42 ? 0 : Math.max(5, Math.round(24 - blendEase * 16));
+    const xxlStep = blend < 0.72 ? 0 : Math.max(9, Math.round(34 - blendEase * 20));
 
     let done = false;
 
     function placeWithSecondary(x, y, colors, sz, radius, opac, spread) {
       pushLight(raw, w, h, x, y, colors[0], sz, radius, opac, 0.18, sz, 0);
       if (raw.length >= maxLights) { done = true; return; }
+      if (blend > 0.35 && opac > 0.006 && (sz === 'M' || sz === 'L' || sz === 'XL')) {
+        pushLight(raw, w, h, x, y, colors[0], sz, radius * (0.68 + blendEase * 0.14), opac * (0.20 + blendEase * 0.22), 0.14, sz + '-strength', 2);
+        if (raw.length >= maxLights) { done = true; return; }
+      }
       if (colors.length > 1) {
-        const ox = clamp(x + (Math.random() - 0.5) * spread * 2, 0, w - 1);
-        const oy = clamp(y + (Math.random() - 0.5) * spread * 2, 0, h - 1);
+        const j = jitter(Math.round(x * 10) + colors[1] * 97, Math.round(y * 10) + sz.length * 31, spread * (0.55 + blendEase * 0.35));
+        const ox = clamp(x + j.x, 0, w - 1);
+        const oy = clamp(y + j.y, 0, h - 1);
         const sz2 = sz === 'XXL' ? 'XL' : sz === 'XL' ? 'L' : sz === 'L' ? 'M' : 'S';
         const r2  = sz2 === 'XL' ? rXL : sz2 === 'L' ? rL : sz2 === 'M' ? rM : rS;
-        pushLight(raw, w, h, ox, oy, colors[1], sz2, r2, opac * 0.55, 0.18, sz2, 1);
+        pushLight(raw, w, h, ox, oy, colors[1], sz2, r2, opac * (0.42 + blendEase * 0.24), 0.18, sz2, 1);
         if (raw.length >= maxLights) { done = true; }
       }
     }
 
     // ── S PASS ────────────────────────────────────────────────────────────────
     if (!done) {
-      const useSharp = blend < 0.15;
-      for (let gy = 0; gy < h && !done; gy++) {
-        for (let gx = 0; gx < w && !done; gx++) {
+      const useSharp = blend < 0.08;
+      const sStep = blend < 0.22 ? 1 : (blend < 0.58 ? 2 : (blend < 0.86 ? 3 : 4));
+      for (let gy = 0; gy < h && !done; gy += sStep) {
+        for (let gx = 0; gx < w && !done; gx += sStep) {
           if (raw.length >= maxLights) { done = true; break; }
           const buf = useSharp ? sharp : work;
           const ii = (gy * w + gx) * 4;
@@ -808,11 +820,12 @@
           const s = satOf(cr, cg, cb);
           if (l < 0.06 && s < 0.20) continue;
           // Skip flat areas at medium/high blend — blob passes will cover them
-          if (getFlat(gx, gy) > sFlatCut) continue;
+          const flat = getFlat(gx, gy);
+          if (flat > sFlatCut) continue;
           const allowW = l > 0.62 && s < 0.22;
           const colors = chooseLightMix(cr, cg, cb, allowW, mixPower);
           if (!colors.length) continue;
-          const opac = intensity * (blend < 0.10 ? 0.18 : 0.14) * l * l;
+          const opac = intensity * (0.17 * detailBias + 0.035) * l * l * (1 - flat * blendEase * 0.62);
           placeWithSecondary(gx, gy, colors, 'S', rS, opac, 0.6);
         }
       }
@@ -823,13 +836,14 @@
     // Flat zones: M upgrades to L/XL; L upgrades to XL — ensuring large areas get big lights.
     function runBlobPass(step, baseSz, baseR, opFn) {
       if (!step || done) return;
-      const sampleR = Math.max(1, Math.round(step * 0.6));
-      const jitter  = step * 0.15;
+      const sampleR = Math.max(1, Math.round(step * (0.65 + blendEase * 0.35)));
+      const jitterAmount = step * (0.10 + blendEase * 0.10);
       for (let gy = 0; gy < h && !done; gy += step) {
         for (let gx = 0; gx < w && !done; gx += step) {
           if (raw.length >= maxLights) { done = true; return; }
-          const x  = clamp(gx + step * 0.5 + (Math.random() - 0.5) * jitter * 2, 0, w - 1);
-          const y  = clamp(gy + step * 0.5 + (Math.random() - 0.5) * jitter * 2, 0, h - 1);
+          const jj = jitter(gx + step * 13, gy + baseSz.length * 101, jitterAmount);
+          const x  = clamp(gx + step * 0.5 + jj.x, 0, w - 1);
+          const y  = clamp(gy + step * 0.5 + jj.y, 0, h - 1);
           const px = Math.round(x), py = Math.round(y);
           const rgb = sampleCell(work, w, h, px, py, sampleR);
           if (rgb.a < 2) continue;
@@ -841,10 +855,12 @@
           const bp = getFlat(px, py) * blend;
           let sz = baseSz, r = baseR;
           if (baseSz === 'M') {
-            if (bp > 0.80) { sz = 'XL'; r = rXL; }
-            else if (bp > 0.55) { sz = 'L'; r = rL; }
+            if (bp > 0.74) { sz = 'XL'; r = rXL; }
+            else if (bp > 0.38) { sz = 'L'; r = rL; }
           } else if (baseSz === 'L') {
-            if (bp > 0.85) { sz = 'XL'; r = rXL; }
+            if (bp > 0.62) { sz = 'XL'; r = rXL; }
+          } else if (baseSz === 'XL') {
+            if (bp > 0.88) { sz = 'XXL'; r = rXXL; }
           }
           const allowW = l > 0.62 && s < 0.22;
           const colors = chooseLightMix(cr, cg, cb, allowW, mixPower);
@@ -855,13 +871,13 @@
     }
 
     // M: from blend=0.10, upgrades to L/XL in flat areas
-    runBlobPass(mStep,   'M',   rM,   function(l) { return intensity * 0.11  * (0.3  + l * 0.7);  });
+    runBlobPass(mStep,   'M',   rM,   function(l) { return intensity * (0.045 + blendEase * 0.065) * (0.28 + l * 0.72); });
     // L: from blend=0.30, upgrades to XL in very flat areas
-    runBlobPass(lStep,   'L',   rL,   function(l) { return intensity * 0.038 * (0.35 + l * 0.65); });
+    runBlobPass(lStep,   'L',   rL,   function(l) { return intensity * (0.014 + blendEase * 0.028) * (0.35 + l * 0.65); });
     // XL: from blend=0.55, always XL
-    runBlobPass(xlStep,  'XL',  rXL,  function(l) { return intensity * 0.022 * (0.4  + l * 0.6);  });
+    runBlobPass(xlStep,  'XL',  rXL,  function(l) { return intensity * (0.006 + blendEase * 0.014) * (0.45 + l * 0.55); });
     // XXL: from blend=0.80
-    runBlobPass(xxlStep, 'XXL', rXXL, function(l) { return intensity * 0.015 * (0.4  + l * 0.6);  });
+    runBlobPass(xxlStep, 'XXL', rXXL, function(l) { return intensity * (0.003 + blendEase * 0.006) * (0.50 + l * 0.50); });
   }
   function collectSettings(root) {
     const ids = {
@@ -971,7 +987,7 @@
     const stackPower = 50;    // baked — enables XL pass (>35), disables XXL (>55)
     const mixPower   = 100;   // baked — always max color mixing
     if (lightArtPlan) {
-      addLightArtRaster(raw, w, h, work, intensity, overlap, stackPower, mixPower, +settings.randomizer || 50);
+      addLightArtRaster(raw, w, h, work, intensity, overlap, stackPower, mixPower, num(settings.randomizer, 50));
       delete raw.__data;
       plan = raw.slice(0, clamp(+settings.maxLights || 65000, 1, 120000));
       // Use original image-pixel coords for meubel preview: shows stitched chunk layout
@@ -1229,7 +1245,9 @@
       // Tile grid: dark lines at every image-pixel boundary simulate hex tile edges.
       // Drawn source-over AFTER lights so grid lines create separation even in bright face areas.
       ctx.save();
-      ctx.strokeStyle = 'rgba(0,0,0,0.30)';
+      var blendForGrid = clamp(num(settings.randomizer, 50), 0, 100) / 100;
+      var gridAlpha = 0.30 * (1 - blendForGrid * 0.78);
+      ctx.strokeStyle = 'rgba(0,0,0,' + gridAlpha.toFixed(3) + ')';
       ctx.lineWidth = 0.35;
       for (var gx = 0; gx <= w; gx++) { ctx.beginPath(); ctx.moveTo(gx, 0); ctx.lineTo(gx, h); ctx.stroke(); }
       for (var gy = 0; gy <= h; gy++) { ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(w, gy); ctx.stroke(); }

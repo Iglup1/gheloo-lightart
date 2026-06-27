@@ -813,6 +813,43 @@ Fixed to: `y = anchorY - (logicalH - 1 - localY)` — image-top now maps to room
 
 ---
 
+## [2026-06-27] Codex - Session 15
+
+**Done:**
+- Tuned the Blender algorithm based on Kenjy's 0/5/19/26/59/78/100 screenshot series.
+- Fixed the critical `0` bug: Blender `0` was falling back to `50`, so pixel-art mode was never truly zero.
+- Made high Blender values more painterly by reducing the S-dot layer in flat regions and relying more on M/L/XL/XXL layers.
+- Added deterministic color overlap and same-color strength stacking so stronger colors come from layered lights instead of random scatter.
+- Faded the preview tile grid as Blender increases so high blend values look less like pixel art.
+- Copied the updated extension to the live Gheloo extensions folder and clipboard after checks.
+
+**Changed files:**
+- `pixelart-lightart.js:246` - added `num(...)` helper so numeric `0` is preserved.
+- `pixelart-lightart.js:718` - Blender parsing now uses `num(blender, 50)` instead of `+blender || 50`.
+- `pixelart-lightart.js:719` - added eased blend curve and `detailBias`.
+- `pixelart-lightart.js:722` - adjusted S/M/L/XL/XXL radius curves for smoother high blend.
+- `pixelart-lightart.js:763` - `flatMap` starts earlier and uses a wider variance curve.
+- `pixelart-lightart.js:780` - `sFlatCut` now decreases as Blender rises, suppressing S lights sooner in flat zones.
+- `pixelart-lightart.js:783` - blob pass steps now scale with eased blend.
+- `pixelart-lightart.js:794` - added same-color strength stack for M/L/XL.
+- `pixelart-lightart.js:798` - replaced random secondary offset with deterministic `jitter(...)`.
+- `pixelart-lightart.js:811` - S pass now increases step size and lowers opacity as Blender rises.
+- `pixelart-lightart.js:839` - blob pass sampling/jitter now uses eased deterministic behavior.
+- `pixelart-lightart.js:855` - flat regions upgrade to larger light sizes earlier.
+- `pixelart-lightart.js:990` - `addLightArtRaster(...)` call now preserves Blender `0`.
+- `pixelart-lightart.js:1249` - preview grid fades out at higher Blender.
+- `SHARED_CONTEXT.md` - documented Kenjy's screenshot feedback and the intended Blender behavior.
+
+**Verification:**
+- Ran `node --check pixelart-lightart.js` successfully.
+
+**Open / next:**
+- Kenjy should retest the same couple photo at Blender `0`, `25`, `60`, `100`.
+- If `100` is still too yellow, tune `chooseLightMix(...)` warm/skin fallback and/or lower XL/XXL opacity another step.
+- If mid values still look too dotted, lower `sFlatCut` again or increase `sStep` sooner.
+
+---
+
 ## HOW TO UPDATE THIS FILE
 
 At **start of session**: read latest entry, understand state.

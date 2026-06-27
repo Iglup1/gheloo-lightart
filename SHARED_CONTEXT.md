@@ -335,6 +335,28 @@ This is the compressed handoff from the long Codex/Kenjy conversation so Claude 
   - User preferred slowly increasing blend where bigger lights are used for large areas but not so much that detail disappears.
   - User explicitly approved committing/updating GitHub/devlog/shared context for this.
 
+### 2026-06-27 Blender tuning from Kenjy screenshots
+
+- Kenjy tested a 60x60 / 9-chunk couple photo at Blender `0`, `5`, `19`, `26`, `59`, `78`, `100`.
+- Problems seen:
+  - Blender `0` still was not true pixel art because the code used `+settings.randomizer || 50`, so `0` became `50`.
+  - Mid/high Blender still looked too much like a pixel/dot matrix.
+  - Blender `100` became too yellow/overexposed instead of a smooth art version.
+- Desired behavior:
+  - Blender `0` = simple pixel art with only/mostly small lights.
+  - Higher Blender = smoother light art, flatter one-color regions become broad blended fields.
+  - Color transitions should overlap multiple light colors.
+  - Strong colors should be reinforced by multiple stacked lights, not by random scattered pixels.
+- Implemented direction:
+  - Preserve numeric zero with a shared `num(...)` helper.
+  - Use eased blend progression so low values stay crisp and high values become more painterly.
+  - Start `flatMap` earlier and lower `sFlatCut` as blend rises so S lights disappear sooner in flat zones.
+  - Reduce S opacity and increase S step with blend.
+  - Upgrade M->L/XL and L->XL earlier in flat regions.
+  - Add deterministic same-color strength stacks for M/L/XL.
+  - Replace `Math.random()` placement jitter with deterministic `jitter(...)` so previews are repeatable.
+  - Fade the preview tile grid as Blender rises so high values visually read less pixel-art.
+
 ### Latest chunk-outline bug report from Kenjy
 
 - Kenjy sent an `{in:Objects}` packet with 330 objects after testing Claude's latest build. Parsed facts:
