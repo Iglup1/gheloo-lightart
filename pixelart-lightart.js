@@ -174,10 +174,10 @@
     XXL: { srcW:447, srcH:448, frames: {0:{x:1349,y:6},1:{x:1798,y:6},2:{x:2247,y:6},3:{x:3145,y:6},4:{x:2,y:6},5:{x:451,y:6},6:{x:900,y:6},7:{x:2696,y:6}} }
   };
   // Draw size in IMAGE-PIXEL space = tile units. 1 image px = 1 tile.
-  // S: 1.0 tile wide → adjacent S sprites at spacing 1 just touch at edges → individual tile glow dots (hex pattern).
-  // M: 5.0 tiles wide, step=6 → M blobs just DON'T overlap (13.75 canvas px < 16.5 spacing) → distinct circles.
-  // L/XL/XXL progressively larger, matching in-game visual relative to tile size.
-  var LIGHT_GLOW_DRAW_SIZE = { S: 1.0, M: 5.0, L: 8.0, XL: 12.0, XXL: 22.0 };
+  // S: 2.0 tiles → slight overlap, sprite glow shape visible, warm field accumulates in face area.
+  // M: 6.0 tiles, step=6 → just touching at edges → distinct visible M circles.
+  // L/XL/XXL larger blobs.
+  var LIGHT_GLOW_DRAW_SIZE = { S: 2.0, M: 6.0, L: 9.0, XL: 14.0, XXL: 24.0 };
   var lightSpriteSheets = {}; // { 'S': ImageBitmap, ... }
   var lightSpriteStatus = 'idle'; // 'idle'|'loading'|'done'
   window.__la_shutdown = function() {
@@ -1085,7 +1085,7 @@
       });
     }
     const ctx = canvas.getContext('2d');
-    ctx.fillStyle = '#050505';
+    ctx.fillStyle = '#0d0800'; // Dark amber = unlit floor tile base
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     drawPreviewViewport(ctx, canvas, w, h, function() {
       ctx.save();
@@ -1095,12 +1095,11 @@
         var x = p.cx, y = p.cy;
         var ds = LIGHT_GLOW_DRAW_SIZE[p.size] || 3.75;
         var dotR = ds * 0.5;
-        // S: 1 tile wide → alpha scaled by luminance. Bright face pixel = 50% → clear tile dot.
-        // Dark pixel = dim dot. Adjacent S just touch at edges → individual tile glow pattern (no blob).
-        // M/L/XL/XXL: distinct large circles at their step spacing (5.0 < step 6 → M circles don't overlap).
+        // S: 2 tile wide, slight overlap → luminance-scaled alpha, warm field at face, dark at hair.
+        // M/L/XL/XXL: fixed alpha → distinct prominent circles.
         var dotAlpha = p.size === 'S'
-          ? clamp((p.opacity || 0.14) * 4.0, 0.01, 0.50)
-          : p.size === 'M' ? 0.40 : p.size === 'L' ? 0.35 : p.size === 'XL' ? 0.28 : 0.22;
+          ? clamp((p.opacity || 0.14) * 1.0, 0.004, 0.07)
+          : p.size === 'M' ? 0.35 : p.size === 'L' ? 0.30 : p.size === 'XL' ? 0.24 : 0.18;
         var sprAlpha = dotAlpha, grdAlpha = dotAlpha;
         if (useSprites && lightSpriteSheets[p.size]) {
           var meta = LIGHT_GLOW_FRAMES[p.size];
@@ -1129,6 +1128,14 @@
           ctx.fill();
         }
       });
+      ctx.restore();
+      // Tile grid: dark lines at every image-pixel boundary simulate hex tile edges.
+      // Drawn source-over AFTER lights so grid lines create separation even in bright face areas.
+      ctx.save();
+      ctx.strokeStyle = 'rgba(0,0,0,0.30)';
+      ctx.lineWidth = 0.35;
+      for (var gx = 0; gx <= w; gx++) { ctx.beginPath(); ctx.moveTo(gx, 0); ctx.lineTo(gx, h); ctx.stroke(); }
+      for (var gy = 0; gy <= h; gy++) { ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(w, gy); ctx.stroke(); }
       ctx.restore();
       drawChunkOverlayLogical(ctx, w, h);
     });
