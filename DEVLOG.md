@@ -392,6 +392,50 @@ Fixed to: `y = anchorY - (logicalH - 1 - localY)` — image-top now maps to room
 
 ---
 
+## [2026-06-27] Claude — Session 14
+
+**Done:**
+
+1. **renderPreview: dot-mode rewrite** (`pixelart-lightart.js:1046-1064`):
+   - Old: used `p.radius` (glow-sim value, 6.4px) as gradient radius → ~24 canvas px blur blob per S light → entire face merged into orange smear.
+   - New: uses `p.size` to pick a tile-sized dot radius independent of glow-sim radius.
+   - S: dotR=0.45 image px → ~1.7 canvas px = one floor tile dot.
+   - M: dotR=6.0 image px → ~34 canvas px glow blob (step=6, spacing=6px, outerR=9px → adjacent blobs overlap → lighter blend fills face area).
+   - L: dotR=12, XL: dotR=22, XXL: dotR=38.
+   - S alpha: `clamp(p.opacity * 13, 0.05, 0.85)` — p.opacity encodes l², so bright pixels brighter dots, dark pixels dimmer.
+   - M/L/XL/XXL alpha: fixed (0.25/0.18/0.12/0.08), many overlapping blobs accumulate to warm fill.
+
+2. **Glow radius recalibration** (`pixelart-lightart.js:668` addLightArtRaster):
+   - rS: 3.2 → 6.4px | rM: 12.3 → 18.3px (step 4→6) | rL: 22 → 32px (step 8→12) | rXL: 39 → 53px (step 16→20) | rXXL: 67 → 87px (step 28→30).
+   - Note: these radii in addLightArtRaster are stored in `p.radius` but are NO LONGER used in renderPreview. renderPreview now uses dotR per size. The radii still affect the plan structure conceptually but don't change the visual preview.
+
+3. **loader.js (reverted)**: attempted GitHub-raw auto-fetch loader. Game's CSP blocks fetch to raw.githubusercontent.com. Deleted. Workflow stays: Claude copies script to clipboard after every change + commits to GitHub.
+
+**Commits this session:**
+- `f8dfcf1` — renderPreview dot-mode (S=tiny tile dot, M/L/XL=large glow blobs)
+- `2551917` — M/L/XL blob radii much larger (M: 0.9→6.0, L: 1.6→12, XL: 2.8→22)
+- `595e280` — loader.js added (reverted in next commit)
+- `981a657` — loader.js removed
+
+**Changed files:**
+- `pixelart-lightart.js:1046-1064` — renderPreview dot rendering (CURRENT STATE)
+
+**Workflow note for Codex:**
+- After every change: Claude copies `pixelart-lightart.js` to clipboard (Kenjy pastes manually into game).
+- loader.js approach doesn't work due to game CSP. Do NOT re-add it.
+
+**Current preview state (from Kenjy's screenshots):**
+- Meubel preview: dots visible in face chunks (3/7 area). Other chunks dark = correct (hair/bg filtered by l<0.06 threshold).
+- Room preview: orange dot pattern forms face shape — matches expected.
+- Kenjy: "al wat beter maar niet optimaal" — still tuning needed.
+
+**Open / next:**
+- Meubel preview still doesn't fully match room photo. Room shows large overlapping orange glow blobs from M/L lights. Preview getting closer but Kenjy wants near-1:1 match.
+- Consider: Kenjy sent reference color photos showing actual single-light glow blob sizes (S/M/L/XL/XXL). Use those as reference for correct dotR values.
+- Continue algorithm tuning based on Kenjy's next screenshot feedback.
+
+---
+
 ## HOW TO UPDATE THIS FILE
 
 At **start of session**: read latest entry, understand state.
