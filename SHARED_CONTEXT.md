@@ -55,6 +55,28 @@ Every agent must read this file before changing `pixelart-lightart.js`.
 - Avoid unwanted red/white dominance. Use red only where it belongs or where color mixing needs it.
 - Furniture preview should be based on simulated light blobs/overlap, while the source preview should keep source-image detail and not be over-pixelated.
 
+## Light blob sizes (measured by Kenjy from reference in-game photos, 2026-06-27)
+
+Kenjy photographed each light size in isolation and measured the glow blob diameter in pixels:
+- **S**: 60×60 px diameter in photo
+- **M**: 125×125 px diameter in photo
+- **L**: 160×160 px diameter in photo
+- **XL**: 180×180 px diameter in photo
+- **XXL**: 400×400 px diameter in photo
+
+Key observation: "het plots snel afloopt" — the glow drops off sharply, not gradually. Bright center plateau holds until ~60-65% of radius, then rapid falloff to black at edge. This is different from a gaussian/smooth gradient.
+
+**Used in renderPreview** (`pixelart-lightart.js:~1051`):
+- Divide photo diameter by 15 → image-pixel radius for preview canvas (scale ~3.75 → 300px canvas for 80px image).
+- dotR values: S=4.0, M=8.3, L=10.7, XL=12.0, XXL=26.7 image pixels.
+- Gradient stops: 0 / 0.40 / 0.65 / 0.85 / 1.0 with rapid falloff from 65% onward.
+- S alpha: `clamp(p.opacity * 2.6, 0.02, 0.09)` — luminance-scaled via l².
+- M/L/XL/XXL fixed alpha: 0.22 / 0.16 / 0.09 / 0.05.
+
+**loader.js (attempted 2026-06-27, deleted)**: tried auto-fetching script from GitHub raw URL. Game's CSP blocks fetch to raw.githubusercontent.com. Do NOT re-add this. Workflow stays: script copied to clipboard after every change.
+
+**Workflow rule added 2026-06-27**: Both agents must update DEVLOG after every code commit (not just end of session) and update SHARED_CONTEXT immediately when Kenjy shares any info. See updated CLAUDE_INSTRUCTIONS.md and CODEX_INSTRUCTIONS.md.
+
 ## Build reliability target
 
 - Minimize `:bh`, `:bs`, and `:bd` changes because chat-setting commands are slow and can desync.

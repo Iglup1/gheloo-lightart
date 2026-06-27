@@ -28,10 +28,15 @@ The current main target is Light Art:
   - read `PROJECT_BRIEFING.md`
   - read `SHARED_CONTEXT.md`
   - inspect the latest commit if needed
-- End every session with:
-  - update `DEVLOG.md`
-  - commit changed files
+- **After EVERY code change** (not just end of session):
+  - update `DEVLOG.md` immediately
+  - commit `pixelart-lightart.js` + `DEVLOG.md` together
   - push to GitHub
+  - copy `pixelart-lightart.js` to clipboard so Kenjy can paste it
+- **Immediately when Kenjy shares anything** (photos, sizes, packets, coordinates, test results, screenshots, measurements):
+  - record the reusable facts in `SHARED_CONTEXT.md`
+  - commit and push `SHARED_CONTEXT.md`
+  - This is critical: if tokens run out mid-session, Codex must have all context Kenjy gave you
 
 ## Required reporting style
 

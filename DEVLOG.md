@@ -436,6 +436,39 @@ Fixed to: `y = anchorY - (logicalH - 1 - localY)` — image-top now maps to room
 
 ---
 
+## [2026-06-27] Claude — Session 15
+
+**Done:**
+
+1. **Preview blob sizes from Kenjy's reference photos** (`pixelart-lightart.js:1051-1066`, commit `7d562e0`):
+   - Kenjy measured glow blob diameters in reference photos: S=60px, M=125px, L=160px, XL=180px, XXL=400px.
+   - Converted to image-pixel radius (÷15): S=4.0, M=8.3, L=10.7, XL=12.0, XXL=26.7.
+   - At canvas scale 3.75: S=15 canvas px, M=31, L=40, XL=45, XXL=100.
+   - Gradient stops changed to sharp falloff (5 stops: 0/0.40/0.65/0.85/1.0) matching Kenjy's observation that glow drops off quickly, not gradually.
+
+2. **Collaboration rules hardened** (commits upcoming):
+   - Rule added to both `CLAUDE_INSTRUCTIONS.md` and `CODEX_INSTRUCTIONS.md`: update DEVLOG after EVERY commit (not just end of session).
+   - Rule added: update `SHARED_CONTEXT.md` immediately when Kenjy shares any info (photos, sizes, packets, test results). Do not wait until session end.
+   - Reason: if tokens run out mid-session and Kenjy switches to the other agent, all context Kenjy gave must already be in GitHub.
+
+3. **loader.js removed** (commit `981a657`): GitHub raw fetch blocked by game CSP. Documented in SHARED_CONTEXT so neither agent tries again.
+
+4. **SHARED_CONTEXT updated** with Kenjy's light blob sizes and workflow rules.
+
+**Changed files:**
+- `pixelart-lightart.js:1051-1066` — renderPreview dot sizes (photo-derived) + sharp falloff gradient
+- `CLAUDE_INSTRUCTIONS.md` — after-every-commit DEVLOG rule + immediate SHARED_CONTEXT rule
+- `CODEX_INSTRUCTIONS.md` — same rules for Codex
+- `SHARED_CONTEXT.md` — light blob sizes, loader.js note, workflow rule
+
+**Open / next:**
+- Kenjy still tuning preview quality: "al wat beter maar niet helemaal"
+- Some placed furniture doesn't appear in canvas preview — investigate plan vs preview sync
+- Some areas too bright in canvas but not in room — XL/XXL alpha may still be too high
+- Continue until meubel preview ≈ room preview for the same image
+
+---
+
 ## HOW TO UPDATE THIS FILE
 
 At **start of session**: read latest entry, understand state.

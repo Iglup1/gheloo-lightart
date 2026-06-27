@@ -10,9 +10,9 @@ We communicate via GitHub commits and DEVLOG.md.
 
 1. **Start of every session:** Pull latest from GitHub. Read `DEVLOG.md`, `PROJECT_BRIEFING.md`, and `SHARED_CONTEXT.md` before changing code. The last `DEVLOG.md` entry tells you current handoff state; `PROJECT_BRIEFING.md` summarizes what has already been built and where; `SHARED_CONTEXT.md` contains reusable packets, screenshots notes, room facts, and test observations from Kenjy.
 2. **Do the work** the owner asks.
-3. **End of every session:** Update `DEVLOG.md` with a new entry (date, what you did, current state, open items). Commit all changed files. Push to GitHub.
-4. If Kenjy says Claude should do something, automatically communicate it by adding a clear handoff item to `DEVLOG.md` with concrete file + line references where possible. Do not rely on Kenjy to repeat it manually.
-5. If Kenjy gives packets, screenshots, photo examples, room/chunk coordinates, object ids, catalog ids, color facts, or test results, record the reusable facts in `SHARED_CONTEXT.md` and mention it in `DEVLOG.md` before ending the session.
+3. **After EVERY code change** (not just end of session): update `DEVLOG.md`, commit `pixelart-lightart.js` + `DEVLOG.md` together, push to GitHub. Do not batch multiple changes into one DEVLOG entry at the end — update after each commit. This way if tokens run out or Kenjy switches agents mid-session, the other agent has full context.
+4. **Immediately when Kenjy shares anything** (photos, pixel sizes, packets, coordinates, screenshots, measurements, test results): record the reusable facts in `SHARED_CONTEXT.md`, commit and push it immediately. Do not wait until end of session. If tokens run out before you do this, the other agent loses all context Kenjy gave you.
+5. If Kenjy says Claude should do something, automatically communicate it by adding a clear handoff item to `DEVLOG.md` with concrete file + line references where possible. Do not rely on Kenjy to repeat it manually.
 
 ## Commit rules
 
