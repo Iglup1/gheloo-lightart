@@ -551,6 +551,29 @@ Fixed to: `y = anchorY - (logicalH - 1 - localY)` — image-top now maps to room
 - If too dim: raise from 0.10 to 0.15
 - If sprites loaded: they use real Habbo glow shape. If not loaded: gradient approximation with same sizes
 
+## [2026-06-27] Claude — Session 16 continued (fix: M/L not visible, gradient S too strong)
+
+**Problem**: Meubel preview is warm blob (all orange) — M/L distinct spots not visible. S gradient alpha (0.10 max) overwhelms M/L (0.22/0.18). Kenjy: "niet exacte meubels".
+
+**Fix (commit `7b1a304`)**:
+- Split sprite vs gradient alpha for S:
+  - Sprite S: `clamp(opacity*1.5, 0.003, 0.10)` (sprites have real Habbo falloff shape → OK at higher alpha)
+  - Gradient S: `clamp(opacity*0.35, 0.001, 0.022)` (gradient = smooth blob → must be barely visible)
+- M: 0.44, L: 0.38, XL: 0.30, XXL: 0.22 → M/L now dominant visible circular spots
+- Background: `#0d0800` (very dark amber) instead of `#050505` → simulates unlit floor tile base color
+- Added `spr:` status text bottom-left of preview (shows 'idle'/'loading'/'done') — Kenjy can check if sprites are loading
+
+**Expected result**: preview shows distinct large orange M/L circles on dark amber background + very subtle S ambient. Matches room where M/L spots are the primary visual feature.
+
+**Changed files:**
+- `pixelart-lightart.js:1087-1160` — background, split alpha, sprite status text
+
+**Open / next:**
+- Kenjy tests: look at bottom-left of preview canvas for "spr:done" — confirms sprites loaded
+- If "spr:idle" or "spr:loading": sprites didn't load (CSP?), gradient fallback in use
+- If preview still looks like a blob: M/L alpha may need to go higher (try 0.60)
+- If M/L spots too bright/washed out: lower to 0.30
+
 ---
 
 ## HOW TO UPDATE THIS FILE
