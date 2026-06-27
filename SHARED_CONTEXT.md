@@ -97,6 +97,21 @@ Layer "b" = glow effect sprites. Direction 2. States 0-7 map to colorCodes 0-7.
 
 Hardcoded in `pixelart-lightart.js` as `LIGHT_GLOW_FRAMES` (~line 165). Loaded at runtime by `loadLightSpritesIfNeeded()` (~line 1028) using browser `DecompressionStream('deflate')`. Result cached as `lightSpriteSheets` per size. `renderPreview` uses `ctx.drawImage` with these sprites when available.
 
+**Ball bbox vs. frame size (from Kenjy's Lightbulbs-data, pixel-perfect measurement):**
+- S: ball 63×64 px = full frame (no transparent padding)
+- M: ball 127×128 px = full frame (no transparent padding)
+- L: ball 191×192 px = full frame (no transparent padding)
+- XL: ball ~250×251 px within 319×320 frame (~34.5 px transparent border per side)
+- XXL: ball ~252×253 px within 447×448 frame (~97 px transparent border per side)
+- All sizes: max alpha = 128/255 (~50.2%), linear radial falloff `alpha ≈ 128 × (1 - dist/radius)`
+- XL/XXL: alpha mask not identical for all 8 colors (unlike S/M/L where all 8 share exact same mask)
+- Artifact pixels at bottom-center of each sprite (alpha 128) — expected, do not crop
+
+**LIGHT_GLOW_DRAW_SIZE derivation (correct as of 2026-06-27):**
+Formula: `ds = (srcW / 63) × 2.0` → ~31.5 px/tile consistent for all sizes.
+- S: 2.0 tiles | M: 4.0 tiles | L: 6.0 tiles | XL: 10.0 tiles | XXL: 14.0 tiles
+- Previous wrong values (M=6.0, L=9.0, XL=14.0, XXL=24.0) made M/L/XL/XXL blobs 1.4-1.7× too large in preview.
+
 **loader.js (attempted 2026-06-27, deleted)**: tried auto-fetching script from GitHub raw URL. Game's CSP blocks fetch to raw.githubusercontent.com. Do NOT re-add this. Workflow stays: script copied to clipboard after every change.
 
 **Workflow rule added 2026-06-27**: Both agents must update DEVLOG after every code commit (not just end of session) and update SHARED_CONTEXT immediately when Kenjy shares any info. See updated CLAUDE_INSTRUCTIONS.md and CODEX_INSTRUCTIONS.md.

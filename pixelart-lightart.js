@@ -177,7 +177,7 @@
   // S: 2.0 tiles → slight overlap, sprite glow shape visible, warm field accumulates in face area.
   // M: 6.0 tiles, step=6 → just touching at edges → distinct visible M circles.
   // L/XL/XXL larger blobs.
-  var LIGHT_GLOW_DRAW_SIZE = { S: 2.0, M: 6.0, L: 9.0, XL: 14.0, XXL: 24.0 };
+  var LIGHT_GLOW_DRAW_SIZE = { S: 2.0, M: 4.0, L: 6.0, XL: 10.0, XXL: 14.0 };
   var lightSpriteSheets = {}; // { 'S': ImageBitmap, ... }
   var lightSpriteStatus = 'idle'; // 'idle'|'loading'|'done'
   window.__la_shutdown = function() {

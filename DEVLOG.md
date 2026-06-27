@@ -615,6 +615,32 @@ Fixed to: `y = anchorY - (logicalH - 1 - localY)` — image-top now maps to room
 
 ---
 
+## [2026-06-27] Claude — Session 17 continued (fix: M/L/XL/XXL draw size)
+
+**Problem**: M/L/XL/XXL blobs in preview too large (M 1.5×, L 1.5×, XL 1.4×, XXL 1.7× oversized vs room).
+
+**Root cause**: `LIGHT_GLOW_DRAW_SIZE` values were not proportional to sprite dimensions. Correct formula: `ds = (srcW / 63) × 2.0` (~31.5 px/tile).
+
+**Fix (this commit)**:
+- `pixelart-lightart.js:180` — `LIGHT_GLOW_DRAW_SIZE`: M: 6.0→**4.0**, L: 9.0→**6.0**, XL: 14.0→**10.0**, XXL: 24.0→**14.0**
+- `SHARED_CONTEXT.md` — added ball bbox vs. frame size data from Lightbulbs-data + derivation formula
+
+**Source**: Kenjy's `Lightbulbs-data` file (exact pixel RGBA measurements):
+- S/M/L: ball fills entire frame; XL/XXL: ball inside padded frame (XL ball 250px in 319px frame)
+- All sizes: linear alpha falloff `128 × (1 - dist/radius)`, max alpha 128/255 ≈ 50%
+
+**Expected**: M blobs now 4-tile circles (distinct, non-overlapping at step=6), L 6-tile circles (touching at step=12), XL/XXL large glows proportionally.
+
+**Changed files**:
+- `pixelart-lightart.js:180` — LIGHT_GLOW_DRAW_SIZE corrected
+
+**Open / next**:
+- Kenjy tests: do M/L/XL blobs in meubel preview now match size in kamer preview?
+- If M blobs still too large: reduce M ds further; if too small: increase
+- S is still "beetje beter maar niet optimaal" — may need separate S fix after M/L/XL confirmed
+
+---
+
 ## HOW TO UPDATE THIS FILE
 
 At **start of session**: read latest entry, understand state.
