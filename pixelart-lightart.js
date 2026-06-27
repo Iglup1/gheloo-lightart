@@ -811,7 +811,7 @@
         pushLight(raw, w, h, x, y, colors[0], 'S', rS, intensity * 0.16 * l * l, 0.14, 'detail', 0);
         if (raw.length >= maxLights) return;
         // Secondary S at tiny offset: additive blend creates richer perceived color.
-        if (colors.length > 1 && mixPower > 20) {
+        if (colors.length > 1) {
           const jx = (Math.random() - 0.5) * 0.6;
           const jy = (Math.random() - 0.5) * 0.6;
           pushLight(raw, w, h, x + jx, y + jy, colors[1], 'S', rS, intensity * 0.10 * l * l, 0.14, 'detail2', 1);
@@ -833,7 +833,7 @@
           if (s < 0.08) continue;
           const colors = chooseLightMix(rgb.r, rgb.g, rgb.b, l > 0.65 && s < 0.22, mixPower);
           if (!colors.length) continue;
-          const numM = Math.min(colors.length, mixPower > 30 ? 2 : 1);
+          const numM = Math.min(colors.length, 2);
           for (let ci = 0; ci < numM; ci++) {
             pushLight(raw, w, h, x, y, colors[ci], 'M', rM, intensity * 0.088 * (0.3 + l * 0.7) / numM, 0.20, 'mid', ci);
             if (raw.length >= maxLights) return;
@@ -1000,10 +1000,10 @@
     }
     const raw = [];
     raw.__data = work;
-    const intensity = (+settings.intensity || 88) / 100;
-    const overlap = (+settings.overlap || 72) / 100;
-    const stackPower = +settings.stack || 55;
-    const mixPower = +settings.mix || 72;
+    const intensity = 0.92;   // baked — slider caused wash-out at high values
+    const overlap   = 0.72;   // baked — only affects collision radius (unused in preview)
+    const stackPower = 50;    // baked — enables XL pass (>35), disables XXL (>55)
+    const mixPower   = 100;   // baked — always max color mixing
     if (lightArtPlan) {
       addLightArtRaster(raw, w, h, work, intensity, overlap, stackPower, mixPower, +settings.randomizer || 50);
       delete raw.__data;
@@ -2243,12 +2243,6 @@
             '<div class="sec">Light Art</div>' +
             '<div class="row"><label>Stijl</label><select id="__la_variant"><option value="stacked">Veel overlap / glow</option><option value="soft">Zachter leesbaar</option><option value="whitefill">Meer witte highlights</option></select></div>' +
             '<div class="row"><label>Bubbel randomizer</label><input id="__la_randomizer" type="range" min="0" max="100" step="1" value="' + esc(settings.randomizer != null ? settings.randomizer : 50) + '"><span id="__la_randomizer_label">' + esc(settings.randomizer != null ? settings.randomizer : 50) + '</span></div>' +
-            '<div class="sec">Lamp instellingen</div>' +
-            '<div class="row"><label>Felheid</label><input id="__la_intensity" type="range" min="20" max="200" value="' + esc(settings.intensity) + '"></div>' +
-            '<div class="row"><label>Glow radius</label><input id="__la_overlap" type="range" min="0" max="120" value="' + esc(settings.overlap) + '"></div>' +
-            '<div class="row"><label>Kleuren mengen</label><input id="__la_mix" type="range" min="0" max="100" value="' + esc(settings.mix) + '"></div>' +
-            '<div class="row"><label>Witte highlights</label><input id="__la_whitefill" type="range" min="0" max="100" value="' + esc(settings.whiteFill) + '"></div>' +
-            '<div class="row"><label>Dubbele glow</label><input id="__la_stack" type="range" min="0" max="100" value="' + esc(settings.stack) + '"></div>' +
           '</div>' +
           '<div id="__la_mode_panel_cylinder" class="mode-panel" style="display:none">' +
             '<div class="sec">Halve cilinder</div>' +
@@ -2393,7 +2387,7 @@
       el.addEventListener('input', function() {
         collectSettings(root);
         updateMaxLabel();
-        if (image && ['__la_sat','__la_bright','__la_contrast','__la_gamma','__la_red_power','__la_green_power','__la_blue_power','__la_focus','__la_bgdim','__la_dark','__la_intensity','__la_overlap','__la_stack','__la_mix','__la_whitefill','__la_randomizer','__la_variant','__la_alpha','__la_coarse','__la_mid','__la_fine','__la_renderw','__la_roomw','__la_roomh','__la_chunk_mode','__la_chunk_size','__la_chunk_cols','__la_chunk_select','__la_chunk_bleed','__la_max'].includes(el.id)) {
+        if (image && ['__la_sat','__la_bright','__la_contrast','__la_gamma','__la_red_power','__la_green_power','__la_blue_power','__la_focus','__la_bgdim','__la_dark','__la_randomizer','__la_variant','__la_alpha','__la_coarse','__la_mid','__la_fine','__la_renderw','__la_roomw','__la_roomh','__la_chunk_mode','__la_chunk_size','__la_chunk_cols','__la_chunk_select','__la_chunk_bleed','__la_max'].includes(el.id)) {
           clearTimeout(timer);
           timer = setTimeout(function() { try { makePlan(root); } catch(ex) { root.querySelector('#__la_status').textContent = ex.message; } }, 180);
         }
