@@ -691,17 +691,18 @@
       }
     }
 
-    // Radii: S tight for pixel-accurate detail, M/L/XL progressively larger for
-    // visible glow overlap (depth) in both meubel canvas and in-room rendering.
-    const rS   = 2.8 + overlap * 2.0;   // ~4.2 at default overlap=0.72
-    const rM   = 7.0 + overlap * 6.0;   // ~11.3 at default
-    const rL   = 14  + overlap * 12;    // ~22.6 at default
-    const rXL  = 24  + overlap * 22;    // ~39.8 at default
-    const rXXL = 42  + overlap * 38;    // ~69.4 at default
+    // Radii calibrated so preview glow matches perceived in-room glow scale.
+    // rS small (tight circles = high contrast between lit/dark areas in preview).
+    // rM/rL/rXL progressively larger for visible overlapping glow depth.
+    const rS   = 2.5 + overlap * 1.0;   // ~3.2 at overlap=0.72
+    const rM   = 8.0 + overlap * 6.0;   // ~12.3 at default
+    const rL   = 15  + overlap * 10;    // ~22.2 at default
+    const rXL  = 26  + overlap * 18;    // ~39.0 at default
+    const rXXL = 44  + overlap * 32;    // ~67.0 at default
 
-    // Pass 1: S — every pixel, primary detail layer via sharpened colors.
-    // l² opacity scaling: dark pixels contribute almost nothing → clean dark background.
-    // Calibrated for ~50% image fill (typical photo): l=0.7 face gives ~0.55 brightness.
+    // Pass 1: S — every pixel, primary detail layer.
+    // l² opacity: dark pixels (l=0.15) → 5% brightness, skin (l=0.5) → 58%,
+    // bright (l=0.7) → saturates to vivid. Clean dark background guaranteed.
     for (let y = 0; y < h; y++) {
       for (let x = 0; x < w; x++) {
         const i = (y * w + x) * 4;
@@ -710,16 +711,16 @@
         const l = lum(r, g, b);
         const s = satOf(r, g, b);
         if (l < 0.06 && s < 0.20) continue;
-        const allowWhite = l > 0.60 && s < 0.22;
+        const allowWhite = l > 0.62 && s < 0.22;
         const colors = chooseLightMix(r, g, b, allowWhite, mixPower);
         if (!colors.length) continue;
-        pushLight(raw, w, h, x, y, colors[0], 'S', rS, intensity * 0.18 * l * l, 0.14, 'detail', 0);
+        pushLight(raw, w, h, x, y, colors[0], 'S', rS, intensity * 0.40 * l * l, 0.14, 'detail', 0);
         if (raw.length >= maxLights) return;
       }
     }
 
-    // Pass 2: M — every 4th pixel, visible glow depth layer. 2-color mix for richer blends.
-    // In-game M lights have larger glow → creates visible overlapping blobs in room.
+    // Pass 2: M — every 4th pixel, glow depth layer with 2-color mixing.
+    // Larger in-game glow than S → creates visible overlapping glow blobs in room.
     for (let y = 0; y < h; y += 4) {
       for (let x = 0; x < w; x += 4) {
         const rgb = sampleCell(work, w, h, x, y, 2);
@@ -732,7 +733,7 @@
         if (!colors.length) continue;
         const numM = mixPower > 45 ? Math.min(colors.length, 2) : 1;
         for (let ci = 0; ci < numM; ci++) {
-          pushLight(raw, w, h, x, y, colors[ci], 'M', rM, intensity * 0.038 * (0.3 + l * 0.7) / numM, 0.20, 'mid', ci);
+          pushLight(raw, w, h, x, y, colors[ci], 'M', rM, intensity * 0.055 * (0.3 + l * 0.7) / numM, 0.20, 'mid', ci);
         }
         if (raw.length >= maxLights) return;
       }
@@ -749,7 +750,7 @@
         if (s < 0.12) continue;
         const colors = chooseLightMix(rgb.r, rgb.g, rgb.b, false, mixPower);
         if (!colors.length) continue;
-        pushLight(raw, w, h, x, y, colors[0], 'L', rL, intensity * 0.016 * (0.3 + l * 0.7), 0.22, 'zone', 0);
+        pushLight(raw, w, h, x, y, colors[0], 'L', rL, intensity * 0.022 * (0.3 + l * 0.7), 0.22, 'zone', 0);
         if (raw.length >= maxLights) return;
       }
     }
@@ -766,7 +767,7 @@
           if (s < 0.15) continue;
           const colors = chooseLightMix(rgb.r, rgb.g, rgb.b, false, mixPower);
           if (!colors.length) continue;
-          pushLight(raw, w, h, x, y, colors[0], 'XL', rXL, intensity * 0.010 * (0.4 + l * 0.6), 0.24, 'atmo', 0);
+          pushLight(raw, w, h, x, y, colors[0], 'XL', rXL, intensity * 0.012 * (0.4 + l * 0.6), 0.24, 'atmo', 0);
           if (raw.length >= maxLights) return;
         }
       }
@@ -784,7 +785,7 @@
           if (s < 0.18) continue;
           const colors = chooseLightMix(rgb.r, rgb.g, rgb.b, false, mixPower);
           if (!colors.length) continue;
-          pushLight(raw, w, h, x, y, colors[0], 'XXL', rXXL, intensity * 0.006 * (0.4 + l * 0.6), 0.26, 'deep', 0);
+          pushLight(raw, w, h, x, y, colors[0], 'XXL', rXXL, intensity * 0.007 * (0.4 + l * 0.6), 0.26, 'deep', 0);
           if (raw.length >= maxLights) return;
         }
       }
