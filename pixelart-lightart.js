@@ -1044,16 +1044,18 @@
         const inner = render.inner;
         const outer = render.outer;
         const x = p.cx, y = p.cy;
-        // Dot radius = 1 floor tile per size (image-pixel space, scaled by canvas transform).
-        // S=0.45px → ~1.7 canvas px at scale 3.75: single visible tile dot.
-        // M/L/XL/XXL progressively larger, matching how each furniture size appears in room.
-        const dotR = p.size === 'XXL' ? 4.5 : p.size === 'XL' ? 2.8 : p.size === 'L' ? 1.6 : p.size === 'M' ? 0.9 : 0.45;
+        // S: tight tile dot (1 floor tile). M/L/XL/XXL: large glow blobs that overlap
+        // to create the orange fill visible in the real room (like the reference photos).
+        // All in image-pixel space; canvas transform scales them up automatically.
+        // M step=6 → spacing 6px. M outerR=9px → blobs overlap → solid glow fill in face area.
+        const dotR = p.size === 'XXL' ? 38 : p.size === 'XL' ? 22 : p.size === 'L' ? 12 : p.size === 'M' ? 6.0 : 0.45;
         const outerR = dotR * 1.5;
-        // Alpha derived from p.opacity which encodes per-pixel luminance (l² for S).
-        // Scale factors chosen so bright pixels (l=0.7) reach ~0.85, dark (l=0.2) stay ~0.10.
-        const alphaScale = p.size === 'S' ? 13 : p.size === 'M' ? 14 : p.size === 'L' ? 40 : p.size === 'XL' ? 50 : 70;
-        const maxAlpha = p.size === 'S' ? 0.85 : p.size === 'M' ? 0.80 : 0.75;
-        const alpha = clamp((p.opacity || 0.14) * alphaScale, 0.05, maxAlpha);
+        // S: alpha from p.opacity (encodes l²) → bright pixels bright, dark pixels dim.
+        // M/L/XL/XXL: fixed alpha — blobs overlap additively (lighter) to fill the face
+        // area with warm color, matching how overlapping glow looks in the real room.
+        const alpha = p.size === 'S'
+          ? clamp((p.opacity || 0.14) * 13, 0.05, 0.85)
+          : p.size === 'M' ? 0.25 : p.size === 'L' ? 0.18 : p.size === 'XL' ? 0.12 : 0.08;
         const grad = ctx.createRadialGradient(x, y, 0, x, y, outerR);
         grad.addColorStop(0, 'rgba(' + inner[0] + ',' + inner[1] + ',' + inner[2] + ',' + alpha + ')');
         grad.addColorStop(0.5, 'rgba(' + c.r + ',' + c.g + ',' + c.b + ',' + (alpha * 0.5) + ')');
