@@ -717,18 +717,19 @@
     const rM   = 14  + overlap * 6.0;
     const rL   = 25  + overlap * 10;
     const rXL  = 40  + overlap * 18;
+    const rXXL = 60  + overlap * 28;
 
-    // Pre-sharpen (5×5 unsharp mask) — used for S detail at blend=0.
+    // Pre-sharpen (5×5 unsharp mask) — used for S at low blend for crisp pixel art.
     const sharp = new Uint8ClampedArray(work.length);
     const sharpAmt = 1.2;
-    for (let y = 0; y < h; y++) {
-      for (let x = 0; x < w; x++) {
-        const i = (y * w + x) * 4;
+    for (let sy = 0; sy < h; sy++) {
+      for (let sx = 0; sx < w; sx++) {
+        const i = (sy * w + sx) * 4;
         if (work[i + 3] < 2) { sharp[i + 3] = 0; continue; }
         let sr = 0, sg = 0, sb = 0, cnt = 0;
         for (let dy = -2; dy <= 2; dy++) {
           for (let dx = -2; dx <= 2; dx++) {
-            const ni = (clamp(y + dy, 0, h - 1) * w + clamp(x + dx, 0, w - 1)) * 4;
+            const ni = (clamp(sy + dy, 0, h - 1) * w + clamp(sx + dx, 0, w - 1)) * 4;
             if (work[ni + 3] < 2) continue;
             sr += work[ni]; sg += work[ni + 1]; sb += work[ni + 2]; cnt++;
           }
@@ -741,88 +742,80 @@
       }
     }
 
-    // ── CONTENT-AWARE BLENDER ─────────────────────────────────────────────────
-    // Per cell: measure local colour variance → drives light SIZE choice.
-    //   flat area  (variance < 0.05) → XL/L  blob for that colour
-    //   gradient   (0.05–0.13)       → L/M   + secondary colour overlapping → additive mix
-    //   edge/detail (> 0.13)         → M/S   crisp lights
+    // ── MULTI-PASS BLENDER ────────────────────────────────────────────────────
+    // S pass always covers every pixel → crisp pixel colours everywhere.
+    // M/L/XL/XXL passes activate as blend rises; each samples a WIDER area,
+    // so at colour transitions its average colour differs from S → additive
+    // overlap of the two creates perceived mixed/blended colours ("kleuren op elkaar").
     //
-    // blend=0  → pixel art (S+secondary S per pixel, sharpened)
-    // blend=0.5→ M for gradients, L for flat zones
-    // blend=1  → XL for flat, L for gradients, M for edges
+    // blend=0   → S only (pure pixel art)
+    // blend=0.1 → S + sparse M (soft glow halos)
+    // blend=0.5 → S + M (step 6) + L (step 12)
+    // blend=1   → S (step 2) + M (step 2) + L (step 5) + XL (step 9) + XXL (step 14)
 
-    // Grid step: 1px at blend=0 (every pixel), 4px at blend=1 (big-blob grid)
-    const step   = Math.max(1, Math.round(1 + blend * 3));
-    const varR   = Math.max(3, Math.round(3 + blend * 8)); // variance sample radius
-    const jitter = step > 1 ? step * 0.12 : 0;            // tiny organic jitter
+    // Step per pass (0 = inactive):
+    const sStep   = blend < 0.66 ? 1 : 2;
+    const mStep   = blend < 0.10 ? 0 : Math.max(2, Math.round(10 - blend * 8));
+    const lStep   = blend < 0.30 ? 0 : Math.max(4, Math.round(18 - blend * 13));
+    const xlStep  = blend < 0.55 ? 0 : Math.max(8, Math.round(28 - blend * 19));
+    const xxlStep = blend < 0.80 ? 0 : Math.max(12, Math.round(38 - blend * 24));
 
-    for (let gy = 0; gy < h; gy += step) {
-      for (let gx = 0; gx < w; gx += step) {
-        if (raw.length >= maxLights) return;
+    let done = false;
 
-        // Cell centre + minimal jitter
-        const x  = clamp(gx + step * 0.5 + (Math.random() - 0.5) * jitter * 2, 0, w - 1);
-        const y  = clamp(gy + step * 0.5 + (Math.random() - 0.5) * jitter * 2, 0, h - 1);
-        const px = Math.round(x), py = Math.round(y);
-
-        // Colour sample: sharpened at blend=0, area-averaged otherwise
-        let cr, cg, cb;
-        if (step === 1) {
-          const buf = blend < 0.05 ? sharp : work;
-          const i = (py * w + px) * 4;
-          if (buf[i + 3] < 2) continue;
-          cr = buf[i]; cg = buf[i + 1]; cb = buf[i + 2];
-        } else {
-          const rgb = sampleCell(work, w, h, px, py, step);
-          if (rgb.a < 2) continue;
-          cr = rgb.r; cg = rgb.g; cb = rgb.b;
-        }
-
-        const l = lum(cr, cg, cb);
-        const s = satOf(cr, cg, cb);
-        if (l < 0.06 && s < 0.20) continue;
-
-        // Local variance → flatness descriptor (1 = perfectly flat, 0 = sharp edge)
-        const variance = step > 1 ? localVariance(work, w, h, px, py, varR) : 0;
-        const flatness = 1 - clamp((variance - 0.05) / 0.08, 0, 1);
-
-        // blobPower: 0 = edgy / no-blend → stays S; 1 = flat + full blend → XL
-        const blobPower = flatness * blend;
-
-        let size, radius, opac;
-        if (blobPower > 0.72) {
-          size = 'XL'; radius = rXL; opac = intensity * 0.022 * (0.4 + l * 0.6);
-        } else if (blobPower > 0.38 || (blend > 0.55 && flatness > 0.40)) {
-          size = 'L';  radius = rL;  opac = intensity * 0.038 * (0.35 + l * 0.65);
-        } else if (blend > 0.18 && flatness > 0.20) {
-          size = 'M';  radius = rM;  opac = intensity * 0.11  * (0.3  + l * 0.7);
-        } else {
-          size = 'S';  radius = rS;  opac = intensity * 0.16  * l * l;
-        }
-
-        const allowW = l > 0.62 && s < 0.22;
-        const colors = chooseLightMix(cr, cg, cb, allowW, mixPower);
-        if (!colors.length) continue;
-
-        pushLight(raw, w, h, x, y, colors[0], size, radius, opac, 0.18, 'primary', 0);
-        if (raw.length >= maxLights) return;
-
-        // Secondary colour: ALWAYS placed when available.
-        // Offset ≤ step → circles overlap → additive blend → new perceived colour.
-        if (colors.length > 1) {
-          const spread = step > 1 ? step * (0.4 + blend * 0.6) : 0.6;
-          const ox = clamp(x + (Math.random() - 0.5) * spread * 2, 0, w - 1);
-          const oy = clamp(y + (Math.random() - 0.5) * spread * 2, 0, h - 1);
-          const sz2 = size === 'XL' ? 'L' : size === 'L' ? 'M' : 'S';
-          const r2  = sz2 === 'L' ? rL : sz2 === 'M' ? rM : rS;
-          const o2  = (sz2 === 'L'  ? intensity * 0.028
-                     : sz2 === 'M'  ? intensity * 0.075
-                     :                intensity * 0.10 * l) * (0.3 + l * 0.7) * 0.65;
-          pushLight(raw, w, h, ox, oy, colors[1], sz2, r2, o2, 0.18, 'secondary', 1);
-          if (raw.length >= maxLights) return;
+    function runPass(step, sz, radius, opFn, useSharp) {
+      if (!step || done) return;
+      const sampleR = step > 1 ? Math.max(1, Math.round(step * 0.6)) : 0;
+      const jitter  = step > 1 ? step * 0.15 : 0;
+      for (let gy = 0; gy < h && !done; gy += step) {
+        for (let gx = 0; gx < w && !done; gx += step) {
+          if (raw.length >= maxLights) { done = true; return; }
+          const x  = clamp(gx + step * 0.5 + (Math.random() - 0.5) * jitter * 2, 0, w - 1);
+          const y  = clamp(gy + step * 0.5 + (Math.random() - 0.5) * jitter * 2, 0, h - 1);
+          const px = Math.round(x), py = Math.round(y);
+          let cr, cg, cb;
+          if (sampleR === 0) {
+            const buf = useSharp ? sharp : work;
+            const ii = (py * w + px) * 4;
+            if (buf[ii + 3] < 2) continue;
+            cr = buf[ii]; cg = buf[ii + 1]; cb = buf[ii + 2];
+          } else {
+            const rgb = sampleCell(work, w, h, px, py, sampleR);
+            if (rgb.a < 2) continue;
+            cr = rgb.r; cg = rgb.g; cb = rgb.b;
+          }
+          const l = lum(cr, cg, cb);
+          const s = satOf(cr, cg, cb);
+          if (l < 0.06 && s < 0.20) continue;
+          const allowW = l > 0.62 && s < 0.22;
+          const colors = chooseLightMix(cr, cg, cb, allowW, mixPower);
+          if (!colors.length) continue;
+          const opac = opFn(l);
+          pushLight(raw, w, h, x, y, colors[0], sz, radius, opac, 0.18, sz, 0);
+          if (raw.length >= maxLights) { done = true; return; }
+          // Secondary colour always placed — offset within cell → additive mix
+          if (colors.length > 1) {
+            const spread = Math.max(0.6, step * 0.40);
+            const ox = clamp(x + (Math.random() - 0.5) * spread * 2, 0, w - 1);
+            const oy = clamp(y + (Math.random() - 0.5) * spread * 2, 0, h - 1);
+            const sz2 = sz === 'XXL' ? 'XL' : sz === 'XL' ? 'L' : sz === 'L' ? 'M' : 'S';
+            const r2  = sz2 === 'XL' ? rXL : sz2 === 'L' ? rL : sz2 === 'M' ? rM : rS;
+            pushLight(raw, w, h, ox, oy, colors[1], sz2, r2, opac * 0.55, 0.18, sz2, 1);
+            if (raw.length >= maxLights) { done = true; return; }
+          }
         }
       }
     }
+
+    // S: always, sharp at low blend, exact pixel colours
+    runPass(sStep,   'S',   rS,   function(l) { return intensity * (blend < 0.10 ? 0.18 : 0.14) * l * l; }, blend < 0.15);
+    // M: from blend=0.10 — area-averaged colour → natural colour mixing with S
+    runPass(mStep,   'M',   rM,   function(l) { return intensity * 0.11 * (0.3 + l * 0.7); },               false);
+    // L: from blend=0.30
+    runPass(lStep,   'L',   rL,   function(l) { return intensity * 0.038 * (0.35 + l * 0.65); },            false);
+    // XL: from blend=0.55
+    runPass(xlStep,  'XL',  rXL,  function(l) { return intensity * 0.022 * (0.4 + l * 0.6); },             false);
+    // XXL: from blend=0.80
+    runPass(xxlStep, 'XXL', rXXL, function(l) { return intensity * 0.015 * (0.4 + l * 0.6); },             false);
   }
   function collectSettings(root) {
     const ids = {
