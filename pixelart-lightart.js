@@ -77,6 +77,7 @@
     stack: 55,
     mix: 72,
     whiteFill: 70,
+    randomizer: 50,
     maxLights: 15500,
     startX: 21,
     startY: 62,
@@ -682,8 +683,19 @@
     const max = (l > 0.55 && s < 0.24) ? 2 : (mixPower > 68 && s > 0.18 ? 2 : 1);
     return colors.slice(0, max);
   }
-  function addLightArtRaster(raw, w, h, work, intensity, overlap, stackPower, mixPower) {
+  function addLightArtRaster(raw, w, h, work, intensity, overlap, stackPower, mixPower, randomizer) {
     const maxLights = clamp(+settings.maxLights || 65000, 1, 120000);
+    const rand = clamp(+randomizer || 50, 0, 100);
+    const randT = rand / 100;
+    // 0 = only S (crisp pixel art), 50 = S+M+L (default), 100 = all sizes (full bubbles).
+    const useM   = rand > 15;
+    const useL   = rand > 30;
+    const useXL  = rand > 55 || stackPower > 35;
+    const useXXL = rand > 75 || stackPower > 55;
+    const mStep   = useM   ? Math.max(3,  Math.round(9  - randT * 6))  : 9;
+    const lStep   = useL   ? Math.max(6,  Math.round(16 - randT * 10)) : 16;
+    const xlStep  = useXL  ? Math.max(10, Math.round(24 - randT * 14)) : 24;
+    const xxlStep = useXXL ? Math.max(15, Math.round(35 - randT * 20)) : 35;
 
     // Pre-sharpen: unsharp mask to boost color contrast at boundaries for S detail layer.
     const sharp = new Uint8ClampedArray(work.length);
@@ -736,10 +748,9 @@
       }
     }
 
-    // Pass 2: M — every 6th pixel, visible glow depth layer with 2-color mixing.
-    // Step 6 → ~70 M lights per 80×80 face image. Each M circle clearly larger than S.
-    for (let y = 0; y < h; y += 6) {
-      for (let x = 0; x < w; x += 6) {
+    // Pass 2: M — glow depth layer, active above randomizer 15.
+    if (useM) for (let y = 0; y < h; y += mStep) {
+      for (let x = 0; x < w; x += mStep) {
         const rgb = sampleCell(work, w, h, x, y, 3);
         if (rgb.a < 2) continue;
         const l = lum(rgb.r, rgb.g, rgb.b);
@@ -756,9 +767,9 @@
       }
     }
 
-    // Pass 3: L — every 12th pixel, zone atmosphere
-    for (let y = 0; y < h; y += 12) {
-      for (let x = 0; x < w; x += 12) {
+    // Pass 3: L — zone atmosphere, active above randomizer 30.
+    if (useL) for (let y = 0; y < h; y += lStep) {
+      for (let x = 0; x < w; x += lStep) {
         const rgb = sampleCell(work, w, h, x, y, 5);
         if (rgb.a < 2) continue;
         const l = lum(rgb.r, rgb.g, rgb.b);
@@ -772,10 +783,10 @@
       }
     }
 
-    // Pass 4: XL — every 20th pixel, bright vivid zone accents
-    if (stackPower > 35) {
-      for (let y = 0; y < h; y += 20) {
-        for (let x = 0; x < w; x += 20) {
+    // Pass 4: XL — bright zone accents, active above randomizer 55 or stackPower > 35.
+    if (useXL) {
+      for (let y = 0; y < h; y += xlStep) {
+        for (let x = 0; x < w; x += xlStep) {
           const rgb = sampleCell(work, w, h, x, y, 9);
           if (rgb.a < 2) continue;
           const l = lum(rgb.r, rgb.g, rgb.b);
@@ -790,10 +801,10 @@
       }
     }
 
-    // Pass 5: XXL — every 30th pixel, atmospheric peak glow
-    if (stackPower > 55) {
-      for (let y = 0; y < h; y += 30) {
-        for (let x = 0; x < w; x += 30) {
+    // Pass 5: XXL — atmospheric peak glow, active above randomizer 75 or stackPower > 55.
+    if (useXXL) {
+      for (let y = 0; y < h; y += xxlStep) {
+        for (let x = 0; x < w; x += xxlStep) {
           const rgb = sampleCell(work, w, h, x, y, 13);
           if (rgb.a < 2) continue;
           const l = lum(rgb.r, rgb.g, rgb.b);
@@ -815,7 +826,7 @@
       redPower:'#__la_red_power', greenPower:'#__la_green_power', bluePower:'#__la_blue_power',
       focus:'#__la_focus', bgDim:'#__la_bgdim', darkCut:'#__la_dark', coarseStep:'#__la_coarse',
       midStep:'#__la_mid', detailStep:'#__la_fine', intensity:'#__la_intensity', overlap:'#__la_overlap',
-      stack:'#__la_stack', mix:'#__la_mix', whiteFill:'#__la_whitefill', maxLights:'#__la_max',
+      stack:'#__la_stack', mix:'#__la_mix', whiteFill:'#__la_whitefill', randomizer:'#__la_randomizer', maxLights:'#__la_max',
       startX:'#__la_x', startY:'#__la_y', xyStep:'#__la_xystep', baseBh:'#__la_bh', bhStep:'#__la_bhstep',
       rotation:'#__la_rot', delay:'#__la_delay', settingDelay:'#__la_setting_delay', burst:'#__la_burst', burstPause:'#__la_burst_pause', retry:'#__la_retry', attempts:'#__la_attempts',
       chunkSize:'#__la_chunk_size', chunkCols:'#__la_chunk_cols', chunkSelection:'#__la_chunk_select', chunkBleed:'#__la_chunk_bleed',
@@ -916,7 +927,7 @@
     const stackPower = +settings.stack || 55;
     const mixPower = +settings.mix || 72;
     if (lightArtPlan) {
-      addLightArtRaster(raw, w, h, work, intensity, overlap, stackPower, mixPower);
+      addLightArtRaster(raw, w, h, work, intensity, overlap, stackPower, mixPower, +settings.randomizer || 50);
       delete raw.__data;
       plan = raw.slice(0, clamp(+settings.maxLights || 65000, 1, 120000));
       // Use original image-pixel coords for meubel preview: shows stitched chunk layout
@@ -2149,12 +2160,28 @@
         '<div class="tabs menu"><button class="btn btn-secondary btn-sm active" data-tab="gen">Generator</button><button class="btn btn-secondary btn-sm" data-tab="color">Color</button><button class="btn btn-secondary btn-sm" data-tab="build">Settings</button><button class="btn btn-secondary btn-sm" data-tab="saves">Saves</button></div>' +
         '<div class="panel on" data-panel="gen">' +
           '<div class="sec">Generator</div>' +
-          '<div class="row"><label>Soort art</label><select id="__la_mode"><option value="light_art">Light Art</option><option value="cylinder">Halve cilinder</option><option value="neon_prisma">Neon prisma</option><option value="mini_blocks">Mini blocks</option></select></div>' +
-          '<div class="row"><label>Stijl</label><select id="__la_variant"><option value="stacked">Veel overlap / glow</option><option value="soft">Zachter leesbaar</option><option value="whitefill">Meer witte highlights</option></select></div>' +
+          '<div class="row"><label>Art modus</label><select id="__la_mode"><option value="light_art">Light Art</option><option value="cylinder">Halve cilinder</option><option value="neon_prisma">Neon prisma</option><option value="mini_blocks">Mini blocks</option></select></div>' +
+          '<div id="__la_mode_panel_light_art" class="mode-panel">' +
+            '<div class="sec">Light Art</div>' +
+            '<div class="row"><label>Stijl</label><select id="__la_variant"><option value="stacked">Veel overlap / glow</option><option value="soft">Zachter leesbaar</option><option value="whitefill">Meer witte highlights</option></select></div>' +
+            '<div class="row"><label>Pixel art ←→ Bubbels</label><input id="__la_randomizer" type="range" min="0" max="100" step="1" value="' + esc(settings.randomizer != null ? settings.randomizer : 50) + '"><span id="__la_randomizer_label">' + esc(settings.randomizer != null ? settings.randomizer : 50) + '</span></div>' +
+            '<div class="row"><label>Details</label><input id="__la_coarse" type="number" title="grote glow-stappen" value="' + esc(settings.coarseStep) + '"><input id="__la_mid" type="number" title="middelste lamp-stappen" value="' + esc(settings.midStep) + '"><input id="__la_fine" type="number" title="kleine detail-stappen" value="' + esc(settings.detailStep) + '"></div>' +
+          '</div>' +
+          '<div id="__la_mode_panel_cylinder" class="mode-panel" style="display:none">' +
+            '<div class="sec">Halve cilinder</div>' +
+            '<div class="row"><span style="color:rgba(255,255,255,0.45);font-size:11px">Instellingen komen binnenkort. Gebruik de Settings tab voor bouwhoogte en positie.</span></div>' +
+          '</div>' +
+          '<div id="__la_mode_panel_neon_prisma" class="mode-panel" style="display:none">' +
+            '<div class="sec">Neon prisma</div>' +
+            '<div class="row"><span style="color:rgba(255,255,255,0.45);font-size:11px">Instellingen komen binnenkort.</span></div>' +
+          '</div>' +
+          '<div id="__la_mode_panel_mini_blocks" class="mode-panel" style="display:none">' +
+            '<div class="sec">Mini blocks</div>' +
+            '<div class="row"><span style="color:rgba(255,255,255,0.45);font-size:11px">Instellingen komen binnenkort.</span></div>' +
+          '</div>' +
           '<div class="row"><label>Preview pixels</label><input id="__la_renderw" type="number" value="' + esc(settings.renderWidth) + '"><label>Art grootte</label><input id="__la_roomw" type="number" title="breedte in hoteltegels" value="' + esc(settings.roomW) + '"><input id="__la_roomh" type="number" title="hoogte in hoteltegels" value="' + esc(settings.roomH) + '"></div>' +
           '<div class="row"><label>Max lampen</label><input id="__la_max" type="range" min="500" max="65000" step="500" value="' + esc(settings.maxLights) + '"><span id="__la_max_label">' + esc(settings.maxLights) + '</span></div>' +
           '<div class="row"><label>Transparantie</label><input id="__la_alpha" type="range" min="1" max="255" value="' + esc(settings.alpha) + '" title="hogere waarde negeert meer half-transparante pixels"><label><input id="__la_crop" type="checkbox"' + (settings.crop ? ' checked' : '') + '> rand wegknippen</label></div>' +
-          '<div class="row"><label>Details</label><input id="__la_coarse" type="number" title="grote glow-stappen" value="' + esc(settings.coarseStep) + '"><input id="__la_mid" type="number" title="middelste lamp-stappen" value="' + esc(settings.midStep) + '"><input id="__la_fine" type="number" title="kleine detail-stappen" value="' + esc(settings.detailStep) + '"></div>' +
           '<div class="sec">Chunks</div>' +
           '<div class="row"><label><input id="__la_chunk_mode" type="checkbox"' + (settings.chunkMode ? ' checked' : '') + '> in stukken</label><label>Chunk tegels</label><input id="__la_chunk_size" type="number" value="' + esc(settings.chunkSize) + '"><label>Chunks per zijde</label><input id="__la_chunk_cols" type="number" min="1" max="8" value="' + esc(settings.chunkCols) + '" title="2 = 4 chunks (40x40), 4 = 16 chunks (80x80)"><label>Rand overlap</label><input id="__la_chunk_bleed" type="number" value="' + esc(settings.chunkBleed) + '"></div>' +
           '<div class="row"><label>Welke stukken</label><input id="__la_chunk_select" type="text" placeholder="leeg = auto, bv. 1 of 1,2,4,5" value="' + esc(settings.chunkSelection) + '"></div>' +
@@ -2220,6 +2247,13 @@
     window.__la_neonPrisma = { config: NEON_PRISMA, nearest: nearestNeonPrisma };
     root.querySelector('#__la_mode').value = settings.generatorMode || 'light_art';
     root.querySelector('#__la_variant').value = settings.variant || 'stacked';
+    function updateModePanel() {
+      var mode = root.querySelector('#__la_mode').value || 'light_art';
+      root.querySelectorAll('.mode-panel').forEach(function(p) {
+        p.style.display = (p.id === '__la_mode_panel_' + mode) ? '' : 'none';
+      });
+    }
+    updateModePanel();
     root.querySelectorAll('input:not([type="file"]):not([type="checkbox"]):not([type="range"])').forEach(function(el) {
       el.classList.add('form-control', 'form-control-sm');
     });
@@ -2305,6 +2339,8 @@
       img.src = url;
     });
     root.querySelector('#__la_plan').addEventListener('click', function() { try { makePlan(root); } catch(ex) { root.querySelector('#__la_status').textContent = ex.message; } });
+    root.querySelector('#__la_mode').addEventListener('change', function() { collectSettings(root); updateModePanel(); redrawCurrentPreview(); });
+    root.querySelector('#__la_randomizer').addEventListener('input', function() { root.querySelector('#__la_randomizer_label').textContent = this.value; });
     root.querySelector('#__la_room_preview').addEventListener('click', function() {
       try { renderCurrentBuildPreview(root); } catch(ex) { root.querySelector('#__la_status').textContent = 'Kamer-preview fout: ' + ex.message; }
     });

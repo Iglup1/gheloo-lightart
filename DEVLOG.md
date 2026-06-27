@@ -641,6 +641,40 @@ Fixed to: `y = anchorY - (logicalH - 1 - localY)` — image-top now maps to room
 
 ---
 
+## [2026-06-27] Claude — Session 17 continued (feat: Art modus per-mode panels + Randomizer slider)
+
+**Done:**
+1. Renamed "Soort art" → "Art modus" in Generator tab
+2. Per-mode panels in Generator tab — show/hide based on selected Art modus:
+   - Light Art: toont eigen sectie met Stijl, Randomizer slider, Details
+   - Halve cilinder / Neon prisma / Mini blocks: placeholder "Instellingen komen binnenkort"
+3. Randomizer slider (0=Pixel art ← → 100=Bubbels) toegevoegd in Light Art sectie
+4. `addLightArtRaster` gebruikt randomizer om passes te controleren:
+   - rand 0: alleen S (crisp pixel art, geen M/L/XL/XXL)
+   - rand 15-30: S+M → rand 30-55: S+M+L → rand 55-75: S+M+L+XL → rand 75-100: alles
+   - Dichtere stappen bij hoger rand (M: 9→3, L: 16→6, XL: 24→10, XXL: 35→15)
+   - stackPower fallback: XL/XXL blijven actief als stackPower > 35/55 ook al rand laag
+
+**Changed files:**
+- `pixelart-lightart.js:79` — DEFAULTS: `randomizer: 50`
+- `pixelart-lightart.js:819` — collectSettings: `randomizer:'#__la_randomizer'`
+- `pixelart-lightart.js:685` — addLightArtRaster: randomizer param + rand/useM/useL/useXL/useXXL/step vars
+- `pixelart-lightart.js:741` — pass 2 M: `if (useM) for y += mStep`
+- `pixelart-lightart.js:761` — pass 3 L: `if (useL) for y += lStep`
+- `pixelart-lightart.js:776` — pass 4 XL: `if (useXL)` + xlStep
+- `pixelart-lightart.js:793` — pass 5 XXL: `if (useXXL)` + xxlStep
+- `pixelart-lightart.js:~930` — addLightArtRaster call: passes `+settings.randomizer || 50`
+- `pixelart-lightart.js:~2150` — buildUI HTML: per-mode panels structuur
+- `pixelart-lightart.js:~2225` — buildUI JS: `updateModePanel()` functie + initiële call
+- `pixelart-lightart.js:~2315` — event listeners: mode change → updateModePanel + redraw; randomizer → label update
+
+**Open / next:**
+- Kenjy test: zet randomizer links (0) = alleen S dots, rechts (100) = grote bubble mix
+- Per-mode panels werken met show/hide; mode wisselen triggers ook preview redraw
+- Cylinder/Neon/Mini blocks zijn placeholders — kunnen later eigen settings krijgen
+
+---
+
 ## HOW TO UPDATE THIS FILE
 
 At **start of session**: read latest entry, understand state.
