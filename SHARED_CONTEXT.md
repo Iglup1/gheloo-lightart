@@ -357,6 +357,26 @@ This is the compressed handoff from the long Codex/Kenjy conversation so Claude 
   - Replace `Math.random()` placement jitter with deterministic `jitter(...)` so previews are repeatable.
   - Fade the preview tile grid as Blender rises so high values visually read less pixel-art.
 
+### 2026-06-27 additive color-recipe engine
+
+- Kenjy linked Dutch/English color-mixing references and clarified the generator should remember possible lamp combinations, not only pick one closest lamp color.
+- Light Art lamps behave as additive light sources:
+  - Do not average sRGB channel values directly.
+  - Convert sRGB to linear light, add lamp energy, then convert back to sRGB for preview/matching.
+  - Subtractive mixing (paint/ink) is useful background knowledge but is not the model for these hotel light glows.
+- Implemented direction in `pixelart-lightart.js`:
+  - `srgbToLinear(...)` / `linearToSrgb(...)` around line 555.
+  - `additiveRecipeColor(...)` around line 585.
+  - `buildLightMixTable(...)` around line 599 creates repeated/non-repeated lamp recipes from the 8 available states.
+  - `bestLightRecipe(...)` around line 631 scores recipes in Lab-like perceptual space, with penalties to avoid saturated regions turning white too quickly.
+  - `chooseLightMix(...)` around line 657 now asks the recipe table first before falling back to old heuristics.
+  - `placeWithSecondary(...)` around line 885 now places multiple extra recipe colors instead of only the first secondary color.
+- Intended behavior:
+  - Blender `0`: mostly S-light pixel art.
+  - Higher Blender: broad flat regions use larger glow layers and multi-color recipes.
+  - Repeated colors in a recipe make a color stronger; mixed colors make transitions/secondary hues.
+  - White state `0` should only appear for actually bright/near-neutral areas, not as a default result of every overlap.
+
 ### Latest chunk-outline bug report from Kenjy
 
 - Kenjy sent an `{in:Objects}` packet with 330 objects after testing Claude's latest build. Parsed facts:

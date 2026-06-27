@@ -550,12 +550,105 @@
     return r + g > b * 2 ? [3] : [5];
   }
   function lightMixColor(codes) {
+    return additiveRecipeColor(codes);
+  }
+  function srgbToLinear(v) {
+    const x = clamp(v / 255, 0, 1);
+    return x <= 0.04045 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4);
+  }
+  function linearToSrgb(v) {
+    const x = clamp(v, 0, 1);
+    return byte((x <= 0.0031308 ? x * 12.92 : 1.055 * Math.pow(x, 1 / 2.4) - 0.055) * 255);
+  }
+  function rgbToLab(r, g, b) {
+    const R = srgbToLinear(r), G = srgbToLinear(g), B = srgbToLinear(b);
+    let X = R * 0.4124564 + G * 0.3575761 + B * 0.1804375;
+    let Y = R * 0.2126729 + G * 0.7151522 + B * 0.0721750;
+    let Z = R * 0.0193339 + G * 0.1191920 + B * 0.9503041;
+    X /= 0.95047;
+    Z /= 1.08883;
+    function f(t) { return t > 0.008856 ? Math.pow(t, 1 / 3) : (7.787 * t) + (16 / 116); }
+    const fx = f(X), fy = f(Y), fz = f(Z);
+    return { l: (116 * fy) - 16, a: 500 * (fx - fy), b: 200 * (fy - fz) };
+  }
+  function labDist(a, b) {
+    const dl = a.l - b.l, da = a.a - b.a, db = a.b - b.b;
+    return Math.sqrt(dl * dl + da * da + db * db);
+  }
+  let lightMixTable = null;
+  function additiveChannel(v, exposure) {
+    return linearToSrgb(1 - Math.exp(-Math.max(0, v) * exposure));
+  }
+  function additiveRecipeColor(codes) {
     let r = 0, g = 0, b = 0;
     codes.forEach(function(code) {
       const c = COLORS[code] || COLORS[0];
-      r += c.r; g += c.g; b += c.b;
+      const weight = code === 0 ? 0.72 : 1;
+      r += srgbToLinear(c.r) * weight;
+      g += srgbToLinear(c.g) * weight;
+      b += srgbToLinear(c.b) * weight;
     });
-    return { r: Math.min(255, r), g: Math.min(255, g), b: Math.min(255, b) };
+    // Additive lights add energy, but the game glow clips softly instead of summing to instant white.
+    const exposure = 0.68 / Math.pow(Math.max(1, codes.length), 0.58);
+    return {
+      r: additiveChannel(r, exposure),
+      g: additiveChannel(g, exposure),
+      b: additiveChannel(b, exposure)
+    };
+  }
+  function buildLightMixTable() {
+    if (lightMixTable) return lightMixTable;
+    const codes = Object.keys(COLORS).map(function(k) { return parseInt(k, 10); });
+    const out = [];
+    function addCombo(combo) {
+      const rgb = additiveRecipeColor(combo);
+      const unique = {};
+      combo.forEach(function(c) { unique[c] = (unique[c] || 0) + 1; });
+      out.push({
+        codes: combo.slice(),
+        rgb,
+        lab: rgbToLab(rgb.r, rgb.g, rgb.b),
+        sat: satOf(rgb.r, rgb.g, rgb.b),
+        lum: lum(rgb.r, rgb.g, rgb.b),
+        whiteCount: unique[0] || 0,
+        uniqueCount: Object.keys(unique).length,
+        repeatCount: combo.length - Object.keys(unique).length
+      });
+    }
+    function rec(start, depth, maxDepth, combo) {
+      if (combo.length) addCombo(combo);
+      if (depth >= maxDepth) return;
+      for (let i = start; i < codes.length; i++) {
+        combo.push(codes[i]);
+        rec(i, depth + 1, maxDepth, combo);
+        combo.pop();
+      }
+    }
+    rec(0, 0, 5, []);
+    lightMixTable = out;
+    return out;
+  }
+  function bestLightRecipe(r, g, b, allowWhite, mixPower) {
+    const s = satOf(r, g, b);
+    const l = lum(r, g, b);
+    const targetLab = rgbToLab(r, g, b);
+    const maxLen = mixPower > 82 ? 5 : (mixPower > 58 ? 4 : (mixPower > 25 ? 3 : 2));
+    let best = null, bestScore = Infinity;
+    buildLightMixTable().forEach(function(c) {
+      if (c.codes.length > maxLen) return;
+      if (!allowWhite && c.whiteCount) return;
+      let score = labDist(targetLab, c.lab);
+      score += Math.abs(c.sat - s) * 26;
+      score += Math.abs(c.lum - l) * 13;
+      if (s > 0.18 && c.whiteCount) score += c.whiteCount * s * 48;
+      if (s > 0.34 && c.sat < s * 0.70) score += 24;
+      if (s < 0.14 && l > 0.30 && !c.whiteCount) score += 8;
+      if (c.uniqueCount > 3 && s > 0.28) score += 6;
+      if (c.repeatCount && s > 0.22) score -= Math.min(5, c.repeatCount * 1.4);
+      score += c.codes.length * (mixPower < 70 ? 1.45 : 0.38);
+      if (score < bestScore) { bestScore = score; best = c; }
+    });
+    return best ? best.codes.slice() : [];
   }
   function hueVec(r, g, b) {
     const m = Math.max(1, r, g, b);
@@ -565,6 +658,8 @@
     const s = satOf(r, g, b);
     const l = lum(r, g, b);
     if (l < 0.035 || (s < 0.10 && !allowWhite)) return [];
+    const recipe = bestLightRecipe(r, g, b, allowWhite, mixPower);
+    if (recipe.length) return recipe;
     // Near-achromatic bright pixel → always white; avoids scoring fallthrough to cyan.
     if (s < 0.14 && l > 0.28 && allowWhite) return [0];
     const target = hueVec(r, g, b);
@@ -794,14 +889,23 @@
         pushLight(raw, w, h, x, y, colors[0], sz, radius * (0.68 + blendEase * 0.14), opac * (0.20 + blendEase * 0.22), 0.14, sz + '-strength', 2);
         if (raw.length >= maxLights) { done = true; return; }
       }
-      if (colors.length > 1) {
-        const j = jitter(Math.round(x * 10) + colors[1] * 97, Math.round(y * 10) + sz.length * 31, spread * (0.55 + blendEase * 0.35));
+      const maxExtra = Math.min(colors.length - 1, blend > 0.68 ? 4 : (blend > 0.28 ? 3 : 2));
+      for (let ci = 1; ci <= maxExtra; ci++) {
+        const code = colors[ci];
+        const j = jitter(
+          Math.round(x * 10) + code * 97 + ci * 53,
+          Math.round(y * 10) + sz.length * 31 + ci * 79,
+          spread * (0.48 + blendEase * 0.42) * (1 + ci * 0.16)
+        );
         const ox = clamp(x + j.x, 0, w - 1);
         const oy = clamp(y + j.y, 0, h - 1);
-        const sz2 = sz === 'XXL' ? 'XL' : sz === 'XL' ? 'L' : sz === 'L' ? 'M' : 'S';
+        let sz2 = sz === 'XXL' ? 'XL' : sz === 'XL' ? 'L' : sz === 'L' ? 'M' : 'S';
+        if (ci > 2 && sz2 === 'XL') sz2 = 'L';
+        if (ci > 2 && sz2 === 'L') sz2 = 'M';
         const r2  = sz2 === 'XL' ? rXL : sz2 === 'L' ? rL : sz2 === 'M' ? rM : rS;
-        pushLight(raw, w, h, ox, oy, colors[1], sz2, r2, opac * (0.42 + blendEase * 0.24), 0.18, sz2, 1);
-        if (raw.length >= maxLights) { done = true; }
+        const extraOpac = opac * (0.38 + blendEase * 0.22) / (1 + ci * 0.16);
+        pushLight(raw, w, h, ox, oy, code, sz2, r2, extraOpac, 0.18, sz2, ci);
+        if (raw.length >= maxLights) { done = true; return; }
       }
     }
 

@@ -850,6 +850,35 @@ Fixed to: `y = anchorY - (logicalH - 1 - localY)` — image-top now maps to room
 
 ---
 
+## [2026-06-27] Codex - Session 16
+
+**Done:**
+- Researched Kenjy's color-mixing direction and moved Light Art color selection closer to additive light behavior.
+- Added a generated lamp-recipe table so the generator can choose repeated and mixed combinations of the 8 Leet light states instead of only one nearest color.
+- Changed recipe matching to use linear sRGB energy plus a Lab-like perceptual score, with penalties so saturated areas do not collapse into white too easily.
+- Updated layered placement so recipes with multiple colors are actually placed as overlapping glow layers, not only the first secondary color.
+- Documented the additive recipe model in `SHARED_CONTEXT.md` for Claude/other agents.
+
+**Changed files:**
+- `pixelart-lightart.js:552` - `lightMixColor(...)` now uses the additive recipe model.
+- `pixelart-lightart.js:555` - added sRGB linear/gamma conversion helpers.
+- `pixelart-lightart.js:585` - added softened additive/tone-mapped recipe color calculation.
+- `pixelart-lightart.js:602` - added full generated light recipe table with repeated colors.
+- `pixelart-lightart.js:631` - added perceptual recipe scoring.
+- `pixelart-lightart.js:657` - `chooseLightMix(...)` now uses recipe matching first.
+- `pixelart-lightart.js:885` - multi-color recipes now place multiple overlapping secondary layers.
+- `SHARED_CONTEXT.md` - added additive color-recipe notes and intended behavior.
+
+**Verification:**
+- Ran `node --check pixelart-lightart.js` successfully.
+
+**Open / next:**
+- Kenjy should compare the same image at Blender `0`, `25`, `60`, `100`.
+- If high Blender still whites out too much, lower recipe exposure or raise the white penalty in `bestLightRecipe(...)`.
+- If high Blender still looks too dotted, tune S suppression/flat blob density separately from the color recipe engine.
+
+---
+
 ## HOW TO UPDATE THIS FILE
 
 At **start of session**: read latest entry, understand state.
