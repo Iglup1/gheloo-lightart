@@ -908,6 +908,29 @@ Fixed to: `y = anchorY - (logicalH - 1 - localY)` — image-top now maps to room
 
 ---
 
+## [2026-06-27] Codex - Session 18
+
+**Done:**
+- Kenjy reported the additive color recipes made the colors much worse, especially red/orange/cyan pollution.
+- Changed Light Art color choice back to "nearest available lamp color" instead of multi-color recipes.
+- Added `nearestSingleLight(...)`, using Lab-like visual distance plus saturation/luminance penalties.
+- `chooseLightMix(...)` now returns a single nearest light color immediately; blend no longer invents extra color combinations.
+- Updated `SHARED_CONTEXT.md` so Claude/other agents do not re-enable recipe mixing by accident.
+
+**Changed files:**
+- `pixelart-lightart.js:657` - added `nearestSingleLight(...)`.
+- `pixelart-lightart.js:678` - `chooseLightMix(...)` now immediately returns one nearest color.
+- `SHARED_CONTEXT.md` - documented the nearest-color rule.
+
+**Verification:**
+- Ran `node --check pixelart-lightart.js` successfully.
+
+**Open / next:**
+- Retest the same couple image. Colors should be much closer and less polluted.
+- If one specific source color maps badly, tune `nearestSingleLight(...)` scoring rather than re-enabling color recipes.
+
+---
+
 ## HOW TO UPDATE THIS FILE
 
 At **start of session**: read latest entry, understand state.

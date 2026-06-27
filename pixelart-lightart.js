@@ -654,46 +654,32 @@
     const m = Math.max(1, r, g, b);
     return { r: r / m, g: g / m, b: b / m };
   }
-  function chooseLightMix(r, g, b, allowWhite, mixPower) {
+  function nearestSingleLight(r, g, b, allowWhite) {
+    const targetLab = rgbToLab(r, g, b);
+    const targetSat = satOf(r, g, b);
+    const targetLum = lum(r, g, b);
+    let best = allowWhite ? 0 : 1;
+    let bestScore = Infinity;
+    Object.entries(COLORS).forEach(function(kv) {
+      const code = parseInt(kv[0], 10);
+      if (code === 0 && !allowWhite) return;
+      const c = kv[1];
+      const cSat = satOf(c.r, c.g, c.b);
+      const cLum = lum(c.r, c.g, c.b);
+      let score = labDist(targetLab, rgbToLab(c.r, c.g, c.b));
+      score += Math.abs(cSat - targetSat) * 14;
+      score += Math.abs(cLum - targetLum) * 7;
+      if (code === 0 && targetSat > 0.16) score += targetSat * 90;
+      if (code === 1 && !(r > g * 1.35 && r > b * 1.35)) score += 18;
+      if (score < bestScore) { bestScore = score; best = code; }
+    });
+    return best;
+  }
+  function chooseLightMix(r, g, b, allowWhite) {
     const s = satOf(r, g, b);
     const l = lum(r, g, b);
     if (l < 0.035 || (s < 0.10 && !allowWhite)) return [];
-    const recipe = bestLightRecipe(r, g, b, allowWhite, mixPower);
-    if (recipe.length) return recipe;
-    // Near-achromatic bright pixel → always white; avoids scoring fallthrough to cyan.
-    if (s < 0.14 && l > 0.28 && allowWhite) return [0];
-    const target = hueVec(r, g, b);
-    const redPure = r > g * 1.55 && r > b * 1.55 && g < r * 0.33 && b < r * 0.36;
-    const orangeWarm = r > g * 1.08 && g > b * 1.35 && g > r * 0.32;
-    const magentaWarm = r > 95 && b > 80 && b > g * 1.12;
-    const one = [[1],[2],[3],[4],[5],[6],[7]];
-    const two = [
-      [2,3],[2,4],[3,4],[4,5],[5,6],[6,7],[5,7],
-      [1,2],[1,7],[1,3]
-    ];
-    const three = mixPower > 62 ? [[2,3,4],[5,6,7],[2,6,7],[3,5,6]] : [];
-    const white = allowWhite ? [[0],[0,2],[0,3],[0,4],[0,5],[0,6],[0,7]] : [];
-    const candidates = one.concat(mixPower > 28 ? two : [], three, white);
-    let best = [], bestScore = Infinity;
-    candidates.forEach(function(codes) {
-      const m = lightMixColor(codes);
-      const ms = satOf(m.r, m.g, m.b);
-      const ml = lum(m.r, m.g, m.b);
-      const mv = hueVec(m.r, m.g, m.b);
-      let score = (Math.pow(target.r - mv.r, 2) + Math.pow(target.g - mv.g, 2) + Math.pow(target.b - mv.b, 2)) * 160000;
-      score += Math.abs(ml - l) * 17000;
-      if (s > 0.28 && codes.indexOf(0) !== -1) score += 90000 * s;
-      if (s > 0.22 && ms < s * 0.55) score += 60000;
-      if (!allowWhite && codes.indexOf(0) !== -1) score += 200000;
-      if (codes.indexOf(1) !== -1 && !redPure) score += 85000;
-      if (codes.length === 1 && codes[0] === 1 && !redPure) score += 160000;
-      if (orangeWarm && codes.indexOf(2) === -1 && codes.indexOf(3) === -1) score += 42000;
-      if (magentaWarm && codes.indexOf(6) === -1 && codes.indexOf(7) === -1) score += 52000;
-      if (codes.length > 2 && mixPower < 72) score += 28000;
-      if (score < bestScore) { bestScore = score; best = codes; }
-    });
-    if (best.length && best[0] === 0 && s > 0.24) return nearestHueMix(r, g, b, false).slice(0, mixPower > 25 ? 2 : 1);
-    return best;
+    return [nearestSingleLight(r, g, b, allowWhite)];
   }
   function nearestNeonPrisma(r, g, b) {
     let best = 1, bestD = Infinity;

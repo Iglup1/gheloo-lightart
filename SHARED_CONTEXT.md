@@ -395,6 +395,16 @@ This is the compressed handoff from the long Codex/Kenjy conversation so Claude 
   - If high Blender is too noisy, reduce sparkle opacity or raise the `noise01(...) > keep` filter.
   - Do not remove big blob passes; the desired style needs both broad glows and tiny light texture.
 
+### 2026-06-27 color correction after bad recipe test
+
+- Kenjy tested the additive recipe version and reported the colors were much worse: too much red/orange/cyan and not close to the source.
+- Current rule from Kenjy: "gewoon dichtstbijzijndste kleur pakken".
+- Implementation:
+  - `nearestSingleLight(...)` around `pixelart-lightart.js:657` picks the closest of the 8 available light states in a Lab-like visual distance.
+  - `chooseLightMix(...)` around `pixelart-lightart.js:678` now immediately returns one nearest light color.
+  - The older multi-light recipe chooser is no longer active inside `chooseLightMix(...)`.
+- Blend should now affect density, light size, and glow overlap, not invent extra color recipes.
+
 ### Latest chunk-outline bug report from Kenjy
 
 - Kenjy sent an `{in:Objects}` packet with 330 objects after testing Claude's latest build. Parsed facts:
