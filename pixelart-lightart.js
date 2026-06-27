@@ -688,19 +688,33 @@
     const max = (l > 0.55 && s < 0.24) ? 2 : (mixPower > 68 && s > 0.18 ? 2 : 1);
     return colors.slice(0, max);
   }
-  function addLightArtRaster(raw, w, h, work, intensity, overlap, stackPower, mixPower, randomizer) {
-    const maxLights = clamp(+settings.maxLights || 65000, 1, 120000);
-    const rand = clamp(+randomizer || 50, 0, 100);
-    const randT = rand / 100;
+  // Luminance standard-deviation over a neighbourhood — 0=flat, ~0.15=edge.
+  function localVariance(buf, w, h, cx, cy, r) {
+    let s = 0, s2 = 0, n = 0;
+    const ri = Math.round(r);
+    for (let dy = -ri; dy <= ri; dy += 2) {
+      for (let dx = -ri; dx <= ri; dx += 2) {
+        const i = (clamp(cy + dy, 0, h - 1) * w + clamp(cx + dx, 0, w - 1)) * 4;
+        if (buf[i + 3] < 2) continue;
+        const v = lum(buf[i], buf[i + 1], buf[i + 2]);
+        s += v; s2 += v * v; n++;
+      }
+    }
+    if (n < 2) return 0;
+    const m = s / n;
+    return Math.sqrt(Math.max(0, s2 / n - m * m));
+  }
 
-    // Radii: match actual in-game glow per size.
+  function addLightArtRaster(raw, w, h, work, intensity, overlap, stackPower, mixPower, blender) {
+    const maxLights = clamp(+settings.maxLights || 65000, 1, 120000);
+    const blend = clamp(+blender || 50, 0, 100) / 100; // 0–1
+
     const rS   = 5.0 + overlap * 2.0;
     const rM   = 14  + overlap * 6.0;
     const rL   = 25  + overlap * 10;
     const rXL  = 40  + overlap * 18;
-    const rXXL = 65  + overlap * 30;
 
-    // Pre-sharpen: 5×5 unsharp mask — used by S detail pass in pixel art mode.
+    // Pre-sharpen (5×5 unsharp mask) — used for S detail at blend=0.
     const sharp = new Uint8ClampedArray(work.length);
     const sharpAmt = 1.2;
     for (let y = 0; y < h; y++) {
@@ -723,175 +737,84 @@
       }
     }
 
-    // ── BUBBLE ART MODE (rand ≥ 40) ──────────────────────────────────────────
-    // Halftone-style: fixed grid with tiny organic jitter, large overlapping circles.
-    // Image stays recognizable — jitter is minimal, size varies with luminance.
-    // Secondary color always placed for additive blending → richer perceived colors.
-    if (rand >= 40) {
-      const bubbleness = Math.min(1, (rand - 40) / 60); // 0 at rand=40, 1 at rand=100
-      // Step 5→4: coarse enough that M/L circles clearly overlap neighbors.
-      const step = Math.max(4, Math.round(5 - bubbleness));
-      // Tiny jitter (12% of step): just organic feel, image stays recognizable.
-      const jitterAmt = step * 0.12;
-      const half = step * 0.5;
+    // ── CONTENT-AWARE BLENDER ─────────────────────────────────────────────────
+    // Per cell: measure local colour variance → drives light SIZE choice.
+    //   flat area  (variance < 0.05) → XL/L  blob for that colour
+    //   gradient   (0.05–0.13)       → L/M   + secondary colour overlapping → additive mix
+    //   edge/detail (> 0.13)         → M/S   crisp lights
+    //
+    // blend=0  → pixel art (S+secondary S per pixel, sharpened)
+    // blend=0.5→ M for gradients, L for flat zones
+    // blend=1  → XL for flat, L for gradients, M for edges
 
-      for (let gy = 0; gy < h; gy += step) {
-        for (let gx = 0; gx < w; gx += step) {
-          if (raw.length >= maxLights) return;
-          // Start from cell center + tiny jitter
-          const x = clamp(gx + half + (Math.random() - 0.5) * jitterAmt * 2, 0, w - 1);
-          const y = clamp(gy + half + (Math.random() - 0.5) * jitterAmt * 2, 0, h - 1);
-          const px = Math.round(x), py = Math.round(y);
+    // Grid step: 1px at blend=0 (every pixel), 4px at blend=1 (big-blob grid)
+    const step   = Math.max(1, Math.round(1 + blend * 3));
+    const varR   = Math.max(3, Math.round(3 + blend * 8)); // variance sample radius
+    const jitter = step > 1 ? step * 0.12 : 0;            // tiny organic jitter
+
+    for (let gy = 0; gy < h; gy += step) {
+      for (let gx = 0; gx < w; gx += step) {
+        if (raw.length >= maxLights) return;
+
+        // Cell centre + minimal jitter
+        const x  = clamp(gx + step * 0.5 + (Math.random() - 0.5) * jitter * 2, 0, w - 1);
+        const y  = clamp(gy + step * 0.5 + (Math.random() - 0.5) * jitter * 2, 0, h - 1);
+        const px = Math.round(x), py = Math.round(y);
+
+        // Colour sample: sharpened at blend=0, area-averaged otherwise
+        let cr, cg, cb;
+        if (step === 1) {
+          const buf = blend < 0.05 ? sharp : work;
+          const i = (py * w + px) * 4;
+          if (buf[i + 3] < 2) continue;
+          cr = buf[i]; cg = buf[i + 1]; cb = buf[i + 2];
+        } else {
           const rgb = sampleCell(work, w, h, px, py, step);
           if (rgb.a < 2) continue;
-          const l = lum(rgb.r, rgb.g, rgb.b);
-          if (l < 0.03) continue;
-          const s = satOf(rgb.r, rgb.g, rgb.b);
-          const allowW = l > 0.65 && s < 0.18;
-          const colors = chooseLightMix(rgb.r, rgb.g, rgb.b, allowW, mixPower);
-          if (!colors.length) continue;
-
-          // Halftone principle: brighter area → bigger bubble.
-          // At high bubbleness: never S, prefer L/XL for bright zones.
-          let size, radius, opac;
-          const rr = Math.random();
-          if (l > 0.65 && bubbleness > 0.4) {
-            // Bright area — large bubble
-            size = rr < 0.45 ? 'L' : rr < 0.80 ? 'XL' : 'M';
-          } else if (l > 0.35 || bubbleness > 0.6) {
-            // Mid area or high rand — medium bubble
-            size = rr < 0.60 ? 'M' : rr < 0.88 ? 'L' : (bubbleness > 0.6 ? 'M' : 'S');
-          } else {
-            // Dark/subtle area — small bubble (S only at low rand)
-            size = rr < 0.65 ? 'M' : (bubbleness > 0.5 ? 'M' : 'S');
-          }
-
-          radius = size === 'XL' ? rXL : size === 'L' ? rL : size === 'M' ? rM : rS;
-          opac   = size === 'XL' ? intensity * 0.022 * (0.4 + l * 0.6)
-                 : size === 'L'  ? intensity * 0.038 * (0.35 + l * 0.65)
-                 : size === 'M'  ? intensity * 0.11  * (0.3  + l * 0.7)
-                 :                 intensity * 0.16  * l;
-
-          pushLight(raw, w, h, x, y, colors[0], size, radius, opac, 0.18, 'bubble', 0);
-          if (raw.length >= maxLights) return;
-
-          // Secondary color ALWAYS placed — overlapping different-colored circles
-          // additively blend → perceived new colors (orange+red=warm, cyan+green=lime…).
-          // Placed within same cell so overlap is guaranteed.
-          if (colors.length > 1) {
-            const ox = clamp(x + (Math.random() - 0.5) * step, 0, w - 1);
-            const oy = clamp(y + (Math.random() - 0.5) * step, 0, h - 1);
-            const sz2 = size === 'XL' ? 'L' : size === 'L' ? 'M' : 'S';
-            const r2  = sz2 === 'L' ? rL : sz2 === 'M' ? rM : rS;
-            const o2  = (sz2 === 'L' ? intensity * 0.028 : sz2 === 'M' ? intensity * 0.075 : intensity * 0.11) * (0.3 + l * 0.7) * 0.65;
-            pushLight(raw, w, h, ox, oy, colors[1], sz2, r2, o2, 0.18, 'blend', 1);
-            if (raw.length >= maxLights) return;
-          }
+          cr = rgb.r; cg = rgb.g; cb = rgb.b;
         }
-      }
-      return;
-    }
 
-    // ── PIXEL ART MODE (rand 0–39) ────────────────────────────────────────────
-    // S every pixel + optional M/L layers. Secondary S-light placed at tiny offset
-    // for additive color mixing → more perceived colors from only 8 base colors.
-
-    // Pass 1: S — every pixel.
-    for (let y = 0; y < h; y++) {
-      for (let x = 0; x < w; x++) {
-        const i = (y * w + x) * 4;
-        if (work[i + 3] < 2) continue;
-        const r = sharp[i], g = sharp[i + 1], b = sharp[i + 2];
-        const l = lum(r, g, b);
-        const s = satOf(r, g, b);
+        const l = lum(cr, cg, cb);
+        const s = satOf(cr, cg, cb);
         if (l < 0.06 && s < 0.20) continue;
-        const allowWhite = l > 0.62 && s < 0.22;
-        const colors = chooseLightMix(r, g, b, allowWhite, mixPower);
+
+        // Local variance → flatness descriptor (1 = perfectly flat, 0 = sharp edge)
+        const variance = step > 1 ? localVariance(work, w, h, px, py, varR) : 0;
+        const flatness = 1 - clamp((variance - 0.05) / 0.08, 0, 1);
+
+        // blobPower: 0 = edgy / no-blend → stays S; 1 = flat + full blend → XL
+        const blobPower = flatness * blend;
+
+        let size, radius, opac;
+        if (blobPower > 0.72) {
+          size = 'XL'; radius = rXL; opac = intensity * 0.022 * (0.4 + l * 0.6);
+        } else if (blobPower > 0.38 || (blend > 0.55 && flatness > 0.40)) {
+          size = 'L';  radius = rL;  opac = intensity * 0.038 * (0.35 + l * 0.65);
+        } else if (blend > 0.18 && flatness > 0.20) {
+          size = 'M';  radius = rM;  opac = intensity * 0.11  * (0.3  + l * 0.7);
+        } else {
+          size = 'S';  radius = rS;  opac = intensity * 0.16  * l * l;
+        }
+
+        const allowW = l > 0.62 && s < 0.22;
+        const colors = chooseLightMix(cr, cg, cb, allowW, mixPower);
         if (!colors.length) continue;
-        pushLight(raw, w, h, x, y, colors[0], 'S', rS, intensity * 0.16 * l * l, 0.14, 'detail', 0);
+
+        pushLight(raw, w, h, x, y, colors[0], size, radius, opac, 0.18, 'primary', 0);
         if (raw.length >= maxLights) return;
-        // Secondary S at tiny offset: additive blend creates richer perceived color.
+
+        // Secondary colour: ALWAYS placed when available.
+        // Offset ≤ step → circles overlap → additive blend → new perceived colour.
         if (colors.length > 1) {
-          const jx = (Math.random() - 0.5) * 0.6;
-          const jy = (Math.random() - 0.5) * 0.6;
-          pushLight(raw, w, h, x + jx, y + jy, colors[1], 'S', rS, intensity * 0.10 * l * l, 0.14, 'detail2', 1);
-          if (raw.length >= maxLights) return;
-        }
-      }
-    }
-
-    // Pass 2: M — glow depth, above rand 15.
-    if (rand > 15) {
-      const mStep = Math.max(4, Math.round(9 - randT * 6));
-      for (let y = 0; y < h; y += mStep) {
-        for (let x = 0; x < w; x += mStep) {
-          const rgb = sampleCell(work, w, h, x, y, 3);
-          if (rgb.a < 2) continue;
-          const l = lum(rgb.r, rgb.g, rgb.b);
-          if (l < 0.18) continue;
-          const s = satOf(rgb.r, rgb.g, rgb.b);
-          if (s < 0.08) continue;
-          const colors = chooseLightMix(rgb.r, rgb.g, rgb.b, l > 0.65 && s < 0.22, mixPower);
-          if (!colors.length) continue;
-          const numM = Math.min(colors.length, 2);
-          for (let ci = 0; ci < numM; ci++) {
-            pushLight(raw, w, h, x, y, colors[ci], 'M', rM, intensity * 0.088 * (0.3 + l * 0.7) / numM, 0.20, 'mid', ci);
-            if (raw.length >= maxLights) return;
-          }
-        }
-      }
-    }
-
-    // Pass 3: L — zone atmosphere, above rand 28.
-    if (rand > 28) {
-      const lStep = Math.max(6, Math.round(16 - randT * 10));
-      for (let y = 0; y < h; y += lStep) {
-        for (let x = 0; x < w; x += lStep) {
-          const rgb = sampleCell(work, w, h, x, y, 5);
-          if (rgb.a < 2) continue;
-          const l = lum(rgb.r, rgb.g, rgb.b);
-          if (l < 0.25) continue;
-          const s = satOf(rgb.r, rgb.g, rgb.b);
-          if (s < 0.12) continue;
-          const colors = chooseLightMix(rgb.r, rgb.g, rgb.b, false, mixPower);
-          if (!colors.length) continue;
-          pushLight(raw, w, h, x, y, colors[0], 'L', rL, intensity * 0.030 * (0.3 + l * 0.7), 0.22, 'zone', 0);
-          if (raw.length >= maxLights) return;
-        }
-      }
-    }
-
-    // Pass 4: XL — large accents, stackPower > 35.
-    if (stackPower > 35) {
-      for (let y = 0; y < h; y += 20) {
-        for (let x = 0; x < w; x += 20) {
-          const rgb = sampleCell(work, w, h, x, y, 9);
-          if (rgb.a < 2) continue;
-          const l = lum(rgb.r, rgb.g, rgb.b);
-          if (l < 0.40) continue;
-          const s = satOf(rgb.r, rgb.g, rgb.b);
-          if (s < 0.15) continue;
-          const colors = chooseLightMix(rgb.r, rgb.g, rgb.b, false, mixPower);
-          if (!colors.length) continue;
-          pushLight(raw, w, h, x, y, colors[0], 'XL', rXL, intensity * 0.018 * (0.4 + l * 0.6), 0.24, 'atmo', 0);
-          if (raw.length >= maxLights) return;
-        }
-      }
-    }
-
-    // Pass 5: XXL — peak glow, stackPower > 55.
-    if (stackPower > 55) {
-      for (let y = 0; y < h; y += 35) {
-        for (let x = 0; x < w; x += 35) {
-          const rgb = sampleCell(work, w, h, x, y, 13);
-          if (rgb.a < 2) continue;
-          const l = lum(rgb.r, rgb.g, rgb.b);
-          if (l < 0.50) continue;
-          const s = satOf(rgb.r, rgb.g, rgb.b);
-          if (s < 0.18) continue;
-          const colors = chooseLightMix(rgb.r, rgb.g, rgb.b, false, mixPower);
-          if (!colors.length) continue;
-          pushLight(raw, w, h, x, y, colors[0], 'XXL', rXXL, intensity * 0.010 * (0.4 + l * 0.6), 0.26, 'deep', 0);
+          const spread = step > 1 ? step * (0.4 + blend * 0.6) : 0.6;
+          const ox = clamp(x + (Math.random() - 0.5) * spread * 2, 0, w - 1);
+          const oy = clamp(y + (Math.random() - 0.5) * spread * 2, 0, h - 1);
+          const sz2 = size === 'XL' ? 'L' : size === 'L' ? 'M' : 'S';
+          const r2  = sz2 === 'L' ? rL : sz2 === 'M' ? rM : rS;
+          const o2  = (sz2 === 'L'  ? intensity * 0.028
+                     : sz2 === 'M'  ? intensity * 0.075
+                     :                intensity * 0.10 * l) * (0.3 + l * 0.7) * 0.65;
+          pushLight(raw, w, h, ox, oy, colors[1], sz2, r2, o2, 0.18, 'secondary', 1);
           if (raw.length >= maxLights) return;
         }
       }
@@ -2242,7 +2165,7 @@
           '<div id="__la_mode_panel_light_art" class="mode-panel">' +
             '<div class="sec">Light Art</div>' +
             '<div class="row"><label>Stijl</label><select id="__la_variant"><option value="stacked">Veel overlap / glow</option><option value="soft">Zachter leesbaar</option><option value="whitefill">Meer witte highlights</option></select></div>' +
-            '<div class="row"><label>Bubbel randomizer</label><input id="__la_randomizer" type="range" min="0" max="100" step="1" value="' + esc(settings.randomizer != null ? settings.randomizer : 50) + '"><span id="__la_randomizer_label">' + esc(settings.randomizer != null ? settings.randomizer : 50) + '</span></div>' +
+            '<div class="row"><label>Blender</label><input id="__la_randomizer" type="range" min="0" max="100" step="1" value="' + esc(settings.randomizer != null ? settings.randomizer : 50) + '"><span id="__la_randomizer_label">' + esc(settings.randomizer != null ? settings.randomizer : 50) + '</span></div>' +
           '</div>' +
           '<div id="__la_mode_panel_cylinder" class="mode-panel" style="display:none">' +
             '<div class="sec">Halve cilinder</div>' +
