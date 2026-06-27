@@ -1084,7 +1084,7 @@
       });
     }
     const ctx = canvas.getContext('2d');
-    ctx.fillStyle = '#050505';
+    ctx.fillStyle = '#0d0800'; // Very dark amber — simulates unlit floor tile base color
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     drawPreviewViewport(ctx, canvas, w, h, function() {
       ctx.save();
@@ -1092,29 +1092,34 @@
       var useSprites = (lightSpriteStatus === 'done');
       plan.forEach(function(p) {
         var x = p.cx, y = p.cy;
-        // dotR/ds: in image-pixel space. Scale applied by canvas transform.
-        // S spacing=1px, so ds=3.75 → adjacent sprites OVERLAP (glow bleeds into neighbors).
-        // This is correct: face area = many S lights → warm accumulated glow, dark areas = few/none → black.
-        // Per-dot alpha must be LOW so 4-9 overlapping neighbors accumulate to ~30-60%, not solid white.
         var ds = LIGHT_GLOW_DRAW_SIZE[p.size] || 3.75;
-        var dotR = ds * 0.5; // gradient uses radius
-        var alpha = p.size === 'S'
-          ? clamp((p.opacity || 0.14) * 1.5, 0.003, 0.10)
-          : p.size === 'M' ? 0.22 : p.size === 'L' ? 0.18 : p.size === 'XL' ? 0.14 : 0.10;
+        var dotR = ds * 0.5;
+        // Sprite alpha: calibrated for real Habbo sprite opacity (with correct falloff in PNG).
+        // Gradient alpha: S much lower (gradient has no real falloff shape → too much ambient).
+        // M/L/XL/XXL: same for both (prominent distinct spots).
+        var sprAlpha, grdAlpha;
+        if (p.size === 'S') {
+          sprAlpha = clamp((p.opacity || 0.14) * 1.5, 0.003, 0.10);
+          grdAlpha = clamp((p.opacity || 0.14) * 0.35, 0.001, 0.022);
+        } else if (p.size === 'M') { sprAlpha = grdAlpha = 0.44;
+        } else if (p.size === 'L') { sprAlpha = grdAlpha = 0.38;
+        } else if (p.size === 'XL') { sprAlpha = grdAlpha = 0.30;
+        } else { sprAlpha = grdAlpha = 0.22; }
         if (useSprites && lightSpriteSheets[p.size]) {
           var meta = LIGHT_GLOW_FRAMES[p.size];
           var frame = meta.frames[p.colorCode] || meta.frames[0];
-          ctx.globalAlpha = alpha;
+          ctx.globalAlpha = sprAlpha;
           ctx.drawImage(lightSpriteSheets[p.size],
             frame.x, frame.y, meta.srcW, meta.srcH,
             x - ds * 0.5, y - ds * 0.5, ds, ds);
           ctx.globalAlpha = 1;
         } else {
-          // Fallback: synthetic gradient (sharp falloff matching Kenjy's "plots snel afloopt").
+          // Gradient fallback — sharp falloff, M/L/XL/XXL prominent.
           var c = COLORS[p.colorCode] || COLORS[0];
           var render = LIGHT_RENDER[p.colorCode] || LIGHT_RENDER[0];
           var inner = render.inner;
           var outer = render.outer;
+          var alpha = grdAlpha;
           var grad = ctx.createRadialGradient(x, y, 0, x, y, dotR);
           grad.addColorStop(0,    'rgba(' + inner[0] + ',' + inner[1] + ',' + inner[2] + ',' + alpha + ')');
           grad.addColorStop(0.40, 'rgba(' + c.r + ',' + c.g + ',' + c.b + ',' + (alpha * 0.85) + ')');
@@ -1130,6 +1135,12 @@
       ctx.restore();
       drawChunkOverlayLogical(ctx, w, h);
     });
+    // Sprite loading status (small debug text bottom-left of canvas).
+    ctx.save();
+    ctx.font = '9px monospace';
+    ctx.fillStyle = 'rgba(255,255,255,0.45)';
+    ctx.fillText('spr:' + lightSpriteStatus, 3, canvas.height - 3);
+    ctx.restore();
   }
   function drawChunkOverlay(ctx, canvas, w, h, scale) {
     if (!settings.chunkMode) return;
