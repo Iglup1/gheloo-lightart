@@ -377,6 +377,24 @@ This is the compressed handoff from the long Codex/Kenjy conversation so Claude 
   - Repeated colors in a recipe make a color stronger; mixed colors make transitions/secondary hues.
   - White state `0` should only appear for actually bright/near-neutral areas, not as a default result of every overlap.
 
+### 2026-06-27 high Blender quality correction
+
+- Kenjy reported the first additive recipe version made Blender much worse because it became too sparse/controlled.
+- Desired high Blender output is not "few smooth blobs"; it should look like dense glow art:
+  - Many tiny S/M light points still visible as texture.
+  - Large M/L/XL/XXL glow layers underneath/around the points.
+  - More overlap and more furniture is acceptable if it looks cooler.
+  - A previous simulated target used about 19k furniture over 50 chunks and looked much closer to the desired style.
+- Implemented direction:
+  - `sFlatCut` now suppresses S less aggressively at high Blender.
+  - M/L/XL/XXL blob steps are denser at high Blender.
+  - `runSparklePass(...)` around `pixelart-lightart.js:977` adds deterministic dense S/M sparkle texture above smooth fields when Blender is above 24.
+  - Max-lamp slider is raised to 120000 so high-quality/high-cost previews are possible.
+- Future tuning:
+  - If high Blender is still too sparse, increase `keepBase` in `runSparklePass(...)`.
+  - If high Blender is too noisy, reduce sparkle opacity or raise the `noise01(...) > keep` filter.
+  - Do not remove big blob passes; the desired style needs both broad glows and tiny light texture.
+
 ### Latest chunk-outline bug report from Kenjy
 
 - Kenjy sent an `{in:Objects}` packet with 330 objects after testing Claude's latest build. Parsed facts:

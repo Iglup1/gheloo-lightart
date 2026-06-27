@@ -879,6 +879,35 @@ Fixed to: `y = anchorY - (logicalH - 1 - localY)` — image-top now maps to room
 
 ---
 
+## [2026-06-27] Codex - Session 17
+
+**Done:**
+- Responded to Kenjy's report that the additive recipe build made Blender worse and too sparse.
+- Re-aimed high Blender toward dense glow-art: broad color blobs plus many tiny S/M light points.
+- Reduced high-blend S suppression so flat areas are not wiped clean of light texture.
+- Made M/L/XL/XXL blob passes denser as Blender rises.
+- Added `runSparklePass(...)`, a deterministic high-blend texture layer that places many small glow points from the real image pixels.
+- Raised the UI max-lamp slider to `120000` so expensive/high-quality previews can be generated.
+- Updated `SHARED_CONTEXT.md` so other agents know high Blender may intentionally use many more lights.
+
+**Changed files:**
+- `pixelart-lightart.js:875` - high Blender now suppresses S less aggressively.
+- `pixelart-lightart.js:878` - blob pass steps are denser at higher Blender.
+- `pixelart-lightart.js:977` - added high-blend `runSparklePass(...)`.
+- `pixelart-lightart.js:1014` - sparkle pass runs after blob passes.
+- `pixelart-lightart.js:2414` - max-lamp slider max raised from `65000` to `120000`.
+- `SHARED_CONTEXT.md` - documented dense glow-art target.
+
+**Verification:**
+- Ran `node --check pixelart-lightart.js` successfully.
+
+**Open / next:**
+- Kenjy should retest high Blender with a high max-lamp value, e.g. `50000+`.
+- If it is still too sparse, increase `keepBase` or sparkle opacity in `runSparklePass(...)`.
+- If it is too noisy, reduce sparkle opacity while keeping blob passes dense.
+
+---
+
 ## HOW TO UPDATE THIS FILE
 
 At **start of session**: read latest entry, understand state.

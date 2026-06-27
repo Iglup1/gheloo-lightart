@@ -870,15 +870,15 @@
       return flatMap[clamp(py, 0, h-1) * w + clamp(px, 0, w-1)];
     }
 
-    // S pass: suppressed in flat areas when blend is medium/high.
-    // Threshold rises with blend so at blend=1 only the sharpest edges get S.
-    const sFlatCut = blend > 0.08 ? 0.72 - blendEase * 0.37 : 2; // 2 = never skip
+    // S pass: only partly suppressed. High Blender still needs tiny light texture,
+    // otherwise it becomes a few blurry blobs instead of the dense glow-art Kenjy wants.
+    const sFlatCut = blend > 0.08 ? 0.86 - blendEase * 0.18 : 2; // 2 = never skip
 
     // Blob passes: step shrinks as blend rises (denser blobs at higher blend).
-    const mStep   = blend < 0.05 ? 0 : Math.max(2, Math.round(9 - blendEase * 6));
-    const lStep   = blend < 0.18 ? 0 : Math.max(3, Math.round(15 - blendEase * 10));
-    const xlStep  = blend < 0.42 ? 0 : Math.max(5, Math.round(24 - blendEase * 16));
-    const xxlStep = blend < 0.72 ? 0 : Math.max(9, Math.round(34 - blendEase * 20));
+    const mStep   = blend < 0.05 ? 0 : Math.max(2, Math.round(8 - blendEase * 5));
+    const lStep   = blend < 0.16 ? 0 : Math.max(2, Math.round(12 - blendEase * 8));
+    const xlStep  = blend < 0.38 ? 0 : Math.max(3, Math.round(18 - blendEase * 12));
+    const xxlStep = blend < 0.68 ? 0 : Math.max(5, Math.round(28 - blendEase * 18));
 
     let done = false;
 
@@ -974,6 +974,34 @@
       }
     }
 
+    function runSparklePass() {
+      if (done || blend < 0.24) return;
+      const step = blend < 0.52 ? 2 : 1;
+      const keepBase = 0.18 + blendEase * 0.34;
+      for (let gy = 0; gy < h && !done; gy += step) {
+        for (let gx = 0; gx < w && !done; gx += step) {
+          if (raw.length >= maxLights) { done = true; return; }
+          const ii = (gy * w + gx) * 4;
+          if (work[ii + 3] < 2) continue;
+          const cr = work[ii], cg = work[ii + 1], cb = work[ii + 2];
+          const l = lum(cr, cg, cb);
+          const s = satOf(cr, cg, cb);
+          if (l < 0.045 && s < 0.18) continue;
+          const flat = getFlat(gx, gy);
+          const edge = detailAt(work, w, h, gx, gy) / 255;
+          const keep = clamp(keepBase + l * 0.42 + s * 0.18 + edge * 0.28 - flat * 0.10, 0.05, 0.98);
+          if (noise01(gx, gy, 911) > keep) continue;
+          const colors = chooseLightMix(cr, cg, cb, false, Math.max(55, mixPower));
+          if (!colors.length) continue;
+          const j = jitter(gx + colors[0] * 19, gy + colors.length * 37, 0.45 + blendEase * 0.65);
+          const sz = blend > 0.70 && flat > 0.55 && noise01(gx, gy, 977) > 0.62 ? 'M' : 'S';
+          const rr = sz === 'M' ? rM : rS;
+          const opac = intensity * (0.030 + blendEase * 0.035) * (0.35 + l * 0.75) * (0.70 + s * 0.40);
+          placeWithSecondary(clamp(gx + j.x, 0, w - 1), clamp(gy + j.y, 0, h - 1), colors, sz, rr, opac, 0.85 + blendEase * 0.55);
+        }
+      }
+    }
+
     // M: from blend=0.10, upgrades to L/XL in flat areas
     runBlobPass(mStep,   'M',   rM,   function(l) { return intensity * (0.045 + blendEase * 0.065) * (0.28 + l * 0.72); });
     // L: from blend=0.30, upgrades to XL in very flat areas
@@ -982,6 +1010,8 @@
     runBlobPass(xlStep,  'XL',  rXL,  function(l) { return intensity * (0.006 + blendEase * 0.014) * (0.45 + l * 0.55); });
     // XXL: from blend=0.80
     runBlobPass(xxlStep, 'XXL', rXXL, function(l) { return intensity * (0.003 + blendEase * 0.006) * (0.50 + l * 0.50); });
+    // High Blender: restore dense dotted glow texture over the smooth fields.
+    runSparklePass();
   }
   function collectSettings(root) {
     const ids = {
@@ -2381,7 +2411,7 @@
             '<div class="row"><span style="color:rgba(255,255,255,0.45);font-size:11px">Instellingen komen binnenkort.</span></div>' +
           '</div>' +
           '<div class="row"><label>Preview pixels</label><input id="__la_renderw" type="number" value="' + esc(settings.renderWidth) + '"><label>Art grootte</label><input id="__la_roomw" type="number" title="breedte in hoteltegels" value="' + esc(settings.roomW) + '"><input id="__la_roomh" type="number" title="hoogte in hoteltegels" value="' + esc(settings.roomH) + '"></div>' +
-          '<div class="row"><label>Max lampen</label><input id="__la_max" type="range" min="500" max="65000" step="500" value="' + esc(settings.maxLights) + '"><span id="__la_max_label">' + esc(settings.maxLights) + '</span></div>' +
+          '<div class="row"><label>Max lampen</label><input id="__la_max" type="range" min="500" max="120000" step="500" value="' + esc(settings.maxLights) + '"><span id="__la_max_label">' + esc(settings.maxLights) + '</span></div>' +
           '<div class="row"><label>Transparantie</label><input id="__la_alpha" type="range" min="1" max="255" value="' + esc(settings.alpha) + '" title="hogere waarde negeert meer half-transparante pixels"><label><input id="__la_crop" type="checkbox"' + (settings.crop ? ' checked' : '') + '> rand wegknippen</label></div>' +
           '<div class="sec">Chunks</div>' +
           '<div class="row"><label><input id="__la_chunk_mode" type="checkbox"' + (settings.chunkMode ? ' checked' : '') + '> in stukken</label><label>Chunk tegels</label><input id="__la_chunk_size" type="number" value="' + esc(settings.chunkSize) + '"><label>Chunks per zijde</label><input id="__la_chunk_cols" type="number" min="1" max="8" value="' + esc(settings.chunkCols) + '" title="2 = 4 chunks (40x40), 4 = 16 chunks (80x80)"><label>Rand overlap</label><input id="__la_chunk_bleed" type="number" value="' + esc(settings.chunkBleed) + '"></div>' +
