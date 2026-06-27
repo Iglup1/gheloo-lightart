@@ -1044,25 +1044,27 @@
         const inner = render.inner;
         const outer = render.outer;
         const x = p.cx, y = p.cy;
-        // S: tight tile dot (1 floor tile). M/L/XL/XXL: large glow blobs that overlap
-        // to create the orange fill visible in the real room (like the reference photos).
-        // All in image-pixel space; canvas transform scales them up automatically.
-        // M step=6 → spacing 6px. M outerR=9px → blobs overlap → solid glow fill in face area.
-        const dotR = p.size === 'XXL' ? 38 : p.size === 'XL' ? 22 : p.size === 'L' ? 12 : p.size === 'M' ? 6.0 : 0.45;
-        const outerR = dotR * 1.5;
-        // S: alpha from p.opacity (encodes l²) → bright pixels bright, dark pixels dim.
-        // M/L/XL/XXL: fixed alpha — blobs overlap additively (lighter) to fill the face
-        // area with warm color, matching how overlapping glow looks in the real room.
+        // Radii from reference photos (diameter px → image-pixel radius, factor /15):
+        // S=60px→4.0, M=125px→8.3, L=160px→10.7, XL=180px→12.0, XXL=400px→26.7
+        // Canvas scale ~3.75 (300px canvas / 80px image) → S=15 canvas px, M=31, L=40, XL=45, XXL=100.
+        const dotR = p.size === 'XXL' ? 26.7 : p.size === 'XL' ? 12.0 : p.size === 'L' ? 10.7 : p.size === 'M' ? 8.3 : 4.0;
+        // Sharp falloff matching reference photos ("plots snel afloopt"):
+        // bright center → holds ~65% radius → drops fast → black at edge.
+        // S alpha: luminance-scaled (p.opacity encodes l²). Others: fixed, many blobs overlap.
+        // Overlap at face (39% fill): S≈19 lights, M(step6)≈9 lights, L(step12)≈4, XL(step20)≈2.
+        // Targets: l=0.5 face → ~65% accum for S; M/L each add ~20-30% on top.
         const alpha = p.size === 'S'
-          ? clamp((p.opacity || 0.14) * 13, 0.05, 0.85)
-          : p.size === 'M' ? 0.25 : p.size === 'L' ? 0.18 : p.size === 'XL' ? 0.12 : 0.08;
-        const grad = ctx.createRadialGradient(x, y, 0, x, y, outerR);
-        grad.addColorStop(0, 'rgba(' + inner[0] + ',' + inner[1] + ',' + inner[2] + ',' + alpha + ')');
-        grad.addColorStop(0.5, 'rgba(' + c.r + ',' + c.g + ',' + c.b + ',' + (alpha * 0.5) + ')');
-        grad.addColorStop(1, 'rgba(' + outer[0] + ',' + outer[1] + ',' + outer[2] + ',0)');
+          ? clamp((p.opacity || 0.14) * 2.6, 0.02, 0.09)
+          : p.size === 'M' ? 0.22 : p.size === 'L' ? 0.16 : p.size === 'XL' ? 0.09 : 0.05;
+        const grad = ctx.createRadialGradient(x, y, 0, x, y, dotR);
+        grad.addColorStop(0,    'rgba(' + inner[0] + ',' + inner[1] + ',' + inner[2] + ',' + alpha + ')');
+        grad.addColorStop(0.40, 'rgba(' + c.r + ',' + c.g + ',' + c.b + ',' + (alpha * 0.82) + ')');
+        grad.addColorStop(0.65, 'rgba(' + c.r + ',' + c.g + ',' + c.b + ',' + (alpha * 0.35) + ')');
+        grad.addColorStop(0.85, 'rgba(' + outer[0] + ',' + outer[1] + ',' + outer[2] + ',' + (alpha * 0.05) + ')');
+        grad.addColorStop(1,    'rgba(' + outer[0] + ',' + outer[1] + ',' + outer[2] + ',0)');
         ctx.fillStyle = grad;
         ctx.beginPath();
-        ctx.arc(x, y, outerR, 0, Math.PI * 2);
+        ctx.arc(x, y, dotR, 0, Math.PI * 2);
         ctx.fill();
       });
       ctx.restore();
