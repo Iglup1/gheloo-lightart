@@ -455,14 +455,15 @@
   }
   function adjustRgb(r, g, b, satPct, brightPct, contrastPct, gammaPct, redPct, greenPct, bluePct) {
     const sat = 1 + satPct / 100;
-    const bright = 1 + brightPct / 100;
     const contrast = 1 + contrastPct / 100;
     const gamma = Math.max(0.2, gammaPct / 100);
     const gray = r * 0.299 + g * 0.587 + b * 0.114;
     function one(ch) {
       const saturated = gray + (ch - gray) * sat;
       const contrasted = ((saturated - 128) * contrast) + 128;
-      const brightened = clamp(contrasted * bright, 0, 255);
+      // Additive brightness: +1.6 per unit so range -80→+120 maps to -128→+192.
+      // More intuitive than multiplicative — bright areas don't clip as aggressively.
+      const brightened = clamp(contrasted + brightPct * 1.6, 0, 255);
       return byte(255 * Math.pow(brightened / 255, 1 / gamma));
     }
     return {
@@ -691,17 +692,15 @@
     const maxLights = clamp(+settings.maxLights || 65000, 1, 120000);
     const rand = clamp(+randomizer || 50, 0, 100);
     const randT = rand / 100;
-    // 0 = only S (crisp pixel art), 50 = S+M+L (default), 100 = all sizes (full bubbles).
-    const useM   = rand > 15;
-    const useL   = rand > 30;
-    const useXL  = rand > 55 || stackPower > 35;
-    const useXXL = rand > 75 || stackPower > 55;
-    const mStep   = useM   ? Math.max(3,  Math.round(9  - randT * 6))  : 9;
-    const lStep   = useL   ? Math.max(6,  Math.round(16 - randT * 10)) : 16;
-    const xlStep  = useXL  ? Math.max(10, Math.round(24 - randT * 14)) : 24;
-    const xxlStep = useXXL ? Math.max(15, Math.round(35 - randT * 20)) : 35;
 
-    // Pre-sharpen: unsharp mask to boost color contrast at boundaries for S detail layer.
+    // Radii: match actual in-game glow per size.
+    const rS   = 5.0 + overlap * 2.0;
+    const rM   = 14  + overlap * 6.0;
+    const rL   = 25  + overlap * 10;
+    const rXL  = 40  + overlap * 18;
+    const rXXL = 65  + overlap * 30;
+
+    // Pre-sharpen: 5×5 unsharp mask — used by S detail pass in pixel art mode.
     const sharp = new Uint8ClampedArray(work.length);
     const sharpAmt = 1.2;
     for (let y = 0; y < h; y++) {
@@ -724,18 +723,69 @@
       }
     }
 
-    // Radii match actual in-game glow appearance per light size.
-    // Reference: single S light in room ≈ 5-tile glow radius visible on floor.
-    // M/L/XL progressively larger, matching reference color photos.
-    const rS   = 5.0 + overlap * 2.0;   // ~6.4 at overlap=0.72
-    const rM   = 14  + overlap * 6.0;   // ~18.3 at default
-    const rL   = 25  + overlap * 10;    // ~32.2 at default
-    const rXL  = 40  + overlap * 18;    // ~53.0 at default
-    const rXXL = 65  + overlap * 30;    // ~86.6 at default
+    // ── BUBBLE ART MODE (rand ≥ 40) ──────────────────────────────────────────
+    // Organic scatter with jitter + mixed sizes + additive color blending.
+    // bubbleness=0 (rand=40): M-heavy grid, slight jitter, no color blending.
+    // bubbleness=1 (rand=100): L/XL-heavy, full jitter, 50% chance of accent color.
+    if (rand >= 40) {
+      const bubbleness = Math.min(1, (rand - 40) / 60);
+      // Cell step: 6px → 3px as rand goes 40→100 (denser placement).
+      const step = Math.max(3, Math.round(6 - bubbleness * 3));
+      // Position jitter: ±30% → ±100% of step.
+      const jitter = step * (0.3 + bubbleness * 0.7);
+      // Color blend accent probability: 0% → 50%.
+      const blendProb = bubbleness * 0.50;
+      // Size distribution thresholds (cumulative):
+      // bubbleness=0: pS=50%,pM=50%  →  bubbleness=1: pS=10%,pM=35%,pL=40%,pXL=15%
+      for (let gy = 0; gy < h; gy += step) {
+        for (let gx = 0; gx < w; gx += step) {
+          if (raw.length >= maxLights) return;
+          const x = clamp(gx + (Math.random() - 0.5) * jitter * 2, 0, w - 1);
+          const y = clamp(gy + (Math.random() - 0.5) * jitter * 2, 0, h - 1);
+          const px = Math.round(x), py = Math.round(y);
+          const rgb = sampleCell(work, w, h, px, py, Math.max(1, Math.round(step * 0.6)));
+          if (rgb.a < 2) continue;
+          const l = lum(rgb.r, rgb.g, rgb.b);
+          if (l < Math.max(0.04, 0.10 - bubbleness * 0.06)) continue;
+          const s = satOf(rgb.r, rgb.g, rgb.b);
+          const allowW = l > 0.65 && s < 0.18;
+          const colors = chooseLightMix(rgb.r, rgb.g, rgb.b, allowW, mixPower);
+          if (!colors.length) continue;
+          const rr = Math.random();
+          const pS = 0.50 - bubbleness * 0.40;
+          const pM = 0.50 - bubbleness * 0.15;
+          const pL = bubbleness * 0.40;
+          let size, radius, opac;
+          if (rr < pS) {
+            size = 'S';  radius = rS;  opac = intensity * 0.17 * l;
+          } else if (rr < pS + pM) {
+            size = 'M';  radius = rM;  opac = intensity * 0.11 * (0.3 + l * 0.7);
+          } else if (rr < pS + pM + pL) {
+            size = 'L';  radius = rL;  opac = intensity * 0.040 * (0.35 + l * 0.65);
+          } else {
+            size = 'XL'; radius = rXL; opac = intensity * 0.023 * (0.4 + l * 0.6);
+          }
+          pushLight(raw, w, h, x, y, colors[0], size, radius, opac, 0.18, 'bubble', 0);
+          if (raw.length >= maxLights) return;
+          // Additive color blend: second color near first → additive mix creates new visible colors.
+          if (colors.length > 1 && Math.random() < blendProb) {
+            const ox = clamp(x + (Math.random() - 0.5) * step * 2.5, 0, w - 1);
+            const oy = clamp(y + (Math.random() - 0.5) * step * 2.5, 0, h - 1);
+            const sz2 = size === 'XL' ? 'L' : size === 'L' ? 'M' : 'S';
+            const r2  = sz2 === 'L' ? rL : sz2 === 'M' ? rM : rS;
+            const o2  = (sz2 === 'L' ? intensity * 0.030 : sz2 === 'M' ? intensity * 0.075 : intensity * 0.12) * (0.3 + l * 0.7) * 0.75;
+            pushLight(raw, w, h, ox, oy, colors[1], sz2, r2, o2, 0.18, 'blend', 1);
+            if (raw.length >= maxLights) return;
+          }
+        }
+      }
+      return;
+    }
 
-    // Pass 1: S — every pixel, fine detail layer.
-    // rS=6.4 → each S circle covers ~130 image pixels (overlap≈55 at 39% fill).
-    // Calibrated: l=0.5 face → 50% brightness, l=0.15 bg → 5%, l=0.7 skin → saturates.
+    // ── PIXEL ART MODE (rand 0–39) ────────────────────────────────────────────
+    // Systematic grid passes: S every pixel + optional M/L layers.
+
+    // Pass 1: S — every pixel, fine detail.
     for (let y = 0; y < h; y++) {
       for (let x = 0; x < w; x++) {
         const i = (y * w + x) * 4;
@@ -752,45 +802,51 @@
       }
     }
 
-    // Pass 2: M — glow depth layer, active above randomizer 15.
-    if (useM) for (let y = 0; y < h; y += mStep) {
-      for (let x = 0; x < w; x += mStep) {
-        const rgb = sampleCell(work, w, h, x, y, 3);
-        if (rgb.a < 2) continue;
-        const l = lum(rgb.r, rgb.g, rgb.b);
-        if (l < 0.18) continue;
-        const s = satOf(rgb.r, rgb.g, rgb.b);
-        if (s < 0.08) continue;
-        const colors = chooseLightMix(rgb.r, rgb.g, rgb.b, l > 0.65 && s < 0.22, mixPower);
-        if (!colors.length) continue;
-        const numM = mixPower > 45 ? Math.min(colors.length, 2) : 1;
-        for (let ci = 0; ci < numM; ci++) {
-          pushLight(raw, w, h, x, y, colors[ci], 'M', rM, intensity * 0.088 * (0.3 + l * 0.7) / numM, 0.20, 'mid', ci);
+    // Pass 2: M — glow depth, above rand 15.
+    if (rand > 15) {
+      const mStep = Math.max(4, Math.round(9 - randT * 6));
+      for (let y = 0; y < h; y += mStep) {
+        for (let x = 0; x < w; x += mStep) {
+          const rgb = sampleCell(work, w, h, x, y, 3);
+          if (rgb.a < 2) continue;
+          const l = lum(rgb.r, rgb.g, rgb.b);
+          if (l < 0.18) continue;
+          const s = satOf(rgb.r, rgb.g, rgb.b);
+          if (s < 0.08) continue;
+          const colors = chooseLightMix(rgb.r, rgb.g, rgb.b, l > 0.65 && s < 0.22, mixPower);
+          if (!colors.length) continue;
+          const numM = mixPower > 45 ? Math.min(colors.length, 2) : 1;
+          for (let ci = 0; ci < numM; ci++) {
+            pushLight(raw, w, h, x, y, colors[ci], 'M', rM, intensity * 0.088 * (0.3 + l * 0.7) / numM, 0.20, 'mid', ci);
+          }
+          if (raw.length >= maxLights) return;
         }
-        if (raw.length >= maxLights) return;
       }
     }
 
-    // Pass 3: L — zone atmosphere, active above randomizer 30.
-    if (useL) for (let y = 0; y < h; y += lStep) {
-      for (let x = 0; x < w; x += lStep) {
-        const rgb = sampleCell(work, w, h, x, y, 5);
-        if (rgb.a < 2) continue;
-        const l = lum(rgb.r, rgb.g, rgb.b);
-        if (l < 0.25) continue;
-        const s = satOf(rgb.r, rgb.g, rgb.b);
-        if (s < 0.12) continue;
-        const colors = chooseLightMix(rgb.r, rgb.g, rgb.b, false, mixPower);
-        if (!colors.length) continue;
-        pushLight(raw, w, h, x, y, colors[0], 'L', rL, intensity * 0.030 * (0.3 + l * 0.7), 0.22, 'zone', 0);
-        if (raw.length >= maxLights) return;
+    // Pass 3: L — zone atmosphere, above rand 28.
+    if (rand > 28) {
+      const lStep = Math.max(6, Math.round(16 - randT * 10));
+      for (let y = 0; y < h; y += lStep) {
+        for (let x = 0; x < w; x += lStep) {
+          const rgb = sampleCell(work, w, h, x, y, 5);
+          if (rgb.a < 2) continue;
+          const l = lum(rgb.r, rgb.g, rgb.b);
+          if (l < 0.25) continue;
+          const s = satOf(rgb.r, rgb.g, rgb.b);
+          if (s < 0.12) continue;
+          const colors = chooseLightMix(rgb.r, rgb.g, rgb.b, false, mixPower);
+          if (!colors.length) continue;
+          pushLight(raw, w, h, x, y, colors[0], 'L', rL, intensity * 0.030 * (0.3 + l * 0.7), 0.22, 'zone', 0);
+          if (raw.length >= maxLights) return;
+        }
       }
     }
 
-    // Pass 4: XL — bright zone accents, active above randomizer 55 or stackPower > 35.
-    if (useXL) {
-      for (let y = 0; y < h; y += xlStep) {
-        for (let x = 0; x < w; x += xlStep) {
+    // Pass 4: XL — large accents, stackPower > 35.
+    if (stackPower > 35) {
+      for (let y = 0; y < h; y += 20) {
+        for (let x = 0; x < w; x += 20) {
           const rgb = sampleCell(work, w, h, x, y, 9);
           if (rgb.a < 2) continue;
           const l = lum(rgb.r, rgb.g, rgb.b);
@@ -805,10 +861,10 @@
       }
     }
 
-    // Pass 5: XXL — atmospheric peak glow, active above randomizer 75 or stackPower > 55.
-    if (useXXL) {
-      for (let y = 0; y < h; y += xxlStep) {
-        for (let x = 0; x < w; x += xxlStep) {
+    // Pass 5: XXL — peak glow, stackPower > 55.
+    if (stackPower > 55) {
+      for (let y = 0; y < h; y += 35) {
+        for (let x = 0; x < w; x += 35) {
           const rgb = sampleCell(work, w, h, x, y, 13);
           if (rgb.a < 2) continue;
           const l = lum(rgb.r, rgb.g, rgb.b);
@@ -2168,8 +2224,13 @@
           '<div id="__la_mode_panel_light_art" class="mode-panel">' +
             '<div class="sec">Light Art</div>' +
             '<div class="row"><label>Stijl</label><select id="__la_variant"><option value="stacked">Veel overlap / glow</option><option value="soft">Zachter leesbaar</option><option value="whitefill">Meer witte highlights</option></select></div>' +
-            '<div class="row"><label>Pixel art &lt;-&gt; Bubbels</label><input id="__la_randomizer" type="range" min="0" max="100" step="1" value="' + esc(settings.randomizer != null ? settings.randomizer : 50) + '"><span id="__la_randomizer_label">' + esc(settings.randomizer != null ? settings.randomizer : 50) + '</span></div>' +
-            '<div class="row"><label>Details</label><input id="__la_coarse" type="number" title="grote glow-stappen" value="' + esc(settings.coarseStep) + '"><input id="__la_mid" type="number" title="middelste lamp-stappen" value="' + esc(settings.midStep) + '"><input id="__la_fine" type="number" title="kleine detail-stappen" value="' + esc(settings.detailStep) + '"></div>' +
+            '<div class="row"><label>Bubbel randomizer</label><input id="__la_randomizer" type="range" min="0" max="100" step="1" value="' + esc(settings.randomizer != null ? settings.randomizer : 50) + '"><span id="__la_randomizer_label">' + esc(settings.randomizer != null ? settings.randomizer : 50) + '</span></div>' +
+            '<div class="sec">Lamp instellingen</div>' +
+            '<div class="row"><label>Felheid</label><input id="__la_intensity" type="range" min="20" max="200" value="' + esc(settings.intensity) + '"></div>' +
+            '<div class="row"><label>Glow radius</label><input id="__la_overlap" type="range" min="0" max="120" value="' + esc(settings.overlap) + '"></div>' +
+            '<div class="row"><label>Kleuren mengen</label><input id="__la_mix" type="range" min="0" max="100" value="' + esc(settings.mix) + '"></div>' +
+            '<div class="row"><label>Witte highlights</label><input id="__la_whitefill" type="range" min="0" max="100" value="' + esc(settings.whiteFill) + '"></div>' +
+            '<div class="row"><label>Dubbele glow</label><input id="__la_stack" type="range" min="0" max="100" value="' + esc(settings.stack) + '"></div>' +
           '</div>' +
           '<div id="__la_mode_panel_cylinder" class="mode-panel" style="display:none">' +
             '<div class="sec">Halve cilinder</div>' +
@@ -2206,15 +2267,6 @@
           '<div class="row"><label>Rood</label><input id="__la_red_power" type="range" min="0" max="180" value="' + esc(settings.redPower) + '"></div>' +
           '<div class="row"><label>Groen</label><input id="__la_green_power" type="range" min="0" max="180" value="' + esc(settings.greenPower) + '"></div>' +
           '<div class="row"><label>Blauw</label><input id="__la_blue_power" type="range" min="0" max="180" value="' + esc(settings.bluePower) + '"></div>' +
-          '<div class="sec">Lamp glow</div>' +
-          '<div class="row"><label>Midden focus</label><input id="__la_focus" type="range" min="0" max="90" value="' + esc(settings.focus) + '"></div>' +
-          '<div class="row"><label>Achtergrond dim</label><input id="__la_bgdim" type="range" min="0" max="90" value="' + esc(settings.bgDim) + '"></div>' +
-          '<div class="row"><label>Donker negeren</label><input id="__la_dark" type="range" min="0" max="80" value="' + esc(settings.darkCut) + '"></div>' +
-          '<div class="row"><label>Felheid lampen</label><input id="__la_intensity" type="range" min="20" max="160" value="' + esc(settings.intensity) + '"></div>' +
-          '<div class="row"><label>Glow overlap</label><input id="__la_overlap" type="range" min="0" max="120" value="' + esc(settings.overlap) + '"></div>' +
-          '<div class="row"><label>Dubbel stapelen</label><input id="__la_stack" type="range" min="0" max="100" value="' + esc(settings.stack) + '"></div>' +
-          '<div class="row"><label>Kleuren mengen</label><input id="__la_mix" type="range" min="0" max="100" value="' + esc(settings.mix) + '"></div>' +
-          '<div class="row"><label>Witte highlights</label><input id="__la_whitefill" type="range" min="0" max="100" value="' + esc(settings.whiteFill) + '"></div>' +
         '</div>' +
         '<div class="panel" data-panel="build">' +
           '<div class="sec">Bouwpositie</div>' +
