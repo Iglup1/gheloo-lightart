@@ -78,6 +78,8 @@
     mix: 72,
     whiteFill: 70,
     randomizer: 50,
+    imgPanX: 0,
+    imgPanY: 0,
     maxLights: 15500,
     startX: 21,
     startY: 62,
@@ -875,23 +877,6 @@
     const tileW = lightArtPlan ? (settings.chunkMode ? gridInfoForPlan.cols * gridInfoForPlan.chunkSize : roomWForPlan) : 0;
     const tileH = lightArtPlan ? (settings.chunkMode ? gridInfoForPlan.rows * gridInfoForPlan.chunkSize : roomHForPlan) : 0;
     const renderW = clamp(parseInt(settings.renderWidth, 10) || 1000, 160, 1400);
-    const sourceScale = renderW / Math.max(1, box.w);
-    const sourceW = Math.max(1, Math.round(box.w * sourceScale));
-    const sourceH = Math.max(1, Math.round(box.h * sourceScale));
-    const sourceCanvas = document.createElement('canvas');
-    sourceCanvas.width = sourceW;
-    sourceCanvas.height = sourceH;
-    const sctx2 = sourceCanvas.getContext('2d', { willReadFrequently: true });
-    sctx2.imageSmoothingEnabled = true;
-    sctx2.drawImage(src, box.x, box.y, box.w, box.h, 0, 0, sourceW, sourceH);
-    const sourceImg = sctx2.getImageData(0, 0, sourceW, sourceH);
-    const sourceWork = new Uint8ClampedArray(sourceImg.data.length);
-    for (let i = 0; i < sourceImg.data.length; i += 4) {
-      if (sourceImg.data[i + 3] < (parseInt(settings.alpha, 10) || 8)) { sourceWork[i + 3] = 0; continue; }
-      const a = adjustRgb(sourceImg.data[i], sourceImg.data[i + 1], sourceImg.data[i + 2], +settings.sat, +settings.bright, +settings.contrast, +settings.gamma, +settings.redPower, +settings.greenPower, +settings.bluePower);
-      sourceWork[i] = a.r; sourceWork[i + 1] = a.g; sourceWork[i + 2] = a.b; sourceWork[i + 3] = 255;
-    }
-    sourceFrame = { w: sourceW, h: sourceH, work: sourceWork };
     const scale = lightArtPlan ? 1 : renderW / Math.max(1, box.w);
     const w = lightArtPlan ? Math.max(1, Math.round(tileW)) : Math.max(1, Math.round(box.w * scale));
     const h = lightArtPlan ? Math.max(1, Math.round(tileH)) : Math.max(1, Math.round(box.h * scale));
@@ -900,7 +885,20 @@
     canvas.height = h;
     const ctx = canvas.getContext('2d', { willReadFrequently: true });
     ctx.imageSmoothingEnabled = true;
-    ctx.drawImage(src, box.x, box.y, box.w, box.h, 0, 0, w, h);
+    if (lightArtPlan) {
+      // Maintain aspect ratio — do NOT stretch image to fill grid.
+      // User pans the image within the fixed grid via imgPanX/Y.
+      const imgAspect = box.w / box.h;
+      const gridAspect = w / h;
+      let drawW, drawH;
+      if (imgAspect > gridAspect) { drawW = w; drawH = Math.round(w / imgAspect); }
+      else { drawH = h; drawW = Math.round(h * imgAspect); }
+      const panX = +(settings.imgPanX || 0);
+      const panY = +(settings.imgPanY || 0);
+      ctx.drawImage(src, box.x, box.y, box.w, box.h, panX, panY, drawW, drawH);
+    } else {
+      ctx.drawImage(src, box.x, box.y, box.w, box.h, 0, 0, w, h);
+    }
     const img = ctx.getImageData(0, 0, w, h);
     const data = img.data;
     const alphaCut = clamp(parseInt(settings.alpha, 10) || 8, 1, 255);
@@ -935,6 +933,7 @@
       const pvW = w, pvH = h;
       plan.forEach(function(p) { p.cx = p.px; p.cy = p.py; });
       previewFrame = { w: pvW, h: pvH, work };
+      sourceFrame  = { w: pvW, h: pvH, work: work.slice() }; // same grid dims → source canvas = drag target
       renderPreview(root, pvW, pvH);
       root.querySelector('#__la_meta').textContent = imageName + ' | bouwgrid ' + w + 'x' + h + ' | ' + plan.length + ' lampen' + (settings.__autoSingleChunk ? ' | auto 1 chunk' : '');
       return;
@@ -1103,7 +1102,15 @@
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
       var useSprites = (lightSpriteStatus === 'done');
+      var previewSelected = selectedChunksSet();
+      var previewChunkSz = Math.max(1, +settings.chunkSize || 20);
       plan.forEach(function(p) {
+        // Only show lights in selected chunks (if a selection exists)
+        if (previewSelected && settings.chunkMode) {
+          var pcol = Math.floor(p.cx / previewChunkSz);
+          var prow = Math.floor(p.cy / previewChunkSz);
+          if (!previewSelected.has(chunkNumberForGrid(pcol, prow))) return;
+        }
         var x = p.cx, y = p.cy;
         var ds = LIGHT_GLOW_DRAW_SIZE[p.size] || 3.75;
         var dotR = ds * 0.5;
@@ -1384,12 +1391,7 @@
   }
   function chunkNumberForGrid(col, rowFromTop) {
     const info = chunkGridInfo();
-    if (Math.round(info.chunkSize) === 20 && info.cols === 2 && info.rows === 2) {
-      const map = [[2, 3], [1, 4]];
-      return map[clamp(rowFromTop, 0, 1)][clamp(col, 0, 1)];
-    }
-    const rowFromBottom = Math.max(0, info.rows - 1 - rowFromTop);
-    return col * info.rows + rowFromBottom + 1;
+    return rowFromTop * info.cols + col + 1; // row-major from top-left: 1,2,3 / 4,5,6 / 7,8,9
   }
   function chunkNumberForRoomPoint(lx, ly) {
     const info = chunkGridInfo();
@@ -2294,7 +2296,34 @@
         redrawCurrentPreview();
       });
     }
-    bindPreviewPanZoom(root.querySelector('#__la_source'));
+    // Source canvas: drag moves image within grid (not viewport).
+    // Dblclick resets image to top-left origin.
+    (function() {
+      const cv = root.querySelector('#__la_source');
+      cv.style.cursor = 'grab';
+      let dragging = false, sx = 0, sy = 0, ox = 0, oy = 0;
+      cv.addEventListener('mousedown', function(e) {
+        dragging = true; sx = e.clientX; sy = e.clientY;
+        ox = +(settings.imgPanX || 0); oy = +(settings.imgPanY || 0);
+        cv.style.cursor = 'grabbing';
+      });
+      document.addEventListener('mousemove', function(e) {
+        if (!dragging) return;
+        const fw = previewFrame ? previewFrame.w : 60;
+        const fh = previewFrame ? previewFrame.h : 60;
+        const fit = Math.min(cv.width / Math.max(1, fw), cv.height / Math.max(1, fh));
+        const sc = fit; // no zoom on source canvas
+        settings.imgPanX = Math.round(ox + (e.clientX - sx) / sc);
+        settings.imgPanY = Math.round(oy + (e.clientY - sy) / sc);
+        clearTimeout(timer);
+        timer = setTimeout(function() { try { makePlan(root); } catch(ex) {} }, 80);
+      });
+      document.addEventListener('mouseup', function() { dragging = false; cv.style.cursor = 'grab'; });
+      cv.addEventListener('dblclick', function() {
+        settings.imgPanX = 0; settings.imgPanY = 0;
+        try { makePlan(root); } catch(ex) {}
+      });
+    })();
     bindPreviewPanZoom(root.querySelector('#__la_preview'));
     // Load actual Habbo glow sprites from leet.city; re-render preview when done.
     loadLightSpritesIfNeeded().then(function() {
