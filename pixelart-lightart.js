@@ -724,19 +724,12 @@
     }
 
     // ── BUBBLE ART MODE (rand ≥ 40) ──────────────────────────────────────────
-    // Organic scatter with jitter + mixed sizes + additive color blending.
-    // bubbleness=0 (rand=40): M-heavy grid, slight jitter, no color blending.
-    // bubbleness=1 (rand=100): L/XL-heavy, full jitter, 50% chance of accent color.
+    // Organic jitter grid + mixed sizes + ALWAYS place secondary color for
+    // additive color blending → creates more perceived colors than 8 base lights.
     if (rand >= 40) {
-      const bubbleness = Math.min(1, (rand - 40) / 60);
-      // Cell step: 6px → 3px as rand goes 40→100 (denser placement).
-      const step = Math.max(3, Math.round(6 - bubbleness * 3));
-      // Position jitter: ±30% → ±100% of step.
-      const jitter = step * (0.3 + bubbleness * 0.7);
-      // Color blend accent probability: 0% → 50%.
-      const blendProb = bubbleness * 0.50;
-      // Size distribution thresholds (cumulative):
-      // bubbleness=0: pS=50%,pM=50%  →  bubbleness=1: pS=10%,pM=35%,pL=40%,pXL=15%
+      const bubbleness = Math.min(1, (rand - 40) / 60); // 0 at rand=40, 1 at rand=100
+      const step = Math.max(3, Math.round(6 - bubbleness * 3)); // 6px→3px
+      const jitter = step * (0.3 + bubbleness * 0.7);          // ±30%→±100% of step
       for (let gy = 0; gy < h; gy += step) {
         for (let gx = 0; gx < w; gx += step) {
           if (raw.length >= maxLights) return;
@@ -746,11 +739,12 @@
           const rgb = sampleCell(work, w, h, px, py, Math.max(1, Math.round(step * 0.6)));
           if (rgb.a < 2) continue;
           const l = lum(rgb.r, rgb.g, rgb.b);
-          if (l < Math.max(0.04, 0.10 - bubbleness * 0.06)) continue;
+          if (l < 0.03) continue; // skip only truly black / invisible
           const s = satOf(rgb.r, rgb.g, rgb.b);
           const allowW = l > 0.65 && s < 0.18;
           const colors = chooseLightMix(rgb.r, rgb.g, rgb.b, allowW, mixPower);
           if (!colors.length) continue;
+          // Size: bubbleness=0: 50%S/50%M → bubbleness=1: 10%S/35%M/40%L/15%XL
           const rr = Math.random();
           const pS = 0.50 - bubbleness * 0.40;
           const pM = 0.50 - bubbleness * 0.15;
@@ -767,13 +761,15 @@
           }
           pushLight(raw, w, h, x, y, colors[0], size, radius, opac, 0.18, 'bubble', 0);
           if (raw.length >= maxLights) return;
-          // Additive color blend: second color near first → additive mix creates new visible colors.
-          if (colors.length > 1 && Math.random() < blendProb) {
-            const ox = clamp(x + (Math.random() - 0.5) * step * 2.5, 0, w - 1);
-            const oy = clamp(y + (Math.random() - 0.5) * step * 2.5, 0, h - 1);
+          // Secondary color ALWAYS placed when available — overlapping circles additively
+          // blend → reddish-orange, lime, magenta, etc. Placed close so they overlap well.
+          if (colors.length > 1) {
+            const spread = step * (0.5 + bubbleness * 0.5); // closer at low bubbleness
+            const ox = clamp(x + (Math.random() - 0.5) * spread * 2, 0, w - 1);
+            const oy = clamp(y + (Math.random() - 0.5) * spread * 2, 0, h - 1);
             const sz2 = size === 'XL' ? 'L' : size === 'L' ? 'M' : 'S';
             const r2  = sz2 === 'L' ? rL : sz2 === 'M' ? rM : rS;
-            const o2  = (sz2 === 'L' ? intensity * 0.030 : sz2 === 'M' ? intensity * 0.075 : intensity * 0.12) * (0.3 + l * 0.7) * 0.75;
+            const o2  = (sz2 === 'L' ? intensity * 0.030 : sz2 === 'M' ? intensity * 0.080 : intensity * 0.12) * (0.3 + l * 0.7) * 0.65;
             pushLight(raw, w, h, ox, oy, colors[1], sz2, r2, o2, 0.18, 'blend', 1);
             if (raw.length >= maxLights) return;
           }
@@ -783,9 +779,10 @@
     }
 
     // ── PIXEL ART MODE (rand 0–39) ────────────────────────────────────────────
-    // Systematic grid passes: S every pixel + optional M/L layers.
+    // S every pixel + optional M/L layers. Secondary S-light placed at tiny offset
+    // for additive color mixing → more perceived colors from only 8 base colors.
 
-    // Pass 1: S — every pixel, fine detail.
+    // Pass 1: S — every pixel.
     for (let y = 0; y < h; y++) {
       for (let x = 0; x < w; x++) {
         const i = (y * w + x) * 4;
@@ -799,6 +796,13 @@
         if (!colors.length) continue;
         pushLight(raw, w, h, x, y, colors[0], 'S', rS, intensity * 0.16 * l * l, 0.14, 'detail', 0);
         if (raw.length >= maxLights) return;
+        // Secondary S at tiny offset: additive blend creates richer perceived color.
+        if (colors.length > 1 && mixPower > 20) {
+          const jx = (Math.random() - 0.5) * 0.6;
+          const jy = (Math.random() - 0.5) * 0.6;
+          pushLight(raw, w, h, x + jx, y + jy, colors[1], 'S', rS, intensity * 0.10 * l * l, 0.14, 'detail2', 1);
+          if (raw.length >= maxLights) return;
+        }
       }
     }
 
@@ -815,11 +819,11 @@
           if (s < 0.08) continue;
           const colors = chooseLightMix(rgb.r, rgb.g, rgb.b, l > 0.65 && s < 0.22, mixPower);
           if (!colors.length) continue;
-          const numM = mixPower > 45 ? Math.min(colors.length, 2) : 1;
+          const numM = Math.min(colors.length, mixPower > 30 ? 2 : 1);
           for (let ci = 0; ci < numM; ci++) {
             pushLight(raw, w, h, x, y, colors[ci], 'M', rM, intensity * 0.088 * (0.3 + l * 0.7) / numM, 0.20, 'mid', ci);
+            if (raw.length >= maxLights) return;
           }
-          if (raw.length >= maxLights) return;
         }
       }
     }
