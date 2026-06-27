@@ -323,6 +323,75 @@ Fixed to: `y = anchorY - (logicalH - 1 - localY)` — image-top now maps to room
 
 ---
 
+## [2026-06-26] Claude — Session 13
+
+**Done:**
+
+1. **Buy-before-preview** (`togglePlacePreview` ~line 1886):
+   - Added `await buyMissing(root)` call before injecting fake Objects packet.
+   - Status messages updated: "Inventory controleren en ontbrekende meubels kopen..." → "Preview packet injecteren..." → count.
+   - `buyMissing` already correct: checks inventory via `requestInventory()` + `waitInventoryReady(8000)`, calculates `missing = Math.max(0, need - have)`, buys only difference.
+
+2. **Fixed status message** (line ~1903):
+   - Removed "incl. markers" from preview status text (markers no longer in preview).
+
+3. **Fixed dark-background glow** (`renderPreview` line ~1058):
+   - Changed alpha clamp min from `0.001` to `0`.
+   - Root cause: 200+ overlapping M circles each at min alpha=0.001 → accumulated 0.07+ brightness in pitch-black areas.
+
+4. **Full rewrite of `addLightArtRaster`** (line ~668):
+   - Old: 3-pass (S/M/L), no unsharp mask, basic l² scaling.
+   - New: 5-pass (S/M/L/XL/XXL) + pre-sharpening via unsharp mask (5×5 box blur, sharpAmt=1.2).
+   - Unsharp mask: `sharp[i] = byte(work[i] + (work[i] - blur/cnt) * 1.2)` — fixes color bleed at chunk boundaries.
+   - S pass: every pixel, l²-scaled opacity (l<0.06 && sat<0.20 = skip dark unsaturated bg).
+   - M pass: every 6th pixel, 2-color mix when mixPower>45.
+   - L pass: every 12th pixel, l>0.25 && sat>0.12.
+   - XL pass: every 20th pixel, stackPower>35, l>0.40.
+   - XXL pass: every 30th pixel, stackPower>55, l>0.50.
+
+5. **Multiple opacity calibration iterations** based on Kenjy's screenshots:
+   - Iteration 1 (opS=0.18): too dim at face l≈0.35 (accum≈0.20).
+   - Iteration 2 (opS=0.40, rS=3.2): chunk 7 glow visible but other chunks dark.
+   - Iteration 3 (opS=0.16, rS=6.4): current. Larger radius → 55 overlapping circles at face density → same 50% brightness target but whole face area now covered.
+
+6. **Glow radius recalibration** (latest commit `22ac47e`):
+   - Reference: color photos Kenjy sent show single S lamp = ~5-tile glow radius in room.
+   - rS: 3.2 → 6.4px | rM: 12.3 → 18.3px (step 4→6) | rL: 22 → 32px (step 8→12) | rXL: 39 → 53px (step 16→20) | rXXL: 67 → 87px (step 28→30).
+   - Opacity rebalanced: larger radius = more overlap = lower per-light opacity needed for same target brightness.
+
+**Calibration math (for Codex):**
+- Overlap formula: `N = π × (r × 1.336)² × fill_density`
+- Accumulated brightness: `N × alpha × 0.34` (0.34 = avg radial gradient factor)
+- `alpha = opacity × 0.78` (color-code≠0 factor in renderPreview)
+- At rS=6.4, fill=0.39: N=55, alpha=0.88×0.16×l²×0.78, accum at l=0.5 = 55×0.027×0.34 = 0.50 ✓
+- At l=0.15 bg: accum = 0.05 (dark background preserved) ✓
+
+**Commits this session (all on master, pushed):**
+- `22cb5ef` — buy-before-preview + status fix
+- `aa8a35a` — realistic glow radii (first attempt rS=4.2)
+- `0160919` — M as primary layer attempt (overlit → reverted)
+- `bfb041f` — S primary restored, M/L sparse
+- `f6dcff8` — opacity 0.18→0.40, rS 4.2→3.2
+- `22ac47e` — final radius recalibration rS=6.4, opS=0.16×l² (CURRENT)
+
+**Changed files:**
+- `pixelart-lightart.js:668` — full `addLightArtRaster` rewrite (5-pass + unsharp mask)
+- `pixelart-lightart.js:1058` — alpha clamp min 0.001→0 in `renderPreview`
+- `pixelart-lightart.js:1886` — buy-before-preview in `togglePlacePreview`
+
+**Known technical context Kenjy shared:**
+- Single S lamp in room ≈ 5-tile glow radius (visible from reference color photos).
+- `{in:Objects}` packet supports multiple furniture items in one shot — already used by `injectObjectsPacket`.
+- Inventory check in `buyMissing` confirmed correct (no code bug).
+
+**Open / next:**
+- Kenjy testing latest rS=6.4 calibration — waiting for feedback if face is now visible across all chunks (not just chunk 7).
+- 1:1 match between meubel preview and room: mathematically same coordinate space (iso_x=px-mapW/2, iso_y=py+mapW/4), rendering differs (canvas smooth vs game tile grid) — acceptable.
+- Room preview "dingen in elkaar" (glow overlap): M at step 6 with rM=18 should create visible overlapping blobs.
+- `exactLightArtFrameStart` only implemented for chunks 1-4 (2×2). Real build for 4×4 (chunks 5-16) uses fallback formula — not yet measured.
+
+---
+
 ## HOW TO UPDATE THIS FILE
 
 At **start of session**: read latest entry, understand state.
