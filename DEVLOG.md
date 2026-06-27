@@ -436,6 +436,19 @@ Fixed to: `y = anchorY - (logicalH - 1 - localY)` — image-top now maps to room
 
 ---
 
+## [2026-06-27] Claude — Session 15 (continued)
+
+**Done:**
+
+- **renderPreview: non-overlapping tile dots** (`pixelart-lightart.js:1051`, commit pending):
+  - Root cause of blob: S dotR=4.0 image px + step=1 → adjacent S circles overlap (spacing 3.75 canvas px < 2×outer_radius 22.5 canvas px) → lighter blend accumulates into solid blob.
+  - Fix: S dotR=0.35 image px → canvas radius 1.31 px → gap between adjacent dots = 1.13 canvas px → fully distinct, NON-overlapping tile dots.
+  - M/L/XL/XXL also non-overlapping at their step spacing: M=0.8px/step6, L=2.0px/step12, XL=4.0px/step20, XXL=8.0px/step30.
+  - Result: S layer = dot matrix of individual colored pixels exactly like room floor tiles. M/L/XL = distinct brighter circles on top (like brighter M/L tiles visible in room).
+  - Alpha: S uses l²-scaled (bright skin = bright dot, dark hair = dim dot), M/L/XL/XXL fixed (0.65/0.55/0.45/0.35).
+
+---
+
 ## [2026-06-27] Claude — Session 15
 
 **Done:**

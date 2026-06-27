@@ -1044,23 +1044,21 @@
         const inner = render.inner;
         const outer = render.outer;
         const x = p.cx, y = p.cy;
-        // Radii from reference photos (diameter px → image-pixel radius, factor /15):
-        // S=60px→4.0, M=125px→8.3, L=160px→10.7, XL=180px→12.0, XXL=400px→26.7
-        // Canvas scale ~3.75 (300px canvas / 80px image) → S=15 canvas px, M=31, L=40, XL=45, XXL=100.
-        const dotR = p.size === 'XXL' ? 26.7 : p.size === 'XL' ? 12.0 : p.size === 'L' ? 10.7 : p.size === 'M' ? 8.3 : 4.0;
-        // Sharp falloff matching reference photos ("plots snel afloopt"):
-        // bright center → holds ~65% radius → drops fast → black at edge.
-        // S alpha: luminance-scaled (p.opacity encodes l²). Others: fixed, many blobs overlap.
-        // Overlap at face (39% fill): S≈19 lights, M(step6)≈9 lights, L(step12)≈4, XL(step20)≈2.
-        // Targets: l=0.5 face → ~65% accum for S; M/L each add ~20-30% on top.
+        // S: NON-OVERLAPPING tile dot. Spacing = 1 image px = ~3.75 canvas px.
+        // Radius must be < 0.5 image px so adjacent dots don't touch → individual pixel dots visible.
+        // M/L/XL/XXL: progressively larger distinct glow spots (still non-overlapping at their step spacing).
+        // At canvas scale 3.75: S=1.3px, M=3px, L=7.5px, XL=15px, XXL=30px canvas radius.
+        const dotR = p.size === 'XXL' ? 8.0 : p.size === 'XL' ? 4.0 : p.size === 'L' ? 2.0 : p.size === 'M' ? 0.8 : 0.35;
+        // S: luminance-scaled alpha so bright pixels = bright dot, dark pixels = dim dot.
+        // M/L/XL/XXL: fixed alpha — appear as brighter distinct spots on top of S tile grid.
         const alpha = p.size === 'S'
-          ? clamp((p.opacity || 0.14) * 2.6, 0.02, 0.09)
-          : p.size === 'M' ? 0.22 : p.size === 'L' ? 0.16 : p.size === 'XL' ? 0.09 : 0.05;
+          ? clamp((p.opacity || 0.14) * 13, 0.04, 0.85)
+          : p.size === 'M' ? 0.65 : p.size === 'L' ? 0.55 : p.size === 'XL' ? 0.45 : 0.35;
         const grad = ctx.createRadialGradient(x, y, 0, x, y, dotR);
         grad.addColorStop(0,    'rgba(' + inner[0] + ',' + inner[1] + ',' + inner[2] + ',' + alpha + ')');
-        grad.addColorStop(0.40, 'rgba(' + c.r + ',' + c.g + ',' + c.b + ',' + (alpha * 0.82) + ')');
-        grad.addColorStop(0.65, 'rgba(' + c.r + ',' + c.g + ',' + c.b + ',' + (alpha * 0.35) + ')');
-        grad.addColorStop(0.85, 'rgba(' + outer[0] + ',' + outer[1] + ',' + outer[2] + ',' + (alpha * 0.05) + ')');
+        grad.addColorStop(0.45, 'rgba(' + c.r + ',' + c.g + ',' + c.b + ',' + (alpha * 0.80) + ')');
+        grad.addColorStop(0.70, 'rgba(' + c.r + ',' + c.g + ',' + c.b + ',' + (alpha * 0.30) + ')');
+        grad.addColorStop(0.88, 'rgba(' + outer[0] + ',' + outer[1] + ',' + outer[2] + ',' + (alpha * 0.04) + ')');
         grad.addColorStop(1,    'rgba(' + outer[0] + ',' + outer[1] + ',' + outer[2] + ',0)');
         ctx.fillStyle = grad;
         ctx.beginPath();
