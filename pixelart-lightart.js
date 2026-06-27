@@ -536,6 +536,8 @@
     if (r > 110 && g > 70 && b > 45) return [2, 3];
     if (r > 130 && b > 130) return [7, 6];
     if (g > 120 && b > 120) return [5];
+    // For achromatic/bright-gray pixels, fallback to yellow rather than cyan to avoid mis-tint.
+    if (r > 140 && g > 140 && b > 140) return allowWhite ? [0] : [3];
     return r + g > b * 2 ? [3] : [5];
   }
   function lightMixColor(codes) {
@@ -554,6 +556,8 @@
     const s = satOf(r, g, b);
     const l = lum(r, g, b);
     if (l < 0.035 || (s < 0.10 && !allowWhite)) return [];
+    // Near-achromatic bright pixel → always white; avoids scoring fallthrough to cyan.
+    if (s < 0.14 && l > 0.28 && allowWhite) return [0];
     const target = hueVec(r, g, b);
     const redPure = r > g * 1.55 && r > b * 1.55 && g < r * 0.33 && b < r * 0.36;
     const orangeWarm = r > g * 1.08 && g > b * 1.35 && g > r * 0.32;
@@ -2164,7 +2168,7 @@
           '<div id="__la_mode_panel_light_art" class="mode-panel">' +
             '<div class="sec">Light Art</div>' +
             '<div class="row"><label>Stijl</label><select id="__la_variant"><option value="stacked">Veel overlap / glow</option><option value="soft">Zachter leesbaar</option><option value="whitefill">Meer witte highlights</option></select></div>' +
-            '<div class="row"><label>Pixel art ←→ Bubbels</label><input id="__la_randomizer" type="range" min="0" max="100" step="1" value="' + esc(settings.randomizer != null ? settings.randomizer : 50) + '"><span id="__la_randomizer_label">' + esc(settings.randomizer != null ? settings.randomizer : 50) + '</span></div>' +
+            '<div class="row"><label>Pixel art &lt;-&gt; Bubbels</label><input id="__la_randomizer" type="range" min="0" max="100" step="1" value="' + esc(settings.randomizer != null ? settings.randomizer : 50) + '"><span id="__la_randomizer_label">' + esc(settings.randomizer != null ? settings.randomizer : 50) + '</span></div>' +
             '<div class="row"><label>Details</label><input id="__la_coarse" type="number" title="grote glow-stappen" value="' + esc(settings.coarseStep) + '"><input id="__la_mid" type="number" title="middelste lamp-stappen" value="' + esc(settings.midStep) + '"><input id="__la_fine" type="number" title="kleine detail-stappen" value="' + esc(settings.detailStep) + '"></div>' +
           '</div>' +
           '<div id="__la_mode_panel_cylinder" class="mode-panel" style="display:none">' +
@@ -2319,7 +2323,7 @@
       el.addEventListener('input', function() {
         collectSettings(root);
         updateMaxLabel();
-        if (image && ['__la_sat','__la_bright','__la_contrast','__la_gamma','__la_red_power','__la_green_power','__la_blue_power','__la_focus','__la_bgdim','__la_dark','__la_intensity','__la_overlap','__la_stack','__la_mix','__la_whitefill','__la_alpha','__la_coarse','__la_mid','__la_fine','__la_renderw','__la_roomw','__la_roomh','__la_chunk_mode','__la_chunk_size','__la_chunk_cols','__la_chunk_select','__la_chunk_bleed','__la_max'].includes(el.id)) {
+        if (image && ['__la_sat','__la_bright','__la_contrast','__la_gamma','__la_red_power','__la_green_power','__la_blue_power','__la_focus','__la_bgdim','__la_dark','__la_intensity','__la_overlap','__la_stack','__la_mix','__la_whitefill','__la_randomizer','__la_variant','__la_alpha','__la_coarse','__la_mid','__la_fine','__la_renderw','__la_roomw','__la_roomh','__la_chunk_mode','__la_chunk_size','__la_chunk_cols','__la_chunk_select','__la_chunk_bleed','__la_max'].includes(el.id)) {
           clearTimeout(timer);
           timer = setTimeout(function() { try { makePlan(root); } catch(ex) { root.querySelector('#__la_status').textContent = ex.message; } }, 180);
         }
