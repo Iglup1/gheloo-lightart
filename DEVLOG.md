@@ -675,6 +675,96 @@ Fixed to: `y = anchorY - (logicalH - 1 - localY)` — image-top now maps to room
 
 ---
 
+## [2026-06-27] Claude — Session 18
+
+**Done (6 commits, all pushed to master):**
+
+1. **Color mixing + bubble density fixes** (`76a892a`, `82c5f26`):
+   - Pixel art S-pass: secondary S-light placed at ±0.3px offset when `chooseLightMix` returns 2 colors → additive blend creates richer perceived colors
+   - Bubble mode: secondary color ALWAYS placed (was conditional on blendProb dice), offset reduced from `step×2.5` → `step×1.0` so circles overlap for real additive mixing
+   - Bubble mode dark threshold: `0.04–0.10` → `0.03` (more dark pixels get lights)
+   - Halftone-style grid: jitter reduced to 12% of step (was 70-100%), grid starts at cell center, size driven by luminance
+
+2. **Baked lamp settings, sliders removed** (`5575361`, `pixelart-lightart.js:926-929`):
+   - Removed 5 sliders from "Lamp instellingen" section: Felheid, Glow radius, Kleuren mengen, Witte highlights, Dubbele glow
+   - Baked values in `makePlan`: `intensity=0.92`, `overlap=0.72`, `stackPower=50`, `mixPower=100`
+   - Reason: overlap/whiteFill had NO effect in lightArt mode; intensity/mix caused visual ruin when touched
+   - `mixPower > 20` / `> 30` conditionals removed — secondary color always placed
+
+3. **Content-aware Blender replaces random scatter** (`e3537ae`):
+   - New `localVariance(buf, w, h, cx, cy, r)` function: luminance std-dev over neighbourhood → 0=flat, ~0.15=edge
+   - Single unified pass (no more rand<40 vs rand>=40 split)
+   - Size driven by `flatness × blend` (blobPower):
+     - blobPower > 0.72 → XL blob
+     - blobPower > 0.38 or (blend>0.55 && flat>0.40) → L
+     - blend > 0.18 && flat > 0.20 → M
+     - else → S (pixel art detail)
+   - Step: 1px at blend=0 (every pixel), 4px at blend=1 (coarse grid)
+   - Variance radius: 3px at blend=0, 11px at blend=1
+   - Label changed: "Bubbel randomizer" → "Blender"
+
+4. **Row-major grid numbering** (`0fdc8f0`, `pixelart-lightart.js:chunkNumberForGrid`):
+   - Was: column-major from bottom (1,4,7 / 2,5,8 / 3,6,9)
+   - Now: row-major from top-left: `rowFromTop * cols + col + 1` → 1,2,3 / 4,5,6 / 7,8,9
+   - Removed hardcoded 2×2 special case
+
+5. **Image pan in source canvas** (`0fdc8f0`):
+   - `imgPanX`/`imgPanY` settings (DEFAULTS: 0)
+   - `makePlan`: image drawn with aspect-ratio preserved (no stretch) + pan offset
+   - `sourceImageRef = { src, box, w, h }` stored for high-quality source canvas rendering
+   - Source canvas drag = moves image within fixed grid (80ms debounce → re-plan)
+   - Dblclick source canvas = reset pan to 0,0
+
+6. **Source canvas: crisp + numbers only on preview** (`3e5e7ff`):
+   - Source canvas (bron+color) now renders directly from original image (no pixelation)
+   - Chunk NUMBERS removed from source canvas → only `drawChunkBoundariesOnly` (dashed lines, no labels)
+   - Chunk numbers kept on meubel preview (right)
+   - Ctrl+drag on source canvas = proportional image rescale (`imgScale` setting, 0.1–10, default 1.0)
+   - Dblclick = reset pan + scale to 0/1.0
+   - `let sourceImageRef = null` added at module level (~line 162)
+   - `drawChunkBoundariesOnly()` new helper function (lines before `drawChunkOverlayLogical`)
+
+7. **Preview chunk filtering** (`0fdc8f0`):
+   - Meubel preview only renders lights in selected chunks (when chunk selection non-empty)
+   - Filter in `renderPreview` plan.forEach: `chunkNumberForGrid(floor(cx/chunkSz), floor(cy/chunkSz))`
+
+**Commits:**
+- `76a892a` — fix: better color mixing + bubble density in both modes
+- `82c5f26` — fix: bubble mode keeps image recognizable, halftone sizing
+- `5575361` — refactor: bake lamp settings, remove sliders from UI
+- `e3537ae` — feat: content-aware Blender replaces Bubbel randomizer
+- `0fdc8f0` — feat: row-major chunk numbering, image pan, chunk-filtered preview
+- `3e5e7ff` — fix: chunk numbers only on preview, crisp source canvas, Ctrl+drag to scale
+
+**Changed files:**
+- `pixelart-lightart.js:162` — `let sourceImageRef = null`
+- `pixelart-lightart.js:81-82` — DEFAULTS: `imgPanX:0, imgPanY:0, imgScale:1.0`
+- `pixelart-lightart.js:~691` — `localVariance()` helper + rewritten `addLightArtRaster()`
+- `pixelart-lightart.js:~900-907` — `makePlan`: aspect-ratio draw + sourceImageRef + baked intensity/overlap/stack/mix
+- `pixelart-lightart.js:~1010` — `drawChunkBoundariesOnly()` new function
+- `pixelart-lightart.js:~1095` — `renderPreview` source canvas: direct high-quality draw from original
+- `pixelart-lightart.js:~1115` — `renderPreview` plan.forEach: chunk filter
+- `pixelart-lightart.js:~1385` — `chunkNumberForGrid`: row-major formula
+- `pixelart-lightart.js:~2170` — HTML: "Lamp instellingen" section removed, label "Blender"
+- `pixelart-lightart.js:~2310` — trigger list: removed `__la_intensity/__la_overlap/__la_stack/__la_mix/__la_whitefill`
+- `pixelart-lightart.js:~2330` — source canvas drag handler: pan + Ctrl+drag scale
+
+**Current state of algorithm:**
+- `addLightArtRaster` is ONE content-aware pass, driven by local luminance variance
+- flat area (variance<0.05) + high blend → XL/L blob
+- gradient (0.05–0.13) + medium blend → L/M + secondary color
+- edge/detail (>0.13) or low blend → S pixel art
+- Secondary color ALWAYS placed (overlapping → additive blend → richer perceived colors)
+- All lamp settings baked (intensity=0.92, overlap=0.72, stack=50, mix=100)
+
+**Open / next:**
+- Test Blender at various values with different images
+- Test image pan + scale workflow (drag to position, Ctrl+drag to resize)
+- Test chunk selection filter in meubel preview
+- Algorithm still may need tuning based on user feedback
+
+---
+
 ## HOW TO UPDATE THIS FILE
 
 At **start of session**: read latest entry, understand state.
