@@ -163,6 +163,21 @@
   let previewPlacementActive = false;
   let previewPlacementIds = [];
   let previewPlacementRun = false;
+
+  // Sprite sheet data extracted from leet.city nitro files (hfdiy_NewLight_X_xueze.nitro).
+  // Each entry: glow (b) layer frames per colorCode 0-7, sprite size in pixels.
+  var LIGHT_GLOW_FRAMES = {
+    S:   { srcW: 63, srcH: 64, frames: {0:{x:67,y:76},1:{x:132,y:76},2:{x:67,y:10},3:{x:197,y:10},4:{x:197,y:76},5:{x:2,y:10},6:{x:2,y:76},7:{x:132,y:10}} },
+    M:   { srcW:127, srcH:128, frames: {0:{x:260,y:6},1:{x:389,y:136},2:{x:389,y:6},3:{x:2,y:6},4:{x:131,y:136},5:{x:131,y:6},6:{x:260,y:136},7:{x:2,y:136}} },
+    L:   { srcW:191, srcH:192, frames: {0:{x:388,y:10},1:{x:774,y:10},2:{x:581,y:10},3:{x:1160,y:10},4:{x:967,y:10},5:{x:2,y:10},6:{x:1353,y:10},7:{x:195,y:10}} },
+    XL:  { srcW:319, srcH:320, frames: {0:{x:323,y:10},1:{x:1286,y:10},2:{x:1607,y:10},3:{x:644,y:10},4:{x:965,y:10},5:{x:2249,y:10},6:{x:2,y:10},7:{x:1928,y:10}} },
+    XXL: { srcW:447, srcH:448, frames: {0:{x:1349,y:6},1:{x:1798,y:6},2:{x:2247,y:6},3:{x:3145,y:6},4:{x:2,y:6},5:{x:451,y:6},6:{x:900,y:6},7:{x:2696,y:6}} }
+  };
+  // Draw size in IMAGE-PIXEL space (canvas transform scales automatically).
+  // S: 2.67 image px = ~10 canvas px at scale 3.75. Calibrated so face glow accumulates correctly.
+  var LIGHT_GLOW_DRAW_SIZE = { S: 2.67, M: 5.6, L: 7.2, XL: 8.0, XXL: 17.8 };
+  var lightSpriteSheets = {}; // { 'S': ImageBitmap, ... }
+  var lightSpriteStatus = 'idle'; // 'idle'|'loading'|'done'
   window.__la_shutdown = function() {
     active = false;
     try { if (window.__la_resizeObserver) window.__la_resizeObserver.disconnect(); } catch(_) {}
@@ -1010,6 +1025,41 @@
     }
     ctx.restore();
   }
+  async function loadLightSpritesIfNeeded() {
+    if (lightSpriteStatus !== 'idle') return;
+    lightSpriteStatus = 'loading';
+    const BASE = 'https://images.leet.city/leet-asset-bundles/libraries/furniture_new2/hfdiy_NewLight_';
+    for (const sz of ['S','M','L','XL','XXL']) {
+      try {
+        const bytes = new Uint8Array(await fetch(BASE + sz + '_xueze.nitro').then(function(r){ return r.arrayBuffer(); }));
+        // Scan for zlib streams; find the one that decompresses to PNG (\x89PNG).
+        for (var i = 0; i < bytes.length - 2; i++) {
+          if (bytes[i] === 0x78 && (bytes[i+1] === 0x9c || bytes[i+1] === 0x01 || bytes[i+1] === 0xda || bytes[i+1] === 0x5e)) {
+            try {
+              var ds = new DecompressionStream('deflate');
+              var w2 = ds.writable.getWriter();
+              w2.write(bytes.slice(i));
+              w2.close().catch(function(){});
+              var chunks = [], reader = ds.readable.getReader();
+              var done = false;
+              while (!done) { var res = await reader.read(); if (res.done) { done = true; } else { chunks.push(res.value); } }
+              var total = 0; for (var ci = 0; ci < chunks.length; ci++) total += chunks[ci].length;
+              var out = new Uint8Array(total), off = 0;
+              for (var ci = 0; ci < chunks.length; ci++) { out.set(chunks[ci], off); off += chunks[ci].length; }
+              if (out[0] === 0x89 && out[1] === 0x50 && out[2] === 0x4e && out[3] === 0x47) {
+                var blob = new Blob([out], {type:'image/png'});
+                lightSpriteSheets[sz] = await createImageBitmap(blob);
+                console.log('[lightart] sprite loaded:', sz);
+                break;
+              }
+            } catch(e2) {}
+          }
+        }
+      } catch(e) { console.warn('[lightart] sprite load failed:', sz, e); }
+    }
+    lightSpriteStatus = 'done';
+  }
+
   function renderPreview(root, w, h) {
     const source = root.querySelector('#__la_source');
     const canvas = root.querySelector('#__la_preview');
@@ -1038,32 +1088,43 @@
     drawPreviewViewport(ctx, canvas, w, h, function() {
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
+      var useSprites = (lightSpriteStatus === 'done');
       plan.forEach(function(p) {
-        const c = COLORS[p.colorCode] || COLORS[0];
-        const render = LIGHT_RENDER[p.colorCode] || LIGHT_RENDER[0];
-        const inner = render.inner;
-        const outer = render.outer;
-        const x = p.cx, y = p.cy;
-        // S: NON-OVERLAPPING tile dot. Spacing = 1 image px = ~3.75 canvas px.
-        // Radius must be < 0.5 image px so adjacent dots don't touch → individual pixel dots visible.
-        // M/L/XL/XXL: progressively larger distinct glow spots (still non-overlapping at their step spacing).
-        // At canvas scale 3.75: S=1.3px, M=3px, L=7.5px, XL=15px, XXL=30px canvas radius.
-        const dotR = p.size === 'XXL' ? 8.0 : p.size === 'XL' ? 4.0 : p.size === 'L' ? 2.0 : p.size === 'M' ? 0.8 : 0.35;
-        // S: luminance-scaled alpha so bright pixels = bright dot, dark pixels = dim dot.
-        // M/L/XL/XXL: fixed alpha — appear as brighter distinct spots on top of S tile grid.
-        const alpha = p.size === 'S'
-          ? clamp((p.opacity || 0.14) * 13, 0.04, 0.85)
-          : p.size === 'M' ? 0.65 : p.size === 'L' ? 0.55 : p.size === 'XL' ? 0.45 : 0.35;
-        const grad = ctx.createRadialGradient(x, y, 0, x, y, dotR);
-        grad.addColorStop(0,    'rgba(' + inner[0] + ',' + inner[1] + ',' + inner[2] + ',' + alpha + ')');
-        grad.addColorStop(0.45, 'rgba(' + c.r + ',' + c.g + ',' + c.b + ',' + (alpha * 0.80) + ')');
-        grad.addColorStop(0.70, 'rgba(' + c.r + ',' + c.g + ',' + c.b + ',' + (alpha * 0.30) + ')');
-        grad.addColorStop(0.88, 'rgba(' + outer[0] + ',' + outer[1] + ',' + outer[2] + ',' + (alpha * 0.04) + ')');
-        grad.addColorStop(1,    'rgba(' + outer[0] + ',' + outer[1] + ',' + outer[2] + ',0)');
-        ctx.fillStyle = grad;
-        ctx.beginPath();
-        ctx.arc(x, y, dotR, 0, Math.PI * 2);
-        ctx.fill();
+        var x = p.cx, y = p.cy;
+        if (useSprites && lightSpriteSheets[p.size]) {
+          var meta = LIGHT_GLOW_FRAMES[p.size];
+          var frame = meta.frames[p.colorCode] || meta.frames[0];
+          var ds = LIGHT_GLOW_DRAW_SIZE[p.size] || 2.67;
+          // Alpha: S scales with luminance so face detail shows; larger sizes fixed.
+          var alpha = p.size === 'S'
+            ? clamp((p.opacity || 0.14) * 3.5, 0.015, 0.18)
+            : p.size === 'M' ? 0.30 : p.size === 'L' ? 0.22 : p.size === 'XL' ? 0.16 : 0.12;
+          ctx.globalAlpha = alpha;
+          ctx.drawImage(lightSpriteSheets[p.size],
+            frame.x, frame.y, meta.srcW, meta.srcH,
+            x - ds * 0.5, y - ds * 0.5, ds, ds);
+          ctx.globalAlpha = 1;
+        } else {
+          // Fallback: synthetic gradient while sprites still loading.
+          var c = COLORS[p.colorCode] || COLORS[0];
+          var render = LIGHT_RENDER[p.colorCode] || LIGHT_RENDER[0];
+          var inner = render.inner;
+          var outer = render.outer;
+          var dotR = p.size === 'XXL' ? 8.0 : p.size === 'XL' ? 4.0 : p.size === 'L' ? 2.0 : p.size === 'M' ? 0.8 : 0.35;
+          var alpha2 = p.size === 'S'
+            ? clamp((p.opacity || 0.14) * 13, 0.04, 0.85)
+            : p.size === 'M' ? 0.65 : p.size === 'L' ? 0.55 : p.size === 'XL' ? 0.45 : 0.35;
+          var grad = ctx.createRadialGradient(x, y, 0, x, y, dotR);
+          grad.addColorStop(0,    'rgba(' + inner[0] + ',' + inner[1] + ',' + inner[2] + ',' + alpha2 + ')');
+          grad.addColorStop(0.45, 'rgba(' + c.r + ',' + c.g + ',' + c.b + ',' + (alpha2 * 0.80) + ')');
+          grad.addColorStop(0.70, 'rgba(' + c.r + ',' + c.g + ',' + c.b + ',' + (alpha2 * 0.30) + ')');
+          grad.addColorStop(0.88, 'rgba(' + outer[0] + ',' + outer[1] + ',' + outer[2] + ',' + (alpha2 * 0.04) + ')');
+          grad.addColorStop(1,    'rgba(' + outer[0] + ',' + outer[1] + ',' + outer[2] + ',0)');
+          ctx.fillStyle = grad;
+          ctx.beginPath();
+          ctx.arc(x, y, dotR, 0, Math.PI * 2);
+          ctx.fill();
+        }
       });
       ctx.restore();
       drawChunkOverlayLogical(ctx, w, h);
@@ -2193,6 +2254,10 @@
     }
     bindPreviewPanZoom(root.querySelector('#__la_source'));
     bindPreviewPanZoom(root.querySelector('#__la_preview'));
+    // Load actual Habbo glow sprites from leet.city; re-render preview when done.
+    loadLightSpritesIfNeeded().then(function() {
+      if (previewFrame && previewFrame.work) renderPreview(root, previewFrame.w, previewFrame.h);
+    }).catch(function(){});
     let timer = null;
     function updateMaxLabel() {
       const el = root.querySelector('#__la_max_label');

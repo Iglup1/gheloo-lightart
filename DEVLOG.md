@@ -482,6 +482,52 @@ Fixed to: `y = anchorY - (logicalH - 1 - localY)` — image-top now maps to room
 
 ---
 
+## [2026-06-27] Claude — Session 16
+
+**Done:**
+
+1. **Extracted all 5 Habbo glow sprite sheets from nitro files** (Node.js extraction, scratchpad):
+   - S.nitro → S_sprite.png (298×142px), S_manifest.json
+   - M.nitro → M_sprite.png (554×266px), M_manifest.json
+   - L.nitro → L_sprite.png (1586×204px), L_manifest.json
+   - XL.nitro → XL_sprite.png (2610×332px), XL_manifest.json
+   - XXL.nitro → XXL_sprite.png (3630×456px), XXL_manifest.json
+   - All from `https://images.leet.city/leet-asset-bundles/libraries/furniture_new2/hfdiy_NewLight_X_xueze.nitro`
+   - Frame format: layer "b" (glow effect), direction 2, states 0-7
+   - Sprite sizes: S=63×64, M=127×128, L=191×192, XL=319×320, XXL=447×448 px
+
+2. **Sprite frame coordinates hardcoded in script** (`pixelart-lightart.js:165-183`):
+   - `LIGHT_GLOW_FRAMES` — per-size frame data (srcW/srcH + x/y per colorCode)
+   - `LIGHT_GLOW_DRAW_SIZE` — draw size in image-pixel space (S=2.67, M=5.6, L=7.2, XL=8.0, XXL=17.8)
+
+3. **`loadLightSpritesIfNeeded()` async function added** (`pixelart-lightart.js:1028`):
+   - Fetches each nitro file from leet.city at runtime (same domain → CSP OK)
+   - Scans for zlib streams (0x78 0x9c magic), uses browser `DecompressionStream('deflate')` to decompress
+   - Finds the stream that decompresses to a PNG (magic \x89PNG), wraps in `createImageBitmap`
+   - Caches `ImageBitmap` per size in `lightSpriteSheets`
+   - Status tracked in `lightSpriteStatus` ('idle'/'loading'/'done')
+
+4. **`renderPreview` now uses actual sprites** (`pixelart-lightart.js:1090-1130`):
+   - If sprites loaded: `ctx.drawImage(sheet, frame.x, frame.y, srcW, srcH, cx-ds/2, cy-ds/2, ds, ds)`
+   - `ctx.globalCompositeOperation='lighter'` + low per-light alpha (S: 0.015-0.18 luminance-scaled; M=0.30; L=0.22; XL=0.16; XXL=0.12)
+   - Falls back to previous synthetic gradient if sprites not yet loaded
+   - On buildUI: calls `loadLightSpritesIfNeeded()` → on resolve, triggers `renderPreview` re-render
+
+**Changed files:**
+- `pixelart-lightart.js:163-183` — LIGHT_GLOW_FRAMES + LIGHT_GLOW_DRAW_SIZE + lightSpriteSheets/Status vars
+- `pixelart-lightart.js:1028-1064` — loadLightSpritesIfNeeded() async function
+- `pixelart-lightart.js:1090-1140` — renderPreview now uses ctx.drawImage from real Habbo sprites
+- `pixelart-lightart.js:2290-2296` — buildUI: load sprites on init, re-render preview when done
+
+**Open / next:**
+- Alpha values (S=0.015-0.18, M=0.30 etc.) are initial calibration estimates — Kenjy needs to test and give feedback
+- If face area looks like orange blob again: lower alpha values or reduce LIGHT_GLOW_DRAW_SIZE for S
+- If preview too dim: raise alpha values
+- If CSP blocks leet.city fetch: try with `credentials:'omit'` or embed sprites as base64
+- Goal: meubel preview 1:1 with room preview — these are the actual Habbo light sprites now
+
+---
+
 ## HOW TO UPDATE THIS FILE
 
 At **start of session**: read latest entry, understand state.

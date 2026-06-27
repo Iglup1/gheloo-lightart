@@ -73,6 +73,30 @@ Key observation: "het plots snel afloopt" — the glow drops off sharply, not gr
 - S alpha: `clamp(p.opacity * 2.6, 0.02, 0.09)` — luminance-scaled via l².
 - M/L/XL/XXL fixed alpha: 0.22 / 0.16 / 0.09 / 0.05.
 
+## Habbo light glow sprite sheets (extracted 2026-06-27 by Claude, Session 16)
+
+Nitro files at: `https://images.leet.city/leet-asset-bundles/libraries/furniture_new2/hfdiy_NewLight_{S|M|L|XL|XXL}_xueze.nitro`
+
+Format: custom container — 2-byte file count, then per-file: 2-byte name length, name, zlib-compressed data. Contains JSON manifest + PNG spritesheet.
+
+Layer "b" = glow effect sprites. Direction 2. States 0-7 map to colorCodes 0-7.
+
+**Sprite sizes per light type (layer b, srcW×srcH):**
+- S: 63×64 px, spritesheet 298×142
+- M: 127×128 px, spritesheet 554×266
+- L: 191×192 px, spritesheet 1586×204
+- XL: 319×320 px, spritesheet 2610×332
+- XXL: 447×448 px, spritesheet 3630×456
+
+**Frame coordinates per colorCode (x, y within spritesheet):**
+- S: {0:{x:67,y:76},1:{x:132,y:76},2:{x:67,y:10},3:{x:197,y:10},4:{x:197,y:76},5:{x:2,y:10},6:{x:2,y:76},7:{x:132,y:10}}
+- M: {0:{x:260,y:6},1:{x:389,y:136},2:{x:389,y:6},3:{x:2,y:6},4:{x:131,y:136},5:{x:131,y:6},6:{x:260,y:136},7:{x:2,y:136}}
+- L: {0:{x:388,y:10},1:{x:774,y:10},2:{x:581,y:10},3:{x:1160,y:10},4:{x:967,y:10},5:{x:2,y:10},6:{x:1353,y:10},7:{x:195,y:10}}
+- XL: {0:{x:323,y:10},1:{x:1286,y:10},2:{x:1607,y:10},3:{x:644,y:10},4:{x:965,y:10},5:{x:2249,y:10},6:{x:2,y:10},7:{x:1928,y:10}}
+- XXL: {0:{x:1349,y:6},1:{x:1798,y:6},2:{x:2247,y:6},3:{x:3145,y:6},4:{x:2,y:6},5:{x:451,y:6},6:{x:900,y:6},7:{x:2696,y:6}}
+
+Hardcoded in `pixelart-lightart.js` as `LIGHT_GLOW_FRAMES` (~line 165). Loaded at runtime by `loadLightSpritesIfNeeded()` (~line 1028) using browser `DecompressionStream('deflate')`. Result cached as `lightSpriteSheets` per size. `renderPreview` uses `ctx.drawImage` with these sprites when available.
+
 **loader.js (attempted 2026-06-27, deleted)**: tried auto-fetching script from GitHub raw URL. Game's CSP blocks fetch to raw.githubusercontent.com. Do NOT re-add this. Workflow stays: script copied to clipboard after every change.
 
 **Workflow rule added 2026-06-27**: Both agents must update DEVLOG after every code commit (not just end of session) and update SHARED_CONTEXT immediately when Kenjy shares any info. See updated CLAUDE_INSTRUCTIONS.md and CODEX_INSTRUCTIONS.md.
