@@ -1095,12 +1095,13 @@
         var x = p.cx, y = p.cy;
         var ds = LIGHT_GLOW_DRAW_SIZE[p.size] || 3.75;
         var dotR = ds * 0.5;
-        // S: 2 tile wide, slight overlap → luminance-scaled alpha, warm field at face, dark at hair.
-        // M/L/XL/XXL: fixed alpha → distinct prominent circles.
+        // Gradient fallback alpha (sprite mode always uses natural sprite alpha = 1.0).
         var dotAlpha = p.size === 'S'
           ? clamp((p.opacity || 0.14) * 1.0, 0.004, 0.07)
           : p.size === 'M' ? 0.35 : p.size === 'L' ? 0.30 : p.size === 'XL' ? 0.24 : 0.18;
-        var sprAlpha = dotAlpha, grdAlpha = dotAlpha;
+        // Sprite path: globalAlpha=1.0 so sprite's own alpha mask (max 128/255) drives opacity,
+        // matching room behavior where each light draws at natural sprite alpha with additive blend.
+        var sprAlpha = 1.0, grdAlpha = dotAlpha;
         if (useSprites && lightSpriteSheets[p.size]) {
           var meta = LIGHT_GLOW_FRAMES[p.size];
           var frame = meta.frames[p.colorCode] || meta.frames[0];

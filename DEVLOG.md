@@ -593,6 +593,26 @@ Fixed to: `y = anchorY - (logicalH - 1 - localY)` — image-top now maps to room
 - `pixelart-lightart.js:172` — LIGHT_GLOW_DRAW_SIZE corrected
 - `pixelart-lightart.js:1094-1110` — unified alpha, S=50% max, M=40% fixed
 
+## [2026-06-27] Claude — Session 17 (sprite alpha fix: match room natural alpha)
+
+**Problem**: Preview shows strange dim dots/blobs. S lights in room appear at natural sprite alpha (max 128/255 ≈ 50%) with additive 'lighter' compositing. Preview was drawing sprites at `sprAlpha = dotAlpha` → S max 7% × 50% sprite alpha = **3.5%** per light. Dense face area (4 overlapping S) → ~14% brightness. Room same area → 4×50% = 200% → clamps to 100%. Visual mismatch: room bright/saturated, preview dim blobs.
+
+**Fix (this session)**:
+- `pixelart-lightart.js:1103`: `var sprAlpha = dotAlpha` → `var sprAlpha = 1.0`
+- Sprite path: globalAlpha=1.0 → sprite draws at natural alpha mask (center 128/255, edges fade to 0)
+- Gradient fallback unchanged: still uses `grdAlpha = dotAlpha`
+- `LIGHT_GLOW_DRAW_SIZE.S = 2.0` kept (S sprite 63px ÷ ~32px/tile = 2 tiles — correct proportions)
+
+**Expected result**: Dense S areas → bright/saturated (many additive 50% contributions), sparse S areas → dim soft glow, dark areas → black. Matches room additive blend behavior exactly.
+
+**Changed files:**
+- `pixelart-lightart.js:1103` — `sprAlpha = 1.0` instead of `dotAlpha` for sprite path
+
+**Open / next:**
+- Kenjy tests: does preview now show bright face area + dark hair/bg when sprites are loaded (spr:done)?
+- If still dim: check sprite load status (bottom-left of canvas)
+- If too blown out everywhere: reduce S `LIGHT_GLOW_DRAW_SIZE` so fewer sprites overlap
+
 ---
 
 ## HOW TO UPDATE THIS FILE
