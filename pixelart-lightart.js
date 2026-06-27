@@ -1043,16 +1043,24 @@
         const render = LIGHT_RENDER[p.colorCode] || LIGHT_RENDER[0];
         const inner = render.inner;
         const outer = render.outer;
-        const x = p.cx, y = p.cy, r = Math.max(1.5, p.radius);
-        const alpha = clamp((p.opacity || 0.14) * (p.colorCode === 0 ? 0.55 : 0.78), 0, 0.38);
-        const grad = ctx.createRadialGradient(x, y, 0, x, y, r * (1 + (p.edge || 0.2) * 2.4));
+        const x = p.cx, y = p.cy;
+        // Dot radius = 1 floor tile per size (image-pixel space, scaled by canvas transform).
+        // S=0.45px → ~1.7 canvas px at scale 3.75: single visible tile dot.
+        // M/L/XL/XXL progressively larger, matching how each furniture size appears in room.
+        const dotR = p.size === 'XXL' ? 4.5 : p.size === 'XL' ? 2.8 : p.size === 'L' ? 1.6 : p.size === 'M' ? 0.9 : 0.45;
+        const outerR = dotR * 1.5;
+        // Alpha derived from p.opacity which encodes per-pixel luminance (l² for S).
+        // Scale factors chosen so bright pixels (l=0.7) reach ~0.85, dark (l=0.2) stay ~0.10.
+        const alphaScale = p.size === 'S' ? 13 : p.size === 'M' ? 14 : p.size === 'L' ? 40 : p.size === 'XL' ? 50 : 70;
+        const maxAlpha = p.size === 'S' ? 0.85 : p.size === 'M' ? 0.80 : 0.75;
+        const alpha = clamp((p.opacity || 0.14) * alphaScale, 0.05, maxAlpha);
+        const grad = ctx.createRadialGradient(x, y, 0, x, y, outerR);
         grad.addColorStop(0, 'rgba(' + inner[0] + ',' + inner[1] + ',' + inner[2] + ',' + alpha + ')');
-        grad.addColorStop(0.38, 'rgba(' + c.r + ',' + c.g + ',' + c.b + ',' + (alpha * 0.62) + ')');
-        grad.addColorStop(0.78, 'rgba(' + outer[0] + ',' + outer[1] + ',' + outer[2] + ',' + (alpha * 0.24) + ')');
+        grad.addColorStop(0.5, 'rgba(' + c.r + ',' + c.g + ',' + c.b + ',' + (alpha * 0.5) + ')');
         grad.addColorStop(1, 'rgba(' + outer[0] + ',' + outer[1] + ',' + outer[2] + ',0)');
         ctx.fillStyle = grad;
         ctx.beginPath();
-        ctx.arc(x, y, r * (1 + (p.edge || 0.2) * 2.4), 0, Math.PI * 2);
+        ctx.arc(x, y, outerR, 0, Math.PI * 2);
         ctx.fill();
       });
       ctx.restore();
