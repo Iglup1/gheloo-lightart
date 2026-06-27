@@ -742,19 +742,38 @@
       }
     }
 
-    // ── MULTI-PASS BLENDER ────────────────────────────────────────────────────
-    // S pass always covers every pixel → crisp pixel colours everywhere.
-    // M/L/XL/XXL passes activate as blend rises; each samples a WIDER area,
-    // so at colour transitions its average colour differs from S → additive
-    // overlap of the two creates perceived mixed/blended colours ("kleuren op elkaar").
+    // ── BLENDER: content-aware multi-pass ────────────────────────────────────
+    // blend=0 → S only (crisp pixel art, every pixel)
+    // blend=0.5 → S at edges/transitions + M/L blobs in flat colour zones
+    // blend=1 → S only at sharpest edges; XL/L dominate flat areas; rich additive mix
     //
-    // blend=0   → S only (pure pixel art)
-    // blend=0.1 → S + sparse M (soft glow halos)
-    // blend=0.5 → S + M (step 6) + L (step 12)
-    // blend=1   → S (step 2) + M (step 2) + L (step 5) + XL (step 9) + XXL (step 14)
+    // Flat areas (low variance) → LARGE lights (XL/L) that cover the whole region.
+    // Edges/gradients → S keeps colour detail; M/L add soft secondary blending.
+    // Area-averaged M/L/XL sampling → naturally different hues from adjacent S → additive mix.
 
-    // Step per pass (0 = inactive):
-    const sStep   = blend < 0.66 ? 1 : 2;
+    // Precompute flatness map (variance → 0=edge, 1=perfectly flat).
+    // Used to suppress S in flat zones and upgrade M→L/XL in flat zones.
+    const varR = Math.max(3, Math.round(3 + blend * 8));
+    let flatMap = null;
+    if (blend > 0.20) {
+      flatMap = new Float32Array(w * h);
+      for (let fy = 0; fy < h; fy++) {
+        for (let fx = 0; fx < w; fx++) {
+          const v = localVariance(work, w, h, fx, fy, varR);
+          flatMap[fy * w + fx] = 1 - clamp((v - 0.05) / 0.08, 0, 1);
+        }
+      }
+    }
+    function getFlat(px, py) {
+      if (!flatMap) return 0;
+      return flatMap[clamp(py, 0, h-1) * w + clamp(px, 0, w-1)];
+    }
+
+    // S pass: suppressed in flat areas when blend is medium/high.
+    // Threshold rises with blend so at blend=1 only the sharpest edges get S.
+    const sFlatCut = blend > 0.20 ? 0.55 + blend * 0.35 : 2; // 2 = never skip
+
+    // Blob passes: step shrinks as blend rises (denser blobs at higher blend).
     const mStep   = blend < 0.10 ? 0 : Math.max(2, Math.round(10 - blend * 8));
     const lStep   = blend < 0.30 ? 0 : Math.max(4, Math.round(18 - blend * 13));
     const xlStep  = blend < 0.55 ? 0 : Math.max(8, Math.round(28 - blend * 19));
@@ -762,60 +781,87 @@
 
     let done = false;
 
-    function runPass(step, sz, radius, opFn, useSharp) {
+    function placeWithSecondary(x, y, colors, sz, radius, opac, spread) {
+      pushLight(raw, w, h, x, y, colors[0], sz, radius, opac, 0.18, sz, 0);
+      if (raw.length >= maxLights) { done = true; return; }
+      if (colors.length > 1) {
+        const ox = clamp(x + (Math.random() - 0.5) * spread * 2, 0, w - 1);
+        const oy = clamp(y + (Math.random() - 0.5) * spread * 2, 0, h - 1);
+        const sz2 = sz === 'XXL' ? 'XL' : sz === 'XL' ? 'L' : sz === 'L' ? 'M' : 'S';
+        const r2  = sz2 === 'XL' ? rXL : sz2 === 'L' ? rL : sz2 === 'M' ? rM : rS;
+        pushLight(raw, w, h, ox, oy, colors[1], sz2, r2, opac * 0.55, 0.18, sz2, 1);
+        if (raw.length >= maxLights) { done = true; }
+      }
+    }
+
+    // ── S PASS ────────────────────────────────────────────────────────────────
+    if (!done) {
+      const useSharp = blend < 0.15;
+      for (let gy = 0; gy < h && !done; gy++) {
+        for (let gx = 0; gx < w && !done; gx++) {
+          if (raw.length >= maxLights) { done = true; break; }
+          const buf = useSharp ? sharp : work;
+          const ii = (gy * w + gx) * 4;
+          if (buf[ii + 3] < 2) continue;
+          const cr = buf[ii], cg = buf[ii + 1], cb = buf[ii + 2];
+          const l = lum(cr, cg, cb);
+          const s = satOf(cr, cg, cb);
+          if (l < 0.06 && s < 0.20) continue;
+          // Skip flat areas at medium/high blend — blob passes will cover them
+          if (getFlat(gx, gy) > sFlatCut) continue;
+          const allowW = l > 0.62 && s < 0.22;
+          const colors = chooseLightMix(cr, cg, cb, allowW, mixPower);
+          if (!colors.length) continue;
+          const opac = intensity * (blend < 0.10 ? 0.18 : 0.14) * l * l;
+          placeWithSecondary(gx, gy, colors, 'S', rS, opac, 0.6);
+        }
+      }
+    }
+
+    // ── BLOB PASSES (M / L / XL / XXL) ───────────────────────────────────────
+    // Each pass area-samples its neighbourhood → different hue from S at transitions.
+    // Flat zones: M upgrades to L/XL; L upgrades to XL — ensuring large areas get big lights.
+    function runBlobPass(step, baseSz, baseR, opFn) {
       if (!step || done) return;
-      const sampleR = step > 1 ? Math.max(1, Math.round(step * 0.6)) : 0;
-      const jitter  = step > 1 ? step * 0.15 : 0;
+      const sampleR = Math.max(1, Math.round(step * 0.6));
+      const jitter  = step * 0.15;
       for (let gy = 0; gy < h && !done; gy += step) {
         for (let gx = 0; gx < w && !done; gx += step) {
           if (raw.length >= maxLights) { done = true; return; }
           const x  = clamp(gx + step * 0.5 + (Math.random() - 0.5) * jitter * 2, 0, w - 1);
           const y  = clamp(gy + step * 0.5 + (Math.random() - 0.5) * jitter * 2, 0, h - 1);
           const px = Math.round(x), py = Math.round(y);
-          let cr, cg, cb;
-          if (sampleR === 0) {
-            const buf = useSharp ? sharp : work;
-            const ii = (py * w + px) * 4;
-            if (buf[ii + 3] < 2) continue;
-            cr = buf[ii]; cg = buf[ii + 1]; cb = buf[ii + 2];
-          } else {
-            const rgb = sampleCell(work, w, h, px, py, sampleR);
-            if (rgb.a < 2) continue;
-            cr = rgb.r; cg = rgb.g; cb = rgb.b;
-          }
+          const rgb = sampleCell(work, w, h, px, py, sampleR);
+          if (rgb.a < 2) continue;
+          const cr = rgb.r, cg = rgb.g, cb = rgb.b;
           const l = lum(cr, cg, cb);
           const s = satOf(cr, cg, cb);
           if (l < 0.06 && s < 0.20) continue;
+          // Flatness × blend → blobPower → size upgrade for flat zones
+          const bp = getFlat(px, py) * blend;
+          let sz = baseSz, r = baseR;
+          if (baseSz === 'M') {
+            if (bp > 0.80) { sz = 'XL'; r = rXL; }
+            else if (bp > 0.55) { sz = 'L'; r = rL; }
+          } else if (baseSz === 'L') {
+            if (bp > 0.85) { sz = 'XL'; r = rXL; }
+          }
           const allowW = l > 0.62 && s < 0.22;
           const colors = chooseLightMix(cr, cg, cb, allowW, mixPower);
           if (!colors.length) continue;
-          const opac = opFn(l);
-          pushLight(raw, w, h, x, y, colors[0], sz, radius, opac, 0.18, sz, 0);
-          if (raw.length >= maxLights) { done = true; return; }
-          // Secondary colour always placed — offset within cell → additive mix
-          if (colors.length > 1) {
-            const spread = Math.max(0.6, step * 0.40);
-            const ox = clamp(x + (Math.random() - 0.5) * spread * 2, 0, w - 1);
-            const oy = clamp(y + (Math.random() - 0.5) * spread * 2, 0, h - 1);
-            const sz2 = sz === 'XXL' ? 'XL' : sz === 'XL' ? 'L' : sz === 'L' ? 'M' : 'S';
-            const r2  = sz2 === 'XL' ? rXL : sz2 === 'L' ? rL : sz2 === 'M' ? rM : rS;
-            pushLight(raw, w, h, ox, oy, colors[1], sz2, r2, opac * 0.55, 0.18, sz2, 1);
-            if (raw.length >= maxLights) { done = true; return; }
-          }
+          placeWithSecondary(x, y, colors, sz, r, opFn(l), Math.max(0.6, step * 0.40));
         }
       }
     }
 
-    // S: always, sharp at low blend, exact pixel colours
-    runPass(sStep,   'S',   rS,   function(l) { return intensity * (blend < 0.10 ? 0.18 : 0.14) * l * l; }, blend < 0.15);
-    // M: from blend=0.10 — area-averaged colour → natural colour mixing with S
-    runPass(mStep,   'M',   rM,   function(l) { return intensity * 0.11 * (0.3 + l * 0.7); },               false);
-    // L: from blend=0.30
-    runPass(lStep,   'L',   rL,   function(l) { return intensity * 0.038 * (0.35 + l * 0.65); },            false);
-    // XL: from blend=0.55
-    runPass(xlStep,  'XL',  rXL,  function(l) { return intensity * 0.022 * (0.4 + l * 0.6); },             false);
+    // M: from blend=0.10, upgrades to L/XL in flat areas
+    runBlobPass(mStep,   'M',   rM,   function(l) { return intensity * 0.11  * (0.3  + l * 0.7);  });
+    // L: from blend=0.30, upgrades to XL in very flat areas
+    runBlobPass(lStep,   'L',   rL,   function(l) { return intensity * 0.038 * (0.35 + l * 0.65); });
+    // XL: from blend=0.55, always XL
+    runBlobPass(xlStep,  'XL',  rXL,  function(l) { return intensity * 0.022 * (0.4  + l * 0.6);  });
     // XXL: from blend=0.80
-    runPass(xxlStep, 'XXL', rXXL, function(l) { return intensity * 0.015 * (0.4 + l * 0.6); },             false);
+    runBlobPass(xxlStep, 'XXL', rXXL, function(l) { return intensity * 0.015 * (0.4  + l * 0.6);  });
   }
   function collectSettings(root) {
     const ids = {
