@@ -1,0 +1,1965 @@
+# Habbo Hotel light ball sprites - combination and blending guide
+# For GitHub / Codex integration
+
+This document explains how the S, M, L, XL and XXL transparent light-ball sprites can be stacked and combined to create custom glow colors in Habbo-style furniture/lamp scripts.
+
+The goal is not to manually list every possible color, because the number of practical combinations is extremely large. The goal is to explain the rules clearly enough so Codex or another script generator can implement a recipe system.
+
+---
+
+## 1. Core idea
+
+The colored balls are semi-transparent radial light sprites.
+
+A sprite is basically:
+
+    source RGB color + radial alpha mask
+
+The center is strongest and the edge fades out.
+
+When you place multiple sprites inside each other, the result becomes:
+
+    brighter
+    more saturated
+    mixed toward the colors that appear the most
+    affected by size, position, overlap and layer order
+
+So this works like a practical "weighted color mix".
+
+Example:
+
+    1x orange + 1x white = light pastel orange
+    2x orange + 1x white = more orange
+    3x orange + 1x white = stronger orange
+    1x orange + 2x white = lighter / more pastel orange
+
+This is not literally paint, because it is digital alpha blending, but for practical Habbo building it behaves like a color recipe system.
+
+---
+
+## 2. Important truth about "infinite" combinations
+
+In a normal 8-bit PNG/RGBA system, the amount of final pixel colors is technically finite, because R, G, B and A are stored as 0-255 values.
+
+But in practical use, the amount of visible combinations is extremely large because you can change:
+
+    color choices
+    number of layers
+    repeated colors
+    sprite size: S, M, L, XL, XXL
+    overlap position
+    offset direction
+    exact center alignment
+    layer order
+    background color
+    renderer blend mode
+    opacity multiplier
+    partial side-overlaps
+    big aura + small core setups
+
+So for documentation, it is okay to describe the system as "practically almost unlimited custom glow combinations", but not mathematically infinite.
+
+---
+
+## 3. Base sprite colors
+
+Use these source colors for rebuilding or scripting the lights.
+
+| Name   | HEX     | RGB             |
+|--------|---------|-----------------|
+| yellow | #FFFF00 | rgb(255,255,0)  |
+| cyan   | #00FFFF | rgb(0,255,255)  |
+| white  | #FFFFFF | rgb(255,255,255)|
+| orange | #FF9900 | rgb(255,153,0)  |
+| purple | #CC00FF | rgb(204,0,255)  |
+| green  | #00FF00 | rgb(0,255,0)    |
+| blue   | #0033FF | rgb(0,51,255)   |
+| red    | #FF0000 | rgb(255,0,0)    |
+
+Note:
+Some exported PNG center pixels can be slightly different because of export/scaling/premultiplication.
+For example:
+    orange often reads as rgb(255,151,0)
+    purple often reads as rgb(203,0,255)
+    blue often reads as rgb(0,50,255)
+
+For script logic and recipes, use the source colors in the table.
+
+---
+
+## 4. Sprite sizes
+
+Approximate technical size data from pixel analysis:
+
+| Size | Sprite bbox | Approx radius | Max alpha | Center alpha | Notes |
+|------|-------------|---------------|-----------|--------------|-------|
+| S    | 63x64 px    | 31-32 px      | 128       | 128          | all 8 use same alpha mask |
+| M    | 127x128 px  | 63-63.5 px    | 128       | 128          | all 8 use same alpha mask |
+| L    | 191x192 px  | 95-95.5 px    | 128       | 128          | all 8 use same alpha mask |
+| XL   | 250/251x251 px | about 125 px | 127-128 | 127          | tiny per-color mask differences |
+| XXL  | 252/253x253 px | about 126 px | 127-128 | 127-128      | slightly larger than XL |
+
+Main alpha rule:
+
+    center alpha ≈ 128 / 255 = 50.2% opacity
+    edge fades down to alpha 1 and then 0
+
+Good approximation:
+
+    alpha ≈ 128 * (1 - distance_from_center / radius)
+
+This is close enough for script previews, but exact PNG reproduction needs the real alpha-mask image or CSV mask.
+
+---
+
+## 5. S sprite exact alpha profile
+
+S sprite bbox:
+
+    63x64 px
+
+S center alpha:
+
+    128
+
+S horizontal center alpha profile, local y = center row, local x = 0..62:
+
+    2,5,8,11,14,18,22,26,31,35,40,44,49,54,59,64,69,74,79,84,88,93,98,102,106,110,114,117,120,123,126,128,125,123,120,117,114,110,106,102,98,93,88,84,79,74,69,64,59,54,49,44,40,35,31,26,22,18,14,11,8,5,2
+
+S bottom artifact pixels:
+
+    local (30,62)
+    local (31,62)
+    local (30,63)
+    local (31,63)
+
+These have alpha 128.
+For the white S ball these artifact pixels are black RGBA(0,0,0,128).
+
+For visual blending logic you can ignore the artifacts.
+For pixel-perfect reproduction you should preserve them.
+
+---
+
+## 6. Brightness when stacking the same sprite
+
+If the center alpha is 128/255, one centered sprite is about 50.2% visible.
+
+If you place identical sprites exactly inside each other, the visible strength increases like this:
+
+Formula:
+
+    combined_alpha = 1 - (1 - alpha)^layer_count
+
+Using alpha = 128/255:
+
+| Layer count | Combined center opacity |
+|-------------|--------------------------|
+| 1 | 50.2% |
+| 2 | 75.2% |
+| 3 | 87.6% |
+| 4 | 93.8% |
+| 5 | 96.9% |
+| 6 | 98.5% |
+| 7 | 99.2% |
+| 8 | 99.6% |
+| 9 | 99.8% |
+| 10 | 99.9% |
+
+Meaning:
+
+    1 ball = soft glow
+    2 balls = much brighter
+    3 balls = very bright
+    4+ balls = close to saturated
+    more layers still matter, but the difference becomes smaller
+
+This is why stacked Habbo lamps get feller/brighter.
+
+---
+
+## 7. Normal alpha compositing formula
+
+For exact rendering with normal source-over alpha:
+
+Layer data per pixel:
+
+    C_i = RGB color of layer i, normalized 0..1
+    A_i = alpha of layer i, normalized 0..1
+
+If compositing over a background:
+
+    outA = A_top + A_bottom * (1 - A_top)
+
+For many layers:
+
+    outA = 1 - product(1 - A_i)
+
+For RGB in premultiplied alpha logic:
+
+    outRGB_premul = sum(C_i * A_i * visibility_factor_i) + background * remaining_transparency
+
+Where visibility_factor_i depends on how many layers are above that layer.
+
+Important:
+With normal alpha blending, layer order can matter.
+For recipe previews, a weighted average is usually good enough.
+For exact pixel rendering, use source-over compositing in the same order as the game/client.
+
+---
+
+## 8. Simple weighted recipe model
+
+For Codex integration, there are two useful models:
+
+### A. Visual recipe model
+Good for naming / previewing / choosing combinations.
+
+Treat repeated colors as weights:
+
+    2x orange + 1x white
+    = orange has 2 weight
+    = white has 1 weight
+    = final color is mostly orange, slightly lighter/pastel
+
+Simple approximation:
+
+    mixedRGB = sum(colorRGB * count) / sum(count)
+
+This does not include alpha/radius/offset, but it gives a good "paint-like" recipe color.
+
+### B. Pixel render model
+Good for actual image generation.
+
+For every pixel:
+    1. sample the sprite alpha mask
+    2. multiply by layer opacity
+    3. composite layers in order
+    4. output final RGB/A
+
+Use this for real script rendering or preview generation.
+
+---
+
+## 9. Basic recipe examples
+
+These HEX values are simple weighted-average approximations, not exact rendered pixels.
+
+| Recipe | Approx result | Meaning |
+|--------|---------------|---------|
+| 1 orange + 1 white | #FFCC80 | pastel orange |
+| 2 orange + 1 white | #FFBB55 | stronger warm orange |
+| 3 orange + 1 white | #FFB240 | even more orange |
+| 4 orange + 1 white | #FFAD33 | close to orange, but lighter |
+| 2 yellow + 1 orange + 1 white | #FFE640 | golden yellow |
+| 2 orange + 1 yellow | #FFBB00 | amber/gold orange |
+| 2 red + 1 orange | #FF3300 | hot red-orange |
+| 1 red + 1 white | #FF8080 | soft pink/red |
+| 2 purple + 1 white | #DD55FF | light violet |
+| 1 purple + 1 orange + 1 white | #EE88AA | peach/pink glow |
+| 2 cyan + 1 white | #55FFFF | icy cyan |
+| 1 cyan + 1 blue + 1 white | #55BBFF | light blue |
+| 2 blue + 1 cyan + 1 white | #4099FF | stronger blue/cyan |
+| 2 green + 1 yellow | #55FF00 | lime |
+| 1 green + 1 cyan + 1 white | #55FFAA | mint/aqua |
+| red + green | #808000 | olive/yellowish mix |
+| red + green + blue | #556655 | muted gray/greenish mix |
+| cyan + orange | #80CC80 | desaturated greenish mix |
+
+Notes:
+- White makes colors lighter/pastel.
+- Repeating a color increases its influence.
+- Red + green or cyan + orange can become muddy/desaturated, depending on blend mode.
+- Yellow/orange/white combinations are good for warm lamps.
+- Cyan/blue/white combinations are good for cold/ice lamps.
+- Purple/orange/white combinations are good for magical warm cores inside purple aura.
+
+---
+
+## 10. Combination categories
+
+This section describes the main "types" of combinations that should be supported by a script or recipe generator.
+
+### 10.1 Single-color glow
+
+One sprite only.
+
+Examples:
+    S orange
+    M cyan
+    L red
+    XL purple
+    XXL blue
+
+Usage:
+    simple colored light
+    low brightness
+    clean color identity
+
+### 10.2 Same-color brightness stack
+
+Multiple identical sprites exactly centered.
+
+Examples:
+    2x M orange
+    3x L blue
+    4x S white
+
+Effect:
+    same color
+    much brighter center
+    stronger glow
+    approaches saturation after several layers
+
+Implementation:
+    same size
+    same color
+    same x/y
+    increasing count
+
+### 10.3 White + color pastel mix
+
+White is used to lighten the color.
+
+Examples:
+    1x orange + 1x white = pastel orange
+    2x orange + 1x white = stronger orange
+    1x blue + 2x white = pale blue
+    1x purple + 2x white = soft violet
+
+Effect:
+    lighter center
+    pastel versions
+    white hotspot if white is smaller and centered
+
+### 10.4 Warm blend
+
+Warm colors:
+    red
+    orange
+    yellow
+    white
+
+Examples:
+    red + orange
+    orange + yellow
+    yellow + white
+    red + orange + white
+    2x orange + 1x yellow + 1x white
+
+Effect:
+    fire / candle / sunset / gold glow
+
+Good size setup:
+    XXL orange or yellow as aura
+    M/L orange as middle
+    S white or S yellow as center hotspot
+
+### 10.5 Cold blend
+
+Cold colors:
+    blue
+    cyan
+    white
+
+Examples:
+    blue + cyan
+    cyan + white
+    2x blue + 1x cyan
+    blue + cyan + white
+
+Effect:
+    ice / neon / electric / water glow
+
+Good size setup:
+    XXL blue as aura
+    L cyan as middle
+    S white as center hotspot
+
+### 10.6 Nature / toxic / lime blend
+
+Colors:
+    green
+    yellow
+    cyan
+    white
+
+Examples:
+    2x green + 1x yellow
+    green + cyan
+    green + yellow + white
+    green + cyan + white
+
+Effect:
+    lime / toxic / magic green / bright nature glow
+
+### 10.7 Purple magic blend
+
+Colors:
+    purple
+    blue
+    red
+    white
+    orange for warm core
+
+Examples:
+    purple + blue
+    purple + red
+    purple + white
+    XXL purple + S orange + S white
+    XL purple + M orange + S white
+
+Effect:
+    magic glow
+    purple aura
+    pink/violet center
+    warm peach hotspot if orange/white is added
+
+### 10.8 Big aura + small core
+
+This is one of the most important Habbo use cases.
+
+Use a large sprite as the background aura, and smaller sprites inside it as the bright core.
+
+Example from your screenshot:
+
+    XL or XXL purple = large outside aura
+    M/S orange = warm core
+    S white or yellow = bright center hotspot
+
+Effect:
+    outer area stays purple
+    middle becomes purple/orange mixed
+    center becomes warm peach/orange/white
+
+General recipe:
+
+    XXL aura color
+    + XL or L secondary color
+    + M/S core color
+    + optional S white hotspot
+
+Examples:
+    XXL purple + M orange + S white
+    XXL blue + L cyan + S white
+    XXL green + M yellow + S white
+    XXL red + M orange + S yellow
+    XXL cyan + M blue + S white
+
+### 10.9 Multi-size radial gradient stack
+
+This creates a more complex gradient.
+
+Use sizes from big to small:
+
+    XXL = outer aura
+    XL = main color field
+    L = secondary tint
+    M = inner glow
+    S = center hotspot
+
+Example warm gradient:
+
+    XXL red
+    XL orange
+    L yellow
+    M yellow
+    S white
+
+Result:
+    red/orange outside
+    yellow center
+    white-hot middle
+
+Example cold gradient:
+
+    XXL blue
+    XL cyan
+    L cyan
+    M white
+    S white
+
+Result:
+    blue outside
+    cyan middle
+    white/ice center
+
+Example purple sunset:
+
+    XXL purple
+    XL purple
+    L orange
+    M orange
+    S white
+
+Result:
+    purple aura with orange/pink center
+
+### 10.10 Side-overlap / half-overlap with XXL balls
+
+This is when a big XL/XXL ball is not centered directly on the smaller ball, but placed partly to the side.
+
+This creates:
+    colored edge tint
+    directional glow
+    one side brighter than the other
+    crescent-like color mixing
+    soft color bleeding from left/right/top/bottom
+
+Examples:
+    XXL blue placed left of S white
+    XXL purple placed behind and above M orange
+    XXL orange placed to the right of L white
+    XXL cyan half-overlapping small green
+    XXL red offset behind S yellow
+
+Use cases:
+    lamp has a colored aura on one side
+    object looks lit from left/right
+    custom gradient not centered
+    multiple room lights blending into one area
+
+Offset ideas:
+    center offset by 25% of big radius = soft directional tint
+    center offset by 50% of big radius = strong side aura
+    center offset by 75% of big radius = edge-only overlap
+    center offset by 100% of big radius = near-touch / very light overlap
+
+Recommended script parameter:
+
+    offsetX
+    offsetY
+
+Example:
+    base layer: XXL purple at x=0, y=0
+    core layer: S orange at x=45, y=-20
+    hotspot: S white at x=45, y=-20
+
+This makes the warm core sit on one side of the purple aura.
+
+### 10.11 Full overlap
+
+All layers share the same center.
+
+Effect:
+    clean circular glow
+    strongest center
+    symmetrical gradient
+    easiest to calculate
+
+Good for:
+    exact color recipes
+    centered lamps
+    bright cores
+
+### 10.12 Partial overlap
+
+Layer centers differ.
+
+Effect:
+    more natural/random glow
+    color changes across the sprite
+    asymmetric light
+    side gradients
+
+Good for:
+    Habbo items placed partly inside each other
+    custom room lighting
+    wall/floor edge glow
+    multi-lamp color blending
+
+### 10.13 Repeated small hotspot
+
+Use a big aura and stack multiple small S/M sprites inside the center.
+
+Examples:
+    XXL purple + 3x S orange + 1x S white
+    XL blue + 2x S cyan + 2x S white
+    XXL red + 2x M orange + S yellow
+
+Effect:
+    bright center
+    large soft aura
+    strong color identity in the middle
+
+### 10.14 Multiple big auras
+
+Stack multiple XL/XXL sprites of different colors.
+
+Examples:
+    XXL blue + XXL purple
+    XXL red + XXL orange
+    XXL green + XXL cyan
+    XXL purple + XXL orange
+
+Effect:
+    very large blended field
+    low contrast center unless smaller hotspot is added
+    good for ambient room colors
+
+Tip:
+Add S/M white or yellow in the center if the glow needs a visible focal point.
+
+### 10.15 Same color but different sizes
+
+Example:
+    XXL orange + L orange + S orange
+
+Effect:
+    same color from outside to inside
+    stronger center
+    smooth monochrome glow
+
+This is a clean way to make a lamp stronger without changing hue.
+
+### 10.16 Color correction with white
+
+White can be used as a correction layer.
+
+Examples:
+    color too dark? add S/M white
+    purple too strong? add white or orange
+    blue too strong? add cyan or white
+    orange too strong? add white/yellow
+
+White does not only make it brighter; it also makes it less saturated/pastel.
+
+### 10.17 Color correction with yellow/orange
+
+Yellow and orange warm up a glow.
+
+Examples:
+    white + orange = warm white
+    purple + orange = peach/magic warm center
+    red + yellow = orange/fire
+    blue + yellow = can become gray/greenish depending blend
+
+### 10.18 Color correction with cyan/blue
+
+Cyan and blue cool down a glow.
+
+Examples:
+    white + cyan = cold white
+    blue + cyan = neon blue
+    purple + blue = deeper violet
+    green + cyan = aqua/mint
+
+---
+
+## 11. Suggested recipe objects for code
+
+Use a layer-based recipe format.
+
+Example JSON-like structure:
+
+```json
+{
+  "name": "Purple aura with warm orange core",
+  "layers": [
+    { "size": "XXL", "color": "purple", "count": 1, "x": 0, "y": 0, "z": 0 },
+    { "size": "M",   "color": "orange", "count": 2, "x": 0, "y": 0, "z": 1 },
+    { "size": "S",   "color": "white",  "count": 1, "x": 0, "y": 0, "z": 2 }
+  ]
+}
+```
+
+For side overlaps:
+
+```json
+{
+  "name": "Purple side aura with warm off-center core",
+  "layers": [
+    { "size": "XXL", "color": "purple", "count": 1, "x": 0,  "y": 0,   "z": 0 },
+    { "size": "M",   "color": "orange", "count": 2, "x": 45, "y": -20, "z": 1 },
+    { "size": "S",   "color": "white",  "count": 1, "x": 45, "y": -20, "z": 2 }
+  ]
+}
+```
+
+For a strong warm lamp:
+
+```json
+{
+  "name": "Hot amber lamp",
+  "layers": [
+    { "size": "XXL", "color": "orange", "count": 1, "x": 0, "y": 0, "z": 0 },
+    { "size": "L",   "color": "yellow", "count": 1, "x": 0, "y": 0, "z": 1 },
+    { "size": "M",   "color": "orange", "count": 2, "x": 0, "y": 0, "z": 2 },
+    { "size": "S",   "color": "white",  "count": 1, "x": 0, "y": 0, "z": 3 }
+  ]
+}
+```
+
+For an ice lamp:
+
+```json
+{
+  "name": "Ice blue lamp",
+  "layers": [
+    { "size": "XXL", "color": "blue",  "count": 1, "x": 0, "y": 0, "z": 0 },
+    { "size": "L",   "color": "cyan",  "count": 1, "x": 0, "y": 0, "z": 1 },
+    { "size": "M",   "color": "cyan",  "count": 1, "x": 0, "y": 0, "z": 2 },
+    { "size": "S",   "color": "white", "count": 2, "x": 0, "y": 0, "z": 3 }
+  ]
+}
+```
+
+---
+
+## 12. Suggested JavaScript data model
+
+```js
+const COLORS = {
+  yellow: [255, 255, 0],
+  cyan:   [0, 255, 255],
+  white:  [255, 255, 255],
+  orange: [255, 153, 0],
+  purple: [204, 0, 255],
+  green:  [0, 255, 0],
+  blue:   [0, 51, 255],
+  red:    [255, 0, 0],
+};
+
+const SIZES = {
+  S:   { w: 63,  h: 64,  radiusX: 31,   radiusY: 31.5, maxAlpha: 128 },
+  M:   { w: 127, h: 128, radiusX: 63,   radiusY: 63.5, maxAlpha: 128 },
+  L:   { w: 191, h: 192, radiusX: 95,   radiusY: 95.5, maxAlpha: 128 },
+  XL:  { w: 251, h: 251, radiusX: 125,  radiusY: 125,  maxAlpha: 128 },
+  XXL: { w: 253, h: 253, radiusX: 126,  radiusY: 126,  maxAlpha: 128 },
+};
+```
+
+Layer format:
+
+```js
+const layer = {
+  size: "XXL",
+  color: "purple",
+  count: 1,
+  x: 0,
+  y: 0,
+  z: 0,
+  opacityScale: 1.0
+};
+```
+
+---
+
+## 13. Approximate alpha mask generator
+
+This is not pixel-perfect, but good for Codex preview/script logic.
+
+```js
+function alphaAt(sizeName, localX, localY) {
+  const s = SIZES[sizeName];
+
+  const cx = (s.w - 1) / 2;
+  const cy = (s.h - 1) / 2;
+
+  const dx = (localX - cx) / s.radiusX;
+  const dy = (localY - cy) / s.radiusY;
+
+  const dist = Math.sqrt(dx * dx + dy * dy);
+
+  if (dist >= 1) return 0;
+
+  const a = s.maxAlpha * (1 - dist);
+  return Math.max(0, Math.min(128, Math.round(a)));
+}
+```
+
+For pixel-perfect reproduction:
+- load the real alpha mask from the extracted PNG/CSV
+- do not rely only on the formula
+- preserve bottom artifact pixels if exact matching matters
+
+---
+
+## 14. Approximate weighted color preview
+
+This gives a simple "paint-like" recipe color.
+
+```js
+function weightedRecipeColor(recipeCounts) {
+  let total = 0;
+  let r = 0, g = 0, b = 0;
+
+  for (const [colorName, count] of Object.entries(recipeCounts)) {
+    const [cr, cg, cb] = COLORS[colorName];
+    r += cr * count;
+    g += cg * count;
+    b += cb * count;
+    total += count;
+  }
+
+  return [
+    Math.round(r / total),
+    Math.round(g / total),
+    Math.round(b / total)
+  ];
+}
+
+// Example:
+weightedRecipeColor({ orange: 2, white: 1 });
+// approx [255, 187, 85] = #FFBB55
+```
+
+Use this for:
+    naming recipes
+    showing rough preview colors
+    selecting UI swatches
+    explaining blends to users
+
+Do not use it for:
+    pixel-perfect preview
+    offset overlap preview
+    final rendered glow if exact output matters
+
+---
+
+## 15. Exact source-over compositing pseudocode
+
+This is the better render model for a preview image.
+
+```js
+function compositePixel(layers, x, y, background = [0, 0, 0]) {
+  // Work in premultiplied RGB, 0..1
+  let outR = background[0] / 255;
+  let outG = background[1] / 255;
+  let outB = background[2] / 255;
+  let outA = 1; // if background is opaque black
+
+  // If background should be transparent, start with outA = 0 and outRGB = 0.
+
+  const sorted = [...layers].sort((a, b) => a.z - b.z);
+
+  for (const layer of sorted) {
+    for (let repeat = 0; repeat < (layer.count || 1); repeat++) {
+      const sprite = SIZES[layer.size];
+      const localX = Math.round(x - layer.x + (sprite.w - 1) / 2);
+      const localY = Math.round(y - layer.y + (sprite.h - 1) / 2);
+
+      if (localX < 0 || localY < 0 || localX >= sprite.w || localY >= sprite.h) {
+        continue;
+      }
+
+      const alphaByte = alphaAt(layer.size, localX, localY);
+      const srcA = (alphaByte / 255) * (layer.opacityScale ?? 1);
+
+      if (srcA <= 0) continue;
+
+      const [cr, cg, cb] = COLORS[layer.color];
+      const srcR = cr / 255;
+      const srcG = cg / 255;
+      const srcB = cb / 255;
+
+      // source-over
+      outR = srcR * srcA + outR * (1 - srcA);
+      outG = srcG * srcA + outG * (1 - srcA);
+      outB = srcB * srcA + outB * (1 - srcA);
+      outA = srcA + outA * (1 - srcA);
+    }
+  }
+
+  return [
+    Math.round(outR * 255),
+    Math.round(outG * 255),
+    Math.round(outB * 255),
+    Math.round(outA * 255)
+  ];
+}
+```
+
+Important:
+This assumes normal alpha compositing over an opaque background.
+If your game/client uses a different blend mode, results can differ.
+
+---
+
+## 16. Optional additive/screen-like interpretation
+
+Some light effects visually look more like additive or screen blending.
+
+If your script wants a stronger "light" effect, support blend modes:
+
+    normal
+    additive
+    screen
+    weightedRecipe
+
+Additive-style:
+    RGB accumulates and clamps to 255
+    good for bright neon
+    can become white quickly
+
+Screen-style:
+    brightens without darkening as much
+    good for light/glow effects
+
+Normal source-over:
+    best for copying transparent PNG behavior
+
+Recommended:
+Use normal source-over as default.
+Use additive/screen only as optional creative modes.
+
+---
+
+## 17. Positioning strategy for Habbo-style stacking
+
+For Habbo furniture/lights placed "inside each other":
+
+### Centered stack
+All layers have same x/y.
+
+    x = 0
+    y = 0
+
+Use for:
+    clean color recipes
+    brighter lamps
+    centered circular glow
+
+### Small core inside big aura
+Big layer at x/y = 0.
+Small layer also at x/y = 0.
+
+    XXL purple at (0,0)
+    S orange at (0,0)
+    S white at (0,0)
+
+Use for:
+    aura + hotspot
+    fantasy/magic lamp
+    strong center
+
+### Side-offset core
+Small layer is shifted.
+
+    XXL purple at (0,0)
+    S orange at (45,-20)
+    S white at (45,-20)
+
+Use for:
+    off-center glow
+    one-sided light
+    furniture placed partially into another furniture
+
+### Side-offset aura
+Big layer is shifted while small core stays center.
+
+    S white at (0,0)
+    XXL blue at (-80,0)
+
+Use for:
+    blue glow coming from one side
+    colored edge bleed
+    half-overlap lighting
+
+### Multiple side auras
+Several big auras around a center.
+
+    XXL blue at (-80,0)
+    XXL purple at (80,0)
+    S white at (0,0)
+
+Use for:
+    mixed room light
+    split-color aura
+    left/right color contrast
+
+---
+
+## 18. Recipe library ideas
+
+These are example names and layer ideas that Codex can turn into presets.
+
+### Warm presets
+
+1. Soft Orange
+    M orange x1
+    S white x1
+
+2. Strong Orange
+    M orange x2
+    S white x1
+
+3. Hot Amber
+    XL orange x1
+    M orange x2
+    S yellow x1
+    S white x1
+
+4. Gold Lamp
+    XXL yellow x1
+    L orange x1
+    S white x1
+
+5. Fire Core
+    XXL red x1
+    L orange x1
+    M yellow x1
+    S white x1
+
+### Cold presets
+
+6. Ice Blue
+    XXL blue x1
+    L cyan x1
+    S white x2
+
+7. Neon Cyan
+    XL cyan x2
+    S white x1
+
+8. Deep Blue
+    XXL blue x2
+    M cyan x1
+    S white x1
+
+9. Frozen White
+    XL white x1
+    M cyan x1
+    S blue x1
+
+### Green presets
+
+10. Toxic Lime
+    XXL green x1
+    L yellow x1
+    S white x1
+
+11. Mint Glow
+    XL green x1
+    M cyan x1
+    S white x1
+
+12. Nature Glow
+    XXL green x1
+    M yellow x1
+
+### Purple/magic presets
+
+13. Purple Aura Warm Core
+    XXL purple x1
+    M orange x2
+    S white x1
+
+14. Violet Core
+    XL purple x2
+    S white x1
+
+15. Magic Pink
+    XXL purple x1
+    M red x1
+    S white x1
+
+16. Purple Sunset
+    XXL purple x1
+    L orange x1
+    S white x1
+
+### Side-overlap presets
+
+17. Blue Side Aura
+    XXL blue at (-80,0)
+    M white at (0,0)
+
+18. Purple Side Aura + Orange Core
+    XXL purple at (-60,0)
+    M orange at (0,0)
+    S white at (0,0)
+
+19. Split Blue/Purple
+    XXL blue at (-70,0)
+    XXL purple at (70,0)
+    S white at (0,0)
+
+20. Warm Left, Cold Right
+    XXL orange at (-80,0)
+    XXL blue at (80,0)
+    S white at (0,0)
+
+---
+
+## 19. Practical rules for generating combinations
+
+A script can generate useful combinations by following these rules.
+
+### Rule 1: Choose the aura
+Aura usually uses XL or XXL.
+
+Good aura colors:
+    purple
+    blue
+    cyan
+    green
+    orange
+    red
+
+### Rule 2: Choose the core
+Core usually uses S, M or L.
+
+Good core colors:
+    white
+    yellow
+    orange
+    cyan
+
+### Rule 3: Decide brightness
+More copies = more brightness.
+
+Low:
+    1 layer
+
+Medium:
+    2 layers
+
+High:
+    3 layers
+
+Very high:
+    4+ layers
+
+### Rule 4: Decide whether the glow is centered or side-overlapped
+Centered:
+    clean circular glow
+
+Side-overlapped:
+    directional color gradient
+
+### Rule 5: Add white carefully
+White makes the center brighter and more pastel.
+
+Too much white can wash out the color.
+
+### Rule 6: Repeat the dominant color
+To make a blend more orange, use more orange.
+To make it more blue, use more blue.
+To make it more purple, use more purple.
+
+Example:
+    2 orange + 1 white = orange-dominant
+    1 orange + 2 white = white/pastel-dominant
+
+---
+
+## 20. How to describe combinations in UI
+
+Suggested user-facing wording:
+
+    "Aura color"
+    "Core color"
+    "Hotspot color"
+    "Brightness"
+    "Size"
+    "Offset X"
+    "Offset Y"
+    "Layer count"
+    "Blend mode"
+
+Example UI options:
+
+    Aura size: XL / XXL
+    Aura color: purple
+    Core size: M
+    Core color: orange
+    Core count: 2
+    Hotspot: S white
+    Offset: centered
+    Brightness: high
+
+This would generate:
+
+    XXL purple + 2x M orange + 1x S white
+
+---
+
+## 21. Warnings / honesty notes
+
+1. The number of practical combinations is huge, but not mathematically infinite in 8-bit RGBA.
+
+2. Exact final colors depend on the real renderer used by Habbo or the script.
+
+3. If Habbo uses normal alpha blending, use source-over compositing.
+
+4. If Habbo uses a special light blend, additive or screen mode may look closer.
+
+5. Pixel-perfect results require the exact sprite PNG masks, not only the radius formula.
+
+6. XL and XXL analyzed files have tiny mask differences per color, likely from scaling/export.
+
+7. The S/M/L sprites have clear bottom artifact pixels with high alpha. Ignore them for visual recipe logic, preserve them for exact reproduction.
+
+---
+
+## 22. Minimal implementation checklist for Codex
+
+Codex should implement:
+
+    1. A COLORS dictionary with the 8 source colors.
+    2. A SIZES dictionary with S/M/L/XL/XXL dimensions.
+    3. A Layer object with size, color, count, x, y, z, opacityScale.
+    4. A recipe list made of multiple Layer objects.
+    5. A weightedRecipeColor function for approximate swatch previews.
+    6. A source-over composite renderer for actual pixel preview.
+    7. Optional blend modes: normal, additive, screen.
+    8. Presets for warm, cold, green, purple/magic, and side-overlap glows.
+    9. Offset support so XL/XXL balls can overlap from the side with smaller balls.
+    10. Stack count support so multiple identical bollen can make the glow feller/brighter.
+
+---
+
+## 23. Short summary
+
+The Habbo light balls are semi-transparent radial sprites.
+
+Stacking them inside each other makes them brighter.
+Stacking different colors mixes them.
+Repeating one color gives that color more influence.
+White makes colors lighter and more pastel.
+XL/XXL balls are best for large aura/background glow.
+S/M balls are best for bright cores and hotspots.
+Side-overlapping XL/XXL balls with smaller balls creates directional gradients and colored edge glows.
+
+The best way to integrate this in a script is not to hardcode every possible combination, but to build a layer-based recipe system:
+
+    recipe = aura layers + core layers + hotspot layers + offsets + blend mode
+
+That lets users create an extremely large amount of custom Habbo light colors from the same 8 base sprites.
+
+---
+
+# 24. CLEAR COLOR-GENERATION ALGORITHM
+
+This section is important when there are too many possible combinations to manually write down.
+
+Instead of trying to list every possible Habbo light combination, the script should generate combinations using an algorithm.
+
+The algorithm should think in layers:
+
+    1. choose a base aura color
+    2. choose one or more tint colors
+    3. choose a core / hotspot color
+    4. choose the size of each layer
+    5. choose how many copies of each layer are stacked
+    6. choose whether the layers are centered or offset
+    7. calculate the final preview color or render the final sprite
+
+This makes it possible to create many more colors than the 8 original sprite colors.
+
+---
+
+## 24.1 Color recipe algorithm, simple version
+
+Use this for fast recipe generation.
+
+Input:
+
+    baseColor
+    tintColor
+    hotspotColor
+    baseCount
+    tintCount
+    hotspotCount
+
+Example:
+
+    baseColor = purple
+    tintColor = orange
+    hotspotColor = white
+    baseCount = 1
+    tintCount = 2
+    hotspotCount = 1
+
+This means:
+
+    1x purple + 2x orange + 1x white
+
+The color is calculated as a weighted average:
+
+    finalRed   = (R1*count1 + R2*count2 + R3*count3) / totalCount
+    finalGreen = (G1*count1 + G2*count2 + G3*count3) / totalCount
+    finalBlue  = (B1*count1 + B2*count2 + B3*count3) / totalCount
+
+JavaScript:
+
+```js
+function mixWeighted(colorsWithCounts) {
+  let total = 0;
+  let r = 0;
+  let g = 0;
+  let b = 0;
+
+  for (const item of colorsWithCounts) {
+    const [cr, cg, cb] = COLORS[item.color];
+    const count = item.count ?? 1;
+
+    r += cr * count;
+    g += cg * count;
+    b += cb * count;
+    total += count;
+  }
+
+  return [
+    Math.round(r / total),
+    Math.round(g / total),
+    Math.round(b / total)
+  ];
+}
+
+const result = mixWeighted([
+  { color: "purple", count: 1 },
+  { color: "orange", count: 2 },
+  { color: "white",  count: 1 }
+]);
+```
+
+This gives a rough "paint-like" preview color.
+
+Important:
+This algorithm is only for approximate color recipes. It does not include radius fade, alpha masks, layer order or offsets.
+
+---
+
+## 24.2 How to make a color MORE like another color
+
+This is the most important rule:
+
+    To make the result more orange, add more orange layers.
+    To make the result more white/pastel, add more white layers.
+    To make the result more purple, add more purple layers.
+    To make the result more blue, add more blue layers.
+
+Examples:
+
+    1 orange + 1 white = light orange
+    2 orange + 1 white = more orange
+    3 orange + 1 white = strong orange
+    1 orange + 2 white = more pastel / more white
+    1 purple + 2 orange + 1 white = warm pink/orange-purple
+    2 purple + 1 orange + 1 white = more purple
+
+So the algorithm can expose a "dominance" or "strength" slider.
+
+Example:
+
+```js
+function makeMoreDominant(recipe, colorName, extraLayers = 1) {
+  const newRecipe = [...recipe];
+
+  const existing = newRecipe.find(x => x.color === colorName);
+  if (existing) {
+    existing.count += extraLayers;
+  } else {
+    newRecipe.push({ color: colorName, count: extraLayers });
+  }
+
+  return newRecipe;
+}
+```
+
+Usage:
+
+```js
+let recipe = [
+  { color: "orange", count: 1 },
+  { color: "white", count: 1 }
+];
+
+recipe = makeMoreDominant(recipe, "orange", 2);
+
+// Now recipe is:
+// 3 orange + 1 white
+```
+
+---
+
+## 24.3 Color family generator
+
+A script can generate colors by choosing a color family.
+
+### Warm family
+
+Base colors:
+
+    red
+    orange
+    yellow
+    white
+
+Generate recipes like:
+
+    red + orange
+    orange + yellow
+    orange + white
+    red + orange + yellow
+    red + orange + white
+    orange + yellow + white
+    2 orange + 1 white
+    2 yellow + 1 orange
+    2 red + 1 orange
+
+Result:
+    fire
+    amber
+    gold
+    candle
+    sunset
+    warm white
+
+### Cold family
+
+Base colors:
+
+    blue
+    cyan
+    white
+
+Generate recipes like:
+
+    blue + cyan
+    cyan + white
+    blue + white
+    blue + cyan + white
+    2 blue + 1 cyan
+    2 cyan + 1 white
+    2 blue + 1 white
+
+Result:
+    ice
+    neon blue
+    cold white
+    electric blue
+    water glow
+
+### Magic family
+
+Base colors:
+
+    purple
+    blue
+    red
+    orange
+    white
+
+Generate recipes like:
+
+    purple + white
+    purple + blue
+    purple + red
+    purple + orange
+    purple + orange + white
+    2 purple + 1 white
+    2 purple + 1 orange
+    purple + 2 orange + white
+
+Result:
+    violet
+    pink
+    magic purple
+    warm purple core
+    purple aura with peach/orange center
+
+### Nature / toxic family
+
+Base colors:
+
+    green
+    yellow
+    cyan
+    white
+
+Generate recipes like:
+
+    green + yellow
+    green + cyan
+    green + white
+    green + yellow + white
+    green + cyan + white
+    2 green + 1 yellow
+    2 green + 1 cyan
+
+Result:
+    lime
+    toxic green
+    mint
+    aqua green
+    nature glow
+
+---
+
+## 24.4 Algorithm for automatically generating many recipes
+
+Use loops over colors, counts and sizes.
+
+Pseudo-logic:
+
+    for every auraColor:
+        for every coreColor:
+            for every hotspotColor:
+                for auraSize in [XL, XXL]:
+                    for coreSize in [S, M, L]:
+                        for auraCount in [1,2]:
+                            for coreCount in [1,2,3]:
+                                for hotspotCount in [0,1,2]:
+                                    create recipe
+
+But do not generate useless recipes randomly.
+Use rules.
+
+Recommended rules:
+
+    1. aura should usually be XL or XXL
+    2. core should usually be S, M or L
+    3. hotspot should usually be S or M
+    4. white is best as hotspot, not as giant aura unless you want a soft white lamp
+    5. repeated colors increase dominance
+    6. do not use too many opposite colors unless muddy/desaturated colors are wanted
+    7. use offsets only when making side aura or gradient effects
+
+JavaScript example:
+
+```js
+const FAMILIES = {
+  warm:  ["red", "orange", "yellow", "white"],
+  cold:  ["blue", "cyan", "white"],
+  magic: ["purple", "blue", "red", "orange", "white"],
+  toxic: ["green", "yellow", "cyan", "white"]
+};
+
+function generateRecipesForFamily(familyName) {
+  const colors = FAMILIES[familyName];
+  const recipes = [];
+
+  for (const auraColor of colors) {
+    for (const coreColor of colors) {
+      for (const hotspotColor of ["white", "yellow", "cyan"]) {
+        if (!COLORS[hotspotColor]) continue;
+
+        for (const auraSize of ["XL", "XXL"]) {
+          for (const coreSize of ["S", "M", "L"]) {
+            for (const coreCount of [1, 2, 3]) {
+              recipes.push({
+                name: `${familyName}-${auraColor}-${coreColor}-${hotspotColor}-${auraSize}-${coreSize}-${coreCount}`,
+                layers: [
+                  { size: auraSize, color: auraColor, count: 1, x: 0, y: 0, z: 0 },
+                  { size: coreSize, color: coreColor, count: coreCount, x: 0, y: 0, z: 1 },
+                  { size: "S", color: hotspotColor, count: 1, x: 0, y: 0, z: 2 }
+                ]
+              });
+            }
+          }
+        }
+      }
+    }
+  }
+
+  return recipes;
+}
+```
+
+This can generate many useful combinations automatically.
+
+---
+
+## 24.5 Algorithm for centered glow recipes
+
+Centered recipes place every layer on the same center.
+
+Use this when the user wants a clean circular light.
+
+```js
+function createCenteredGlow({
+  auraColor,
+  coreColor,
+  hotspotColor = "white",
+  auraSize = "XXL",
+  coreSize = "M",
+  auraCount = 1,
+  coreCount = 2,
+  hotspotCount = 1
+}) {
+  const layers = [];
+
+  if (auraColor) {
+    layers.push({
+      size: auraSize,
+      color: auraColor,
+      count: auraCount,
+      x: 0,
+      y: 0,
+      z: 0
+    });
+  }
+
+  if (coreColor) {
+    layers.push({
+      size: coreSize,
+      color: coreColor,
+      count: coreCount,
+      x: 0,
+      y: 0,
+      z: 1
+    });
+  }
+
+  if (hotspotColor && hotspotCount > 0) {
+    layers.push({
+      size: "S",
+      color: hotspotColor,
+      count: hotspotCount,
+      x: 0,
+      y: 0,
+      z: 2
+    });
+  }
+
+  return { layers };
+}
+```
+
+Example:
+
+```js
+createCenteredGlow({
+  auraColor: "purple",
+  coreColor: "orange",
+  hotspotColor: "white",
+  auraSize: "XXL",
+  coreSize: "M",
+  coreCount: 2
+});
+```
+
+Result:
+
+    XXL purple + 2x M orange + 1x S white
+
+This gives a purple aura with a warm orange/white center.
+
+---
+
+## 24.6 Algorithm for side-overlap / edge glow recipes
+
+This is for the "XXL ball half on the side overlapping with smaller balls" effect.
+
+Use this when the big glow should not be perfectly centered.
+
+```js
+function createSideOverlapGlow({
+  side = "left",
+  auraColor = "purple",
+  coreColor = "orange",
+  hotspotColor = "white",
+  auraSize = "XXL",
+  coreSize = "S",
+  distance = 70,
+  coreCount = 2
+}) {
+  let auraX = 0;
+  let auraY = 0;
+
+  if (side === "left") auraX = -distance;
+  if (side === "right") auraX = distance;
+  if (side === "top") auraY = -distance;
+  if (side === "bottom") auraY = distance;
+
+  return {
+    layers: [
+      { size: auraSize, color: auraColor, count: 1, x: auraX, y: auraY, z: 0 },
+      { size: coreSize, color: coreColor, count: coreCount, x: 0, y: 0, z: 1 },
+      { size: "S", color: hotspotColor, count: 1, x: 0, y: 0, z: 2 }
+    ]
+  };
+}
+```
+
+Examples:
+
+```js
+createSideOverlapGlow({
+  side: "left",
+  auraColor: "blue",
+  coreColor: "white",
+  distance: 90
+});
+```
+
+Effect:
+
+    blue glow comes from the left side
+    white center stays bright
+
+```js
+createSideOverlapGlow({
+  side: "right",
+  auraColor: "purple",
+  coreColor: "orange",
+  hotspotColor: "white",
+  distance: 60,
+  coreCount: 2
+});
+```
+
+Effect:
+
+    purple side aura
+    orange/white warm center
+
+---
+
+## 24.7 Algorithm for multi-step gradient lights
+
+This creates a smooth color progression from large outer glow to small center hotspot.
+
+Use 3 to 5 layers.
+
+Structure:
+
+    XXL = outer aura
+    XL  = main tint
+    L   = transition color
+    M   = core color
+    S   = hotspot color
+
+JavaScript:
+
+```js
+function createGradientGlow(colors) {
+  // colors should be ordered from outside to inside
+  // example: ["purple", "purple", "orange", "orange", "white"]
+
+  const sizes = ["XXL", "XL", "L", "M", "S"];
+
+  return {
+    layers: colors.map((color, index) => ({
+      size: sizes[index],
+      color,
+      count: index === colors.length - 1 ? 1 : 1,
+      x: 0,
+      y: 0,
+      z: index
+    }))
+  };
+}
+```
+
+Examples:
+
+```js
+createGradientGlow(["purple", "purple", "orange", "orange", "white"]);
+```
+
+Result:
+
+    purple outside
+    orange middle
+    white-hot center
+
+```js
+createGradientGlow(["blue", "blue", "cyan", "cyan", "white"]);
+```
+
+Result:
+
+    blue outside
+    cyan middle
+    white ice center
+
+```js
+createGradientGlow(["red", "orange", "orange", "yellow", "white"]);
+```
+
+Result:
+
+    red/orange outside
+    yellow/white fire center
+
+---
+
+## 24.8 Algorithm for "more colors" from only 8 base colors
+
+To get more visible colors from the 8 base colors:
+
+    1. Mix two colors.
+    2. Add white to make a pastel version.
+    3. Repeat one color to make it dominant.
+    4. Use a big aura color and a different small core color.
+    5. Use side offsets to make partial blends.
+    6. Stack identical colors to increase brightness.
+    7. Use size differences to create gradients.
+
+Example transformations:
+
+    orange
+    orange + white
+    2 orange + white
+    3 orange + white
+    orange + yellow
+    2 orange + yellow
+    orange + yellow + white
+    orange aura + white core
+    purple aura + orange core
+    purple aura + 2 orange core + white hotspot
+
+This creates many shades without needing new PNG colors.
+
+---
+
+## 24.9 Recommended "color controls" for a script UI
+
+A good UI should not ask the user to pick from thousands of presets.
+
+Instead use controls:
+
+    Aura color
+    Aura size
+    Aura strength / count
+    Core color
+    Core size
+    Core strength / count
+    Hotspot color
+    Hotspot strength / count
+    Offset X
+    Offset Y
+    Blend mode
+    Brightness multiplier
+
+Then the script creates the layers automatically.
+
+Example UI state:
+
+```js
+const uiState = {
+  auraColor: "purple",
+  auraSize: "XXL",
+  auraCount: 1,
+
+  coreColor: "orange",
+  coreSize: "M",
+  coreCount: 2,
+
+  hotspotColor: "white",
+  hotspotSize: "S",
+  hotspotCount: 1,
+
+  offsetX: 0,
+  offsetY: 0,
+
+  blendMode: "normal"
+};
+```
+
+Converted to recipe:
+
+```js
+function uiToRecipe(ui) {
+  return {
+    layers: [
+      {
+        size: ui.auraSize,
+        color: ui.auraColor,
+        count: ui.auraCount,
+        x: ui.offsetX,
+        y: ui.offsetY,
+        z: 0
+      },
+      {
+        size: ui.coreSize,
+        color: ui.coreColor,
+        count: ui.coreCount,
+        x: 0,
+        y: 0,
+        z: 1
+      },
+      {
+        size: ui.hotspotSize,
+        color: ui.hotspotColor,
+        count: ui.hotspotCount,
+        x: 0,
+        y: 0,
+        z: 2
+      }
+    ],
+    blendMode: ui.blendMode
+  };
+}
+```
+
+---
+
+## 24.10 Practical color-generation rules
+
+Use these simple rules to generate good-looking combinations:
+
+    Warm white:
+        white + small amount of orange or yellow
+
+    Cold white:
+        white + small amount of cyan or blue
+
+    Peach:
+        white + orange + small purple/red influence
+
+    Pink:
+        white + red or purple
+
+    Violet:
+        purple + white or purple + blue
+
+    Aqua:
+        cyan + green or cyan + white
+
+    Lime:
+        green + yellow
+
+    Amber:
+        orange + yellow
+
+    Fire:
+        red + orange + yellow + white hotspot
+
+    Ice:
+        blue + cyan + white hotspot
+
+    Magic purple:
+        purple aura + orange/white or red/white core
+
+    Toxic:
+        green aura + yellow/white core
+
+    Neon:
+        same color stacked multiple times + white hotspot
+
+---
+
+## 24.11 Final algorithm summary for Codex
+
+Codex should not try to list all possible combinations.
+
+Codex should implement a generator:
+
+    1. Define the 8 base colors.
+    2. Define the 5 sprite sizes.
+    3. Define a layer object.
+    4. Build recipes from layers.
+    5. Use counts as color weights.
+    6. Use larger sprites as aura layers.
+    7. Use smaller sprites as core/hotspot layers.
+    8. Use offsets for side overlaps.
+    9. Use alpha compositing for exact preview.
+    10. Use weighted average for quick color swatches.
+    11. Generate color families: warm, cold, magic, toxic, neutral.
+    12. Let users increase a color by adding more layers of that color.
+
+The key rule:
+
+    More layers of a color = more influence from that color.
+    More total layers = brighter glow.
+    Larger sprites = bigger aura.
+    Smaller sprites = stronger center/detail.
+    Offset layers = directional/side gradient.
+
+This is the algorithm that creates many more colors from the original 8 semi-transparent Habbo light sprites.
+
