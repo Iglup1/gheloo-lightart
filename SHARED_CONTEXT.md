@@ -554,3 +554,16 @@ This is the compressed handoff from the long Codex/Kenjy conversation so Claude 
   - Mirror root `SHARED_CONTEXT.md` into `shared-context/SHARED_CONTEXT.md`.
   - Commit and push these context updates even if no code changed.
 - `CODEX_INSTRUCTIONS.md` and `CLAUDE_INSTRUCTIONS.md` have both been updated with this mandatory rule.
+
+### 2026-06-28 art height chunks and room grid overlay correction
+
+- Kenjy reported `Art grootte` only used width for Light Art chunks: `60x100` still showed `3x3` instead of `3x5`.
+- Fix: Light Art chunk columns now use art width and chunk rows use art height. Example: `60x100` with 20-tile chunks becomes `3x5`.
+- Kenjy also clarified that the room grid overlay must behave like Leet's scoreboard/object-location UI:
+  - It should stay in the same room-relative overlay layer, not act like a normal fixed screen overlay.
+  - It should be placed/sized automatically according to the current preview.
+- Current implementation:
+  - `roomGridOverlayHost()` first searches for an existing `.object-location` widget and appends the grid to that same parent.
+  - The grid no longer uses hardcoded `left:120px; top:120px`.
+  - The grid stores/uses the current preview objects and estimates overlay position/size from their room-coordinate bounds.
+- If this still does not follow the room exactly in live Leet, inspect the parent of the real scoreboard `.object-location` and adjust `roomGridOverlayHost()` to that exact container.

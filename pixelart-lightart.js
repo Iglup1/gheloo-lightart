@@ -175,6 +175,7 @@
   let resumeSkip = 0;
   let previewPlacementActive = false;
   let previewPlacementIds = [];
+  let previewPlacementItems = [];
   let previewPlacementRun = false;
   let roomGridOverlayActive = settings.roomGridOverlay !== false;
 
@@ -1749,13 +1750,16 @@
     const chunkSize = Math.max(4, +settings.chunkSize || 20);
     if (settings.__autoSingleChunk) return { roomW, roomH, chunkSize, cols: 1, rows: 1, autoSingle: true };
     const lightArt = settings.generatorMode === 'light_art';
-    // light_art: cols derived from Art grootte / chunk tegels so 80÷20=4 cols automatically
+    // Light Art uses both Art breedte and Art hoogte. 60x100 at 20 tiles becomes 3x5.
     const cols = lightArt
-      ? Math.max(1, Math.round(roomW / chunkSize))
+      ? Math.max(1, Math.ceil(roomW / chunkSize))
       : Math.max(1, Math.round(+settings.chunkCols || Math.ceil(roomW / chunkSize)));
     const isDefaultLightRoom = Math.round(chunkSize) === 20 && cols === 2;
-    // light_art: rows = cols (square grid)
-    const rows = isDefaultLightRoom ? 2 : lightArt ? cols : Math.max(1, Math.round(roomH / chunkSize));
+    const rows = isDefaultLightRoom
+      ? Math.max(2, Math.ceil(roomH / chunkSize))
+      : lightArt
+        ? Math.max(1, Math.ceil(roomH / chunkSize))
+        : Math.max(1, Math.round(roomH / chunkSize));
     return { roomW, roomH, chunkSize, cols, rows };
   }
   function exactChunkAnchor(nr) {
@@ -2378,35 +2382,59 @@
     btn.setAttribute('aria-pressed', roomGridOverlayActive ? 'true' : 'false');
   }
   function roomGridOverlayHost() {
+    const existingLocation = Array.from(document.querySelectorAll('.object-location')).find(function(el) {
+      return el.id !== '__la_room_grid_overlay' && !el.closest('#__la');
+    });
+    if (existingLocation && existingLocation.parentElement) return existingLocation.parentElement;
     return document.querySelector('.nitro-room-widgets') ||
       document.querySelector('.room-widgets') ||
       document.querySelector('.nitro-room') ||
       document.querySelector('.nitro-room-view') ||
       document.body;
   }
+  function roomGridOverlayBox(items, host, info) {
+    const hostRect = host && host.getBoundingClientRect ? host.getBoundingClientRect() : { width: window.innerWidth, height: window.innerHeight };
+    const tilePx = 8;
+    const width = Math.max(72, Math.min(Math.max(90, hostRect.width - 24), info.cols * info.chunkSize * tilePx));
+    const height = Math.max(72, Math.min(Math.max(90, hostRect.height - 24), info.rows * info.chunkSize * tilePx));
+    let left = Math.max(8, ((hostRect.width || window.innerWidth) - width) / 2);
+    let top = Math.max(8, ((hostRect.height || window.innerHeight) - height) / 2);
+    if (items && items.length) {
+      const minX = Math.min.apply(null, items.map(function(o) { return +o.x || 0; }));
+      const maxX = Math.max.apply(null, items.map(function(o) { return +o.x || 0; }));
+      const minY = Math.min.apply(null, items.map(function(o) { return +o.y || 0; }));
+      const maxY = Math.max.apply(null, items.map(function(o) { return +o.y || 0; }));
+      const cx = (minX + maxX) / 2;
+      const cy = (minY + maxY) / 2;
+      const roomCenterX = (hostRect.width || window.innerWidth) / 2;
+      const roomTop = Math.max(24, (hostRect.height || window.innerHeight) * 0.12);
+      left = roomCenterX + ((cx - cy) * 16) - (width / 2);
+      top = roomTop + ((cx + cy) * 8) - (height / 2);
+      left = clamp(left, 4, Math.max(4, (hostRect.width || window.innerWidth) - width - 4));
+      top = clamp(top, 4, Math.max(4, (hostRect.height || window.innerHeight) - height - 4));
+    }
+    return { left, top, width, height, chunkW: width / info.cols, chunkH: height / info.rows };
+  }
   function removeRoomGridOverlay() {
     const old = document.getElementById('__la_room_grid_overlay');
     if (old) old.remove();
   }
-  function renderRoomGridOverlay(root) {
+  function renderRoomGridOverlay(root, items) {
     removeRoomGridOverlay();
     if (!roomGridOverlayActive || !previewPlacementActive || !settings.chunkMode) return;
     const info = chunkGridInfo();
     const host = roomGridOverlayHost();
+    const box = roomGridOverlayBox(items || previewPlacementItems, host, info);
     const overlay = document.createElement('div');
-    const tilePx = 8;
-    const width = Math.max(72, Math.min(520, info.cols * info.chunkSize * tilePx));
-    const height = Math.max(72, Math.min(520, info.rows * info.chunkSize * tilePx));
-    const chunkW = width / info.cols;
-    const chunkH = height / info.rows;
     overlay.id = '__la_room_grid_overlay';
     overlay.className = 'position-absolute visible object-location';
-    overlay.style.left = '120px';
-    overlay.style.top = '120px';
-    overlay.style.width = width + 'px';
-    overlay.style.height = height + 'px';
+    overlay.style.left = Math.round(box.left) + 'px';
+    overlay.style.top = Math.round(box.top) + 'px';
+    overlay.style.width = Math.round(box.width) + 'px';
+    overlay.style.height = Math.round(box.height) + 'px';
+    overlay.setAttribute('data-chunks', info.cols + 'x' + info.rows);
     overlay.innerHTML =
-      '<div class="__la-room-grid-lines" style="--cw:' + chunkW + 'px;--ch:' + chunkH + 'px"></div>';
+      '<div class="__la-room-grid-lines" style="--cw:' + box.chunkW + 'px;--ch:' + box.chunkH + 'px"></div>';
     host.appendChild(overlay);
     updateRoomGridToggle(root);
   }
@@ -2439,6 +2467,7 @@
           if (i % 250 === 249) await sleep(1);
         }
         previewPlacementIds = [];
+        previewPlacementItems = [];
         previewPlacementActive = false;
         updatePreviewToggle(root);
         removeRoomGridOverlay();
@@ -2463,18 +2492,23 @@
         item.id = fakeBase + idx;
         return item.id;
       });
+      previewPlacementItems = items.slice();
       root.querySelector('#__la_status').textContent = 'Preview packet injecteren...';
       const ok = injectObjectsPacket(items);
       previewPlacementActive = !!ok && previewPlacementIds.length > 0;
-      if (!previewPlacementActive) previewPlacementIds = [];
+      if (!previewPlacementActive) {
+        previewPlacementIds = [];
+        previewPlacementItems = [];
+      }
       updatePreviewToggle(root);
-      renderRoomGridOverlay(root);
+      renderRoomGridOverlay(root, items);
       root.querySelector('#__la_status').textContent = previewPlacementActive
         ? 'Preview geplaatst: ' + previewPlacementIds.length + ' meubels.'
         : 'Preview packet kon niet worden geinjecteerd.';
       logBuild(root, 'preview Objects geinjecteerd', { total: previewPlacementIds.length });
     } catch (ex) {
       previewPlacementIds = [];
+      previewPlacementItems = [];
       previewPlacementActive = false;
       updatePreviewToggle(root);
       removeRoomGridOverlay();

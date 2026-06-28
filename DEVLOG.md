@@ -1117,6 +1117,35 @@ Fixed to: `y = anchorY - (logicalH - 1 - localY)` — image-top now maps to room
 
 ---
 
+## [2026-06-28] Codex - Session 27
+
+**Done:**
+- Fixed Light Art chunk calculation so `Art grootte` uses both width and height. `60x100` with 20-tile chunks now becomes `3x5`, not `3x3`.
+- Improved the room grid overlay so it no longer uses hardcoded screen coordinates.
+- The room grid overlay now tries to attach to the same parent as existing Leet `.object-location` widgets, like scoreboards.
+- The overlay stores the current preview objects and estimates its position/size from their room-coordinate bounds.
+- Updated shared context and project memory with this behaviour so Claude does not reintroduce width-only chunks or a fixed screen overlay.
+
+**Changed files:**
+- `pixelart-lightart.js:178` - added `previewPlacementItems` so the room grid can use the actual current preview plan.
+- `pixelart-lightart.js:1747` - `chunkGridInfo()` now derives rows from `roomH`/art height for Light Art.
+- `pixelart-lightart.js:2384` - `roomGridOverlayHost()` now prefers the parent of an existing `.object-location` widget.
+- `pixelart-lightart.js:2395` - added room-grid box estimation from preview object bounds.
+- `pixelart-lightart.js:2422` - room grid render uses computed overlay box instead of fixed `120px/120px`.
+- `pixelart-lightart.js:2495` - current preview items are stored after fake ids are assigned.
+- `pixelart-lightart.js:2504` - room grid render receives the current preview items.
+- `SHARED_CONTEXT.md` - documented Kenjy's `60x100` chunk bug report and scoreboard-like overlay requirement.
+- `shared-context/notes/PROJECT_MEMORY.md` - added durable rules for Light Art chunk rows and room-relative grid overlay.
+- `shared-context/SHARED_CONTEXT.md` - refreshed mirror.
+
+**Verification:**
+- Ran `node --check pixelart-lightart.js` successfully.
+
+**Open / next:**
+- If the overlay still does not move exactly with the room in live Leet, inspect the actual parent of the scoreboard `.object-location` and update `roomGridOverlayHost()` to use that exact container.
+
+---
+
 ## [2026-06-28] Codex - Session 26
 
 **Done:**

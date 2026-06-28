@@ -92,6 +92,8 @@ Room preview should inject one large incoming `Objects` packet with fake object 
 
 User gave exact 20x20 chunk outlines for the default 2x2 Light Art room. The camera takes each chunk as a flat 2D frame, so furniture must stay inside the intended chunk plane as much as possible. Bigger lights may bleed a little outside for glow quality.
 
+Light Art chunk count must use both art dimensions. Do not derive rows from columns. Example: Art grootte `60x100` with 20-tile chunks must be `3x5`, not `3x3`.
+
 Default exact frame starts currently used:
 
 - chunk 1: `{ x: 2, y: 42 }`
@@ -126,6 +128,7 @@ Markers:
 - Camera preview filters affect only the preview image, not the furniture choices.
 - Canvas chunk grids should be tiny old-style dotted lines with small corner numbers.
 - Room preview grid overlay should be a subtle UI overlay, no numbers, toggled by a dark-blue active `grids` button beside `Plaats preview in kamer`.
+- The room preview grid should live in the same room-relative `.object-location` overlay layer as Leet widgets/scoreboards when possible. It must not be a normal fixed screen overlay.
 
 ## Current User Feedback To Preserve
 
