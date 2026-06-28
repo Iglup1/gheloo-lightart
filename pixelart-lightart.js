@@ -675,11 +675,84 @@
     });
     return best;
   }
-  function chooseLightMix(r, g, b, allowWhite) {
+  let controlledRecipeTable = null;
+  function weightedRecipeColor(codes) {
+    let r = 0, g = 0, b = 0;
+    codes.forEach(function(code) {
+      const c = COLORS[code] || COLORS[0];
+      r += c.r; g += c.g; b += c.b;
+    });
+    const n = Math.max(1, codes.length);
+    return { r: r / n, g: g / n, b: b / n };
+  }
+  function buildControlledRecipeTable() {
+    if (controlledRecipeTable) return controlledRecipeTable;
+    const recipes = [
+      [0], [1], [2], [3], [4], [5], [6], [7],
+      [2,0], [2,2,0], [2,2,2,0], [2,3], [2,2,3], [2,3,0], [2,2,3,0],
+      [3,0], [3,3,0], [3,2,0],
+      [1,2], [1,2,2], [1,0],
+      [7,0], [7,7,0], [6,7], [6,7,0], [6,6,0], [6,2,0],
+      [5,0], [5,5,0], [5,6], [5,4], [5,4,0],
+      [4,0], [4,4,0], [4,3], [4,3,0], [4,5],
+      [2,2], [3,3], [4,4], [5,5], [6,6], [7,7]
+    ];
+    controlledRecipeTable = recipes.map(function(codes) {
+      const rgb = weightedRecipeColor(codes);
+      const unique = {};
+      codes.forEach(function(code) { unique[code] = (unique[code] || 0) + 1; });
+      return {
+        codes,
+        rgb,
+        lab: rgbToLab(rgb.r, rgb.g, rgb.b),
+        sat: satOf(rgb.r, rgb.g, rgb.b),
+        lum: lum(rgb.r, rgb.g, rgb.b),
+        whiteCount: unique[0] || 0,
+        redCount: unique[1] || 0,
+        cyanCount: unique[5] || 0,
+        warmCount: (unique[1] || 0) + (unique[2] || 0) + (unique[3] || 0)
+      };
+    });
+    return controlledRecipeTable;
+  }
+  function isWarmSkinRange(r, g, b) {
+    const s = satOf(r, g, b), l = lum(r, g, b);
+    return r > g * 0.92 && g > b * 1.08 && r > b * 1.22 && l > 0.15 && l < 0.72 && s < 0.62;
+  }
+  function bestControlledRecipe(r, g, b, allowWhite, mixPower) {
+    const s = satOf(r, g, b);
+    const l = lum(r, g, b);
+    const targetLab = rgbToLab(r, g, b);
+    const warmSkin = isWarmSkinRange(r, g, b);
+    const whiteOk = allowWhite || warmSkin || (l > 0.36 && s < 0.32);
+    const redPure = r > g * 1.45 && r > b * 1.45;
+    const cyanPure = g > r * 1.28 && b > r * 1.28;
+    const maxLen = mixPower > 78 ? 4 : (mixPower > 35 ? 3 : 2);
+    let best = null, bestScore = Infinity;
+    buildControlledRecipeTable().forEach(function(recipe) {
+      if (recipe.codes.length > maxLen) return;
+      if (recipe.whiteCount && !whiteOk) return;
+      let score = labDist(targetLab, recipe.lab);
+      score += Math.abs(recipe.sat - s) * 16;
+      score += Math.abs(recipe.lum - l) * 9;
+      if (recipe.cyanCount && !cyanPure && !(g > r * 1.12 && b > r * 0.85)) score += 30 + recipe.cyanCount * 18;
+      if (recipe.redCount && !redPure && !warmSkin) score += 25 + recipe.redCount * 16;
+      if (warmSkin) {
+        if (recipe.codes.indexOf(2) !== -1 && recipe.whiteCount) score -= 18;
+        if (recipe.codes.indexOf(3) !== -1 && recipe.codes.indexOf(2) !== -1) score -= 6;
+        if (recipe.cyanCount || recipe.codes.indexOf(4) !== -1 || recipe.codes.indexOf(6) !== -1) score += 45;
+      }
+      if (s > 0.50 && recipe.whiteCount) score += recipe.whiteCount * 18;
+      score += recipe.codes.length * (mixPower < 50 ? 1.6 : 0.45);
+      if (score < bestScore) { bestScore = score; best = recipe; }
+    });
+    return best ? best.codes.slice() : [nearestSingleLight(r, g, b, whiteOk)];
+  }
+  function chooseLightMix(r, g, b, allowWhite, mixPower) {
     const s = satOf(r, g, b);
     const l = lum(r, g, b);
     if (l < 0.035 || (s < 0.10 && !allowWhite)) return [];
-    return [nearestSingleLight(r, g, b, allowWhite)];
+    return bestControlledRecipe(r, g, b, allowWhite, mixPower || 72);
   }
   function nearestNeonPrisma(r, g, b) {
     let best = 1, bestD = Infinity;

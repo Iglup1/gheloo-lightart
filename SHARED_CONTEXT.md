@@ -405,6 +405,25 @@ This is the compressed handoff from the long Codex/Kenjy conversation so Claude 
   - The older multi-light recipe chooser is no longer active inside `chooseLightMix(...)`.
 - Blend should now affect density, light size, and glow overlap, not invent extra color recipes.
 
+### 2026-06-28 controlled sprite-recipe color mixing
+
+- Kenjy showed that strict nearest-color made skin become flat orange/brown, while manually stacking orange + white produced much better skin.
+- Kenjy linked `habbo_light_sprite_combinations_codex_guide_v2.txt`.
+- Guide rules used:
+  - Light sprites behave like semi-transparent radial alpha sprites.
+  - Practical recipe color can be approximated by weighted RGB averages.
+  - `orange + white` creates pastel orange; repeated orange + white creates stronger warm skin/orange.
+  - White should lighten/pastel colors; repeated colors strengthen the dominant hue.
+- Current implementation:
+  - `weightedRecipeColor(...)` around `pixelart-lightart.js:680`.
+  - `buildControlledRecipeTable(...)` around `pixelart-lightart.js:688`.
+  - `bestControlledRecipe(...)` around `pixelart-lightart.js:729`.
+  - `chooseLightMix(...)` now returns a controlled recipe, not all generated combinations and not only one color.
+- Important safety:
+  - Recipes are whitelisted, not exhaustive random combos.
+  - Warm skin range prefers orange + white and orange/yellow recipes.
+  - Cyan/red are penalized unless the source really matches them, preventing the previous cyan/red pollution.
+
 ### 2026-06-27 Light Art axis/BH insight
 
 - Kenjy clarified an important projection rule:

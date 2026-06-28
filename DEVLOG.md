@@ -959,6 +959,35 @@ Fixed to: `y = anchorY - (logicalH - 1 - localY)` — image-top now maps to room
 
 ---
 
+## [2026-06-28] Codex - Session 20
+
+**Done:**
+- Kenjy showed strict nearest-color still fails skin: orange/brown fields instead of pastel skin.
+- Read `habbo_light_sprite_combinations_codex_guide_v2.txt` from GitHub.
+- Reintroduced color mixing as a controlled sprite-recipe system, not the previous broad additive combo table.
+- Added weighted recipe approximation based on the guide: repeated colors strengthen hue, white creates pastel/light versions.
+- Added skin-safe recipe preference so warm skin-like colors prefer orange + white / orange + yellow recipes.
+- Penalized cyan/red recipes unless the source color actually warrants them, avoiding the previous cyan/red pollution.
+- Updated `SHARED_CONTEXT.md` with guide-derived rules.
+
+**Changed files:**
+- `pixelart-lightart.js:680` - added `weightedRecipeColor(...)`.
+- `pixelart-lightart.js:688` - added controlled recipe table.
+- `pixelart-lightart.js:723` - added warm skin range detection.
+- `pixelart-lightart.js:727` - added controlled recipe scoring.
+- `pixelart-lightart.js:760` - `chooseLightMix(...)` now returns controlled recipes.
+- `SHARED_CONTEXT.md` - documented controlled sprite-recipe mixing.
+
+**Verification:**
+- Ran `node --check pixelart-lightart.js` successfully.
+
+**Open / next:**
+- Retest the same couple image. Skin should move from flat orange toward orange/white pastel.
+- If skin is still too orange, increase white preference in `bestControlledRecipe(...)` for warm skin.
+- If cyan/red returns in skin, raise the cyan/red penalties.
+
+---
+
 ## HOW TO UPDATE THIS FILE
 
 At **start of session**: read latest entry, understand state.
