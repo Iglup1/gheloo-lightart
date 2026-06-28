@@ -1117,6 +1117,31 @@ Fixed to: `y = anchorY - (logicalH - 1 - localY)` — image-top now maps to room
 
 ---
 
+## [2026-06-28] Codex - Session 26
+
+**Done:**
+- Made the shared-memory workflow mandatory in both agent instruction files, because Kenjy clarified Claude should not wait for explicit reminders.
+- Added the same rule to root `SHARED_CONTEXT.md` and `shared-context/notes/PROJECT_MEMORY.md`.
+- Mirrored root `SHARED_CONTEXT.md` to `shared-context/SHARED_CONTEXT.md`.
+
+**Changed files:**
+- `CODEX_INSTRUCTIONS.md:7` - collaboration now names GitHub, `DEVLOG.md`, `SHARED_CONTEXT.md`, and `shared-context/`.
+- `CODEX_INSTRUCTIONS.md:17` - added mandatory shared-memory update rules for Codex.
+- `CLAUDE_INSTRUCTIONS.md:8` - collaboration now names `shared-context/` too.
+- `CLAUDE_INSTRUCTIONS.md:37` - Claude must update project memory/assets/mirrors automatically when Kenjy shares reusable info.
+- `CLAUDE_INSTRUCTIONS.md:44` - added a mandatory shared-memory rule that does not require Kenjy to ask.
+- `SHARED_CONTEXT.md` - documented the mandatory Codex/Claude shared-memory rule.
+- `shared-context/notes/PROJECT_MEMORY.md` - added the same durable workflow rule.
+- `shared-context/SHARED_CONTEXT.md` - refreshed mirror of root shared context.
+
+**Verification:**
+- Documentation-only change; no JS syntax check needed.
+
+**Open / next:**
+- Continue Light Art blend/colour quality work after this workflow fix.
+
+---
+
 ## [2026-06-28] Codex - Session 25
 
 **Done:**

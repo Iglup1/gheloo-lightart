@@ -542,3 +542,15 @@ This is the compressed handoff from the long Codex/Kenjy conversation so Claude 
   - Root `SHARED_CONTEXT.md` is mirrored to `shared-context/SHARED_CONTEXT.md`.
   - Detailed shared memory lives at `shared-context/notes/PROJECT_MEMORY.md`.
   - New files are listed in `shared-context/ASSET_INDEX.md`.
+
+### 2026-06-28 mandatory Codex/Claude shared-memory rule
+
+- Kenjy clarified that both agents must update shared context automatically. This must not depend on Kenjy explicitly saying "update GitHub/context".
+- Required from both Codex and Claude:
+  - After code changes, update `DEVLOG.md` with concrete file/line references, verification, and next steps.
+  - When Kenjy gives reusable facts, update `SHARED_CONTEXT.md`.
+  - When Kenjy gives durable rules, packet meanings, coordinates, colour facts, UI rules, or workflow rules, update `shared-context/notes/PROJECT_MEMORY.md`.
+  - When Kenjy gives accessible raw files, packets, screenshots, source images, or previews, copy them into `shared-context/assets/...` and index them in `shared-context/ASSET_INDEX.md`.
+  - Mirror root `SHARED_CONTEXT.md` into `shared-context/SHARED_CONTEXT.md`.
+  - Commit and push these context updates even if no code changed.
+- `CODEX_INSTRUCTIONS.md` and `CLAUDE_INSTRUCTIONS.md` have both been updated with this mandatory rule.

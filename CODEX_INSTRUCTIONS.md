@@ -4,7 +4,7 @@
 
 You are one of two AI agents working on this project. The other is Claude Code.
 We work different shifts — we cannot talk to each other directly.
-We communicate via GitHub commits and DEVLOG.md.
+We communicate via GitHub commits, DEVLOG.md, SHARED_CONTEXT.md, and shared-context/.
 
 ## Workflow
 
@@ -13,6 +13,18 @@ We communicate via GitHub commits and DEVLOG.md.
 3. **After EVERY code change** (not just end of session): update `DEVLOG.md`, commit `pixelart-lightart.js` + `DEVLOG.md` together, push to GitHub. Do not batch multiple changes into one DEVLOG entry at the end — update after each commit. This way if tokens run out or Kenjy switches agents mid-session, the other agent has full context.
 4. **Immediately when Kenjy shares anything** (photos, pixel sizes, packets, coordinates, screenshots, measurements, test results): record the reusable facts in `SHARED_CONTEXT.md`, commit and push it immediately. Do not wait until end of session. If tokens run out before you do this, the other agent loses all context Kenjy gave you.
 5. If Kenjy says Claude should do something, automatically communicate it by adding a clear handoff item to `DEVLOG.md` with concrete file + line references where possible. Do not rely on Kenjy to repeat it manually.
+
+## Mandatory shared-memory updates
+
+This is required every time, even when Kenjy does not explicitly ask for it:
+
+- After code changes, update `DEVLOG.md` with what changed, why, verification, and concrete file/line references.
+- When Kenjy gives reusable facts, update `SHARED_CONTEXT.md`.
+- When Kenjy gives packets, screenshots, source images, generated previews, or detailed test evidence, copy/save accessible files under `shared-context/assets/...` and index them in `shared-context/ASSET_INDEX.md`.
+- When Kenjy gives durable rules, packet meanings, chunk coordinates, colour facts, UI rules, or workflow rules, update `shared-context/notes/PROJECT_MEMORY.md`.
+- Keep `shared-context/SHARED_CONTEXT.md` mirrored from root `SHARED_CONTEXT.md` after context changes.
+- Commit and push documentation/context updates even if no code changed.
+- Before starting work, read the latest `DEVLOG.md` entry plus relevant shared-context notes so Codex and Claude stay synchronized.
 
 ## Commit rules
 

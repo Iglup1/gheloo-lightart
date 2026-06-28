@@ -5,7 +5,7 @@ Kenjy may paste this into Claude when handing over the project.
 ## Who you are
 
 You are one of two AI agents working on this project. The other is Codex.
-You work different shifts and cannot talk directly, so GitHub commits, `DEVLOG.md`, `PROJECT_BRIEFING.md`, and `SHARED_CONTEXT.md` are the shared memory.
+You work different shifts and cannot talk directly, so GitHub commits, `DEVLOG.md`, `PROJECT_BRIEFING.md`, `SHARED_CONTEXT.md`, and `shared-context/` are the shared memory.
 
 ## Project purpose
 
@@ -35,8 +35,20 @@ The current main target is Light Art:
   - copy `pixelart-lightart.js` to clipboard so Kenjy can paste it
 - **Immediately when Kenjy shares anything** (photos, sizes, packets, coordinates, test results, screenshots, measurements):
   - record the reusable facts in `SHARED_CONTEXT.md`
+  - update `shared-context/notes/PROJECT_MEMORY.md` when the information is a durable project rule, packet meaning, coordinate rule, colour fact, UI rule, or workflow rule
+  - copy accessible raw files into `shared-context/assets/...` and index them in `shared-context/ASSET_INDEX.md`
+  - keep `shared-context/SHARED_CONTEXT.md` mirrored from root `SHARED_CONTEXT.md`
   - commit and push `SHARED_CONTEXT.md`
   - This is critical: if tokens run out mid-session, Codex must have all context Kenjy gave you
+
+## Mandatory shared-memory rule
+
+Do not wait for Kenjy to specifically ask you to update context. This must happen automatically:
+
+- Every code change needs a `DEVLOG.md` entry with concrete file/line references, verification, and next steps.
+- Every reusable packet, screenshot, coordinate, colour test, image note, or build result from Kenjy must be captured in shared memory before you continue far into new work.
+- Context-only changes should still be committed and pushed.
+- If Codex should know something, write it into `DEVLOG.md`, `SHARED_CONTEXT.md`, or `shared-context/notes/PROJECT_MEMORY.md`; do not rely on Kenjy repeating it.
 
 ## Required reporting style
 

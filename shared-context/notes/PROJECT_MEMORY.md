@@ -17,6 +17,8 @@ Do not edit Gheloo logger or host files. Only edit the extension/script and proj
 - Commit and push after verified changes.
 - If GitHub rejects push, pull/rebase then push.
 
+Shared-memory updates are mandatory. Codex and Claude must not wait for Kenjy to specifically ask for them. If Kenjy gives reusable packets, screenshots, coordinates, colour tests, UI feedback, build logs, or rules, capture them here or in root `SHARED_CONTEXT.md`, mirror `SHARED_CONTEXT.md` into `shared-context/SHARED_CONTEXT.md`, update `ASSET_INDEX.md` for files, then commit and push.
+
 ## Light Furniture
 
 Available light states:
