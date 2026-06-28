@@ -585,3 +585,13 @@ This is the compressed handoff from the long Codex/Kenjy conversation so Claude 
   - `roomOverlayGeometry(...)` derives the overlay from current preview object bounds at `pixelart-lightart.js:2468`.
   - `renderRoomGridOverlay(...)` creates `#__la_room_grid_overlay` at `pixelart-lightart.js:2499`.
   - Preview placement injects only the light objects, then calls the overlay renderer at `pixelart-lightart.js:2585`.
+
+### 2026-06-28 restore last good preview behaviour
+
+- Kenjy identified commit `74d5eb0` (`fix: derive lightart chunk rows from height`) as the last good version.
+- Restored `pixelart-lightart.js` behaviour from that commit:
+  - Light Art in-room preview is again one large projected isometric art plane instead of split/random marker-grid furniture.
+  - The grid is the older GUI overlay above the art, not marker furniture and not the later `RoomAnchoredOverlay` class experiment.
+- Important preview rule:
+  - `Plaats preview in kamer` must not buy furniture. It should only generate/inject fake incoming preview objects.
+  - Buying is reserved for `Koop+Build`, which still calls `buyMissing(root)`.

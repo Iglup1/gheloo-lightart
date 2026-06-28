@@ -1266,6 +1266,33 @@ Fixed to: `y = anchorY - (logicalH - 1 - localY)` — image-top now maps to room
 
 ---
 
+## [2026-06-28] Codex - Session 29
+
+**Done:**
+- Restored `pixelart-lightart.js` to the last good baseline Kenjy named: commit `74d5eb0`.
+- This brings back the previous single large projected Light Art preview behaviour, instead of the later marker/grid experiments.
+- Fixed the preview button so `Plaats preview in kamer` no longer calls `buyMissing(root)` and therefore no longer buys new items when loading a preview.
+- Updated shared context/project memory so Claude/Codex know `74d5eb0` is the requested baseline and preview must not buy furniture.
+
+**Changed files:**
+- `pixelart-lightart.js:1974` - restored the Light Art preview projection branch that renders the whole art as one large isometric plane for client-side preview.
+- `pixelart-lightart.js:2384` - restored the older room grid overlay host/box implementation from the good baseline.
+- `pixelart-lightart.js:2485` - preview now says `Preview meubels voorbereiden...` and no longer calls `buyMissing(root)`.
+- `pixelart-lightart.js:2359` - `Koop+Build` still calls `buyMissing(root)`, so real builds can still buy missing furniture.
+- `SHARED_CONTEXT.md` - added the restore/baseline and no-buy-preview rule.
+- `shared-context/notes/PROJECT_MEMORY.md` - updated durable rule for preview/build separation.
+- `shared-context/SHARED_CONTEXT.md` - refreshed mirror of root shared context.
+
+**Verification:**
+- Ran `node --check pixelart-lightart.js` successfully.
+- Ran `git diff --check` successfully.
+
+**Open / next:**
+- Test `Plaats preview in kamer`: it should inject the fake room preview without buying anything.
+- Continue Light Art blend/color work only after this preview baseline is confirmed stable.
+
+---
+
 ## HOW TO UPDATE THIS FILE
 
 At **start of session**: read latest entry, understand state.

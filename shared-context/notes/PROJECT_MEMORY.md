@@ -127,10 +127,9 @@ Markers:
 - Source colour controls affect the real generator input.
 - Camera preview filters affect only the preview image, not the furniture choices.
 - Canvas chunk grids should be tiny old-style dotted lines with small corner numbers.
-- Room preview grid overlay should be a subtle room-anchored UI overlay, no numbers, toggled by a dark-blue active `grids` button beside `Plaats preview in kamer`.
-- Obsolete/rejected: do not spawn fake marker/corner furniture for the grid guide. Kenjy rejected the marker-meubel grid because it fills the room with white marker objects.
-- Correct grid behaviour: create a Nitro/Habbo context-menu/highscore-style DOM widget that is `position:absolute` inside the room/canvas container, anchored to world/tile coordinates, updated with `requestAnimationFrame`, and inverse-scaled with `1 / zoom` so the room/camera movement changes its position but not its visual size.
-- Guide chunks are visually `chunkSize * 2`.
+- Room preview grid overlay should be subtle and no-number. Kenjy rejected both the marker-meubel grid and the later room-anchored class experiment.
+- Current requested baseline is commit `74d5eb0`: one large projected isometric Light Art preview with the older GUI/grid overlay above the art.
+- `Plaats preview in kamer` must not buy furniture. It should only inject fake incoming preview objects. Buying belongs to `Koop+Build`.
 
 ## Current User Feedback To Preserve
 

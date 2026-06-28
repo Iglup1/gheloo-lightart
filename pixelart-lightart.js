@@ -178,7 +178,6 @@
   let previewPlacementItems = [];
   let previewPlacementRun = false;
   let roomGridOverlayActive = settings.roomGridOverlay !== false;
-  let roomGridOverlayInstance = null;
 
   // Sprite sheet data extracted from leet.city nitro files (hfdiy_NewLight_X_xueze.nitro).
   // Each entry: glow (b) layer frames per colorCode 0-7, sprite size in pixels.
@@ -1972,6 +1971,20 @@
       const lx = isLA ? p.px : (maxPx ? (p.px / maxPx) * mapW : p.px);
       const ly = isLA ? p.py : (maxPy ? (p.py / maxPy) * mapH : p.py);
 
+      // Light Art preview: project whole art as one isometric plane, no chunk split.
+      // startY = mapW/2 keeps roomY >= 0 for all pixels. Client-side accepts any coords.
+      if (isLA && !withInventory) {
+        const fsX = 2;
+        const fsY = Math.ceil(mapW / 2) + 2;
+        const id = p.id || (out.length + 1);
+        const sxFine = Math.round(lx * 2) / 2;
+        const yBase = Math.floor(ly);
+        const yFrac = clamp(ly - yBase, 0, 0.99);
+        const z = normalizeHeight(baseBh + yFrac * bhStep);
+        out.push({ id, typeId: p.typeId, x: Math.round(fsX + sxFine * 0.5 + yBase), y: Math.round(fsY - sxFine * 0.5 + yBase), z, rotation, state: p.state, size: p.size });
+        return;
+      }
+
       const chunkNr = chunkNumberForRoomPoint(lx, ly);
       if (chunkMode && selected && !selected.has(chunkNr)) return;
       let id = p.id || (out.length + 1);
@@ -2368,155 +2381,61 @@
     btn.classList.toggle('active', roomGridOverlayActive);
     btn.setAttribute('aria-pressed', roomGridOverlayActive ? 'true' : 'false');
   }
-  class RoomAnchoredOverlay {
-    constructor(opts) {
-      this.worldX = opts.worldX || 0;
-      this.worldY = opts.worldY || 0;
-      this.offsetX = opts.offsetX || 0;
-      this.offsetY = opts.offsetY || 0;
-      this.getCamera = opts.getCamera || function() { return { x: 0, y: 0 }; };
-      this.getZoom = opts.getZoom || function() { return 1; };
-      this.el = opts.element;
-      this.parent = null;
-      this.raf = 0;
-      this.running = false;
-      this.update = this.update.bind(this);
-    }
-    mount(parentElement) {
-      this.parent = parentElement || document.body;
-      const st = getComputedStyle(this.parent);
-      if (st.position === 'static') this.parent.style.position = 'relative';
-      this.el.style.position = 'absolute';
-      this.el.style.left = '0';
-      this.el.style.top = '0';
-      this.el.style.transformOrigin = '0 0';
-      this.el.style.pointerEvents = 'none';
-      this.parent.appendChild(this.el);
-      this.running = true;
-      this.update();
-    }
-    destroy() {
-      this.running = false;
-      if (this.raf) cancelAnimationFrame(this.raf);
-      this.raf = 0;
-      if (this.el && this.el.parentElement) this.el.remove();
-    }
-    setWorldPosition(x, y) {
-      this.worldX = x;
-      this.worldY = y;
-    }
-    update() {
-      if (!this.running) return;
-      const camera = this.getCamera() || { x: 0, y: 0 };
-      const zoom = Math.max(0.05, parseFloat(this.getZoom()) || 1);
-      const screenX = (this.worldX - (+camera.x || 0)) * zoom + this.offsetX;
-      const screenY = (this.worldY - (+camera.y || 0)) * zoom + this.offsetY;
-      const inverseScale = 1 / zoom;
-      this.el.style.transform = 'translate(' + Math.round(screenX) + 'px,' + Math.round(screenY) + 'px) scale(' + inverseScale + ')';
-      this.raf = requestAnimationFrame(this.update);
-    }
-  }
-  window.__la_RoomAnchoredOverlay = RoomAnchoredOverlay;
-  function roomOverlayParent() {
-    const candidates = [
-      '.nitro-room-widgets',
-      '.room-widgets',
-      '.nitro-room',
-      '.nitro-room-view',
-      '.room-view',
-      'canvas'
-    ];
-    for (const sel of candidates) {
-      const el = document.querySelector(sel);
-      if (!el) continue;
-      return sel === 'canvas' && el.parentElement ? el.parentElement : el;
-    }
-    return document.body;
-  }
-  function readTransform(el) {
-    if (!el) return null;
-    const t = getComputedStyle(el).transform;
-    if (!t || t === 'none') return null;
-    const nums = t.match(/-?\d+(?:\.\d+)?/g);
-    if (!nums || nums.length < 6) return null;
-    return { a: parseFloat(nums[0]) || 1, d: parseFloat(nums[3]) || 1, e: parseFloat(nums[4]) || 0, f: parseFloat(nums[5]) || 0 };
-  }
-  function roomTransformSource() {
-    return document.querySelector('.nitro-room') ||
+  function roomGridOverlayHost() {
+    const existingLocation = Array.from(document.querySelectorAll('.object-location')).find(function(el) {
+      return el.id !== '__la_room_grid_overlay' && !el.closest('#__la');
+    });
+    if (existingLocation && existingLocation.parentElement) return existingLocation.parentElement;
+    return document.querySelector('.nitro-room-widgets') ||
+      document.querySelector('.room-widgets') ||
+      document.querySelector('.nitro-room') ||
       document.querySelector('.nitro-room-view') ||
-      document.querySelector('.room-view') ||
-      document.querySelector('canvas');
+      document.body;
   }
-  function currentRoomZoom() {
-    if (window.__la_getZoom) {
-      try { return Math.max(0.05, +window.__la_getZoom() || 1); } catch(_) {}
-    }
-    const m = readTransform(roomTransformSource());
-    return m ? Math.max(0.05, Math.abs(m.a) || 1) : 1;
-  }
-  function currentRoomCamera() {
-    if (window.__la_getCamera) {
-      try {
-        const c = window.__la_getCamera();
-        if (c) return { x: +c.x || +c.cameraX || 0, y: +c.y || +c.cameraY || 0 };
-      } catch(_) {}
-    }
-    const m = readTransform(roomTransformSource());
-    const z = currentRoomZoom();
-    return m ? { x: -m.e / z, y: -m.f / z } : { x: 0, y: 0 };
-  }
-  function roomOverlayGeometry(items) {
-    const info = chunkGridInfo();
-    const parent = roomOverlayParent();
-    const tilePx = 16;
-    const guideTilesPerChunk = info.chunkSize * 2;
-    const width = Math.max(120, info.cols * guideTilesPerChunk * tilePx);
-    const height = Math.max(120, info.rows * guideTilesPerChunk * tilePx);
-    let cx = 32, cy = 32;
+  function roomGridOverlayBox(items, host, info) {
+    const hostRect = host && host.getBoundingClientRect ? host.getBoundingClientRect() : { width: window.innerWidth, height: window.innerHeight };
+    const tilePx = 8;
+    const width = Math.max(72, Math.min(Math.max(90, hostRect.width - 24), info.cols * info.chunkSize * tilePx));
+    const height = Math.max(72, Math.min(Math.max(90, hostRect.height - 24), info.rows * info.chunkSize * tilePx));
+    let left = Math.max(8, ((hostRect.width || window.innerWidth) - width) / 2);
+    let top = Math.max(8, ((hostRect.height || window.innerHeight) - height) / 2);
     if (items && items.length) {
-      const xs = items.map(function(o) { return (+o.x || 0) + (String(o.size || '') === 'S' ? 0 : 0.5); });
-      const ys = items.map(function(o) { return (+o.y || 0) + (String(o.size || '') === 'S' ? 0 : 0.5); });
-      cx = (Math.min.apply(null, xs) + Math.max.apply(null, xs)) / 2;
-      cy = (Math.min.apply(null, ys) + Math.max.apply(null, ys)) / 2;
+      const minX = Math.min.apply(null, items.map(function(o) { return +o.x || 0; }));
+      const maxX = Math.max.apply(null, items.map(function(o) { return +o.x || 0; }));
+      const minY = Math.min.apply(null, items.map(function(o) { return +o.y || 0; }));
+      const maxY = Math.max.apply(null, items.map(function(o) { return +o.y || 0; }));
+      const cx = (minX + maxX) / 2;
+      const cy = (minY + maxY) / 2;
+      const roomCenterX = (hostRect.width || window.innerWidth) / 2;
+      const roomTop = Math.max(24, (hostRect.height || window.innerHeight) * 0.12);
+      left = roomCenterX + ((cx - cy) * 16) - (width / 2);
+      top = roomTop + ((cx + cy) * 8) - (height / 2);
+      left = clamp(left, 4, Math.max(4, (hostRect.width || window.innerWidth) - width - 4));
+      top = clamp(top, 4, Math.max(4, (hostRect.height || window.innerHeight) - height - 4));
     }
-    return {
-      parent,
-      worldX: (cx - cy) * 16,
-      worldY: (cx + cy) * 8,
-      offsetX: -width / 2,
-      offsetY: -height / 2,
-      width,
-      height,
-      chunkW: width / info.cols,
-      chunkH: height / info.rows,
-      chunks: info.cols + 'x' + info.rows
-    };
+    return { left, top, width, height, chunkW: width / info.cols, chunkH: height / info.rows };
   }
   function removeRoomGridOverlay() {
-    if (roomGridOverlayInstance) roomGridOverlayInstance.destroy();
-    roomGridOverlayInstance = null;
+    const old = document.getElementById('__la_room_grid_overlay');
+    if (old) old.remove();
   }
-  function renderRoomGridOverlay(root) {
+  function renderRoomGridOverlay(root, items) {
     removeRoomGridOverlay();
     if (!roomGridOverlayActive || !previewPlacementActive || !settings.chunkMode) return;
-    const g = roomOverlayGeometry(previewPlacementItems);
-    const el = document.createElement('div');
-    el.id = '__la_room_grid_overlay';
-    el.className = 'd-flex flex-column gap-1 nitro-widget-high-score nitro-context-menu __la-room-anchored-grid';
-    el.style.width = Math.round(g.width) + 'px';
-    el.style.height = Math.round(g.height) + 'px';
-    el.setAttribute('data-chunks', g.chunks);
-    el.innerHTML = '<div class="d-flex overflow-hidden flex-column gap-1 align-items-center menu-list h-100 w-100"><div class="__la-room-grid-lines" style="--cw:' + g.chunkW + 'px;--ch:' + g.chunkH + 'px"></div></div>';
-    roomGridOverlayInstance = new RoomAnchoredOverlay({
-      worldX: g.worldX,
-      worldY: g.worldY,
-      offsetX: g.offsetX,
-      offsetY: g.offsetY,
-      getCamera: currentRoomCamera,
-      getZoom: currentRoomZoom,
-      element: el
-    });
-    roomGridOverlayInstance.mount(g.parent);
+    const info = chunkGridInfo();
+    const host = roomGridOverlayHost();
+    const box = roomGridOverlayBox(items || previewPlacementItems, host, info);
+    const overlay = document.createElement('div');
+    overlay.id = '__la_room_grid_overlay';
+    overlay.className = 'position-absolute visible object-location';
+    overlay.style.left = Math.round(box.left) + 'px';
+    overlay.style.top = Math.round(box.top) + 'px';
+    overlay.style.width = Math.round(box.width) + 'px';
+    overlay.style.height = Math.round(box.height) + 'px';
+    overlay.setAttribute('data-chunks', info.cols + 'x' + info.rows);
+    overlay.innerHTML =
+      '<div class="__la-room-grid-lines" style="--cw:' + box.chunkW + 'px;--ch:' + box.chunkH + 'px"></div>';
+    host.appendChild(overlay);
     updateRoomGridToggle(root);
   }
   function toggleRoomGridOverlay(root) {
@@ -2526,12 +2445,12 @@
     updateRoomGridToggle(root);
     if (roomGridOverlayActive) {
       renderRoomGridOverlay(root);
-      const el = root && root.querySelector('#__la_status');
-      if (el) el.textContent = previewPlacementActive ? 'Grid-overlay staat aan.' : 'Grids staan aan en verschijnen bij Plaats preview in kamer.';
+      if (!previewPlacementActive && root) {
+        const el = root.querySelector('#__la_status');
+        if (el) el.textContent = 'Grids staan aan en verschijnen bij Plaats preview in kamer.';
+      }
     } else {
       removeRoomGridOverlay();
-      const el = root && root.querySelector('#__la_status');
-      if (el) el.textContent = 'Grid-overlay staat uit.';
     }
   }
   async function togglePlacePreview(root) {
@@ -2563,11 +2482,8 @@
     try {
       if (!plan.length || packetPreviewMode || roomPreviewOriginalPlan) makePlan(root);
       collectSettings(root);
-      // Buy missing furniture before injecting preview
-      root.querySelector('#__la_status').textContent = 'Inventory controleren en ontbrekende meubels kopen...';
-      await buyMissing(root);
-      if (stopRequested) return;
-      let items = makeProjectedBuildObjects(root, false);
+      root.querySelector('#__la_status').textContent = 'Preview meubels voorbereiden...';
+      const items = makeProjectedBuildObjects(root, false);
       const fakeBase = 700000000 + (Date.now() % 900000000);
       previewPlacementIds = items.map(function(item, idx) {
         item.id = fakeBase + idx;
@@ -2582,7 +2498,7 @@
         previewPlacementItems = [];
       }
       updatePreviewToggle(root);
-      renderRoomGridOverlay(root);
+      renderRoomGridOverlay(root, items);
       root.querySelector('#__la_status').textContent = previewPlacementActive
         ? 'Preview geplaatst: ' + previewPlacementIds.length + ' meubels.'
         : 'Preview packet kon niet worden geinjecteerd.';
@@ -2744,8 +2660,8 @@
       '#__la [data-panel="saves"].on #__la_log{flex:1 1 220px;min-height:180px;max-height:none}',
       '#__la .prog{height:8px;background:rgba(0,0,0,.14);overflow:hidden;border-radius:4px}',
       '#__la .bar{height:100%;width:0;background:#198754}',
-      '#__la_room_grid_overlay.__la-room-anchored-grid{z-index:2147482500;background:rgba(20,20,20,.04)!important;border:1px dashed rgba(255,255,255,.30);box-shadow:none!important;overflow:hidden;pointer-events:none}',
-      '#__la_room_grid_overlay .__la-room-grid-lines{width:100%;height:100%;background-image:linear-gradient(rgba(255,255,255,.28) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.28) 1px,transparent 1px);background-size:100% var(--ch),var(--cw) 100%;opacity:.72}',
+      '#__la_room_grid_overlay{z-index:2147483000;pointer-events:none;opacity:.62}',
+      '#__la_room_grid_overlay .__la-room-grid-lines{width:100%;height:100%;border:1px dashed rgba(255,255,255,.45);background-image:linear-gradient(rgba(255,255,255,.34) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.34) 1px,transparent 1px);background-size:var(--cw) var(--ch),var(--cw) var(--ch);box-shadow:0 0 0 1px rgba(0,0,0,.25) inset}',
       '@media (max-width:560px){#__la .preview-grid{grid-template-columns:1fr}#__la canvas{height:130px}}'
     ].join('');
     document.head.appendChild(style);
