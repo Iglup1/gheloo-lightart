@@ -1395,15 +1395,15 @@
     const stepX = (chunk / refW) * w;
     const stepY = (chunk / refH) * h;
     ctx.save();
-    const showNumbers = !!opts.forceNumbers || (!opts.source && previewView.zoom >= 1.85);
-    ctx.strokeStyle = opts.source ? 'rgba(255,255,255,.38)' : 'rgba(255,255,255,.42)';
-    ctx.fillStyle = 'rgba(255,255,255,.74)';
+    const showNumbers = true;
+    ctx.strokeStyle = opts.source ? 'rgba(255,255,255,.30)' : 'rgba(255,255,255,.34)';
+    ctx.fillStyle = 'rgba(255,255,255,.78)';
     ctx.lineWidth = 1;
-    ctx.setLineDash([6, 6]);
+    ctx.setLineDash([2, 5]);
     for (let x = 0; x <= w + 0.1; x += stepX) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke(); }
     for (let y = 0; y <= h + 0.1; y += stepY) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke(); }
     ctx.setLineDash([]);
-    ctx.font = Math.max(6, Math.min(10, Math.round(Math.min(stepX, stepY) * 0.18))) + 'px Arial';
+    ctx.font = Math.max(5, Math.min(7, Math.round(Math.min(stepX, stepY) * 0.12))) + 'px Arial';
     const selected = selectedChunksSet();
     for (let col = 0; col < info.cols; col++) {
       for (let rowTop = 0; rowTop < info.rows; rowTop++) {
@@ -1415,7 +1415,7 @@
         }
         if (!showNumbers) continue;
         ctx.fillStyle = selected && selected.has(nr) ? 'rgba(144,255,194,.95)' : 'rgba(255,255,255,.85)';
-        ctx.fillText(String(nr), x + 3, y + Math.max(8, Math.min(12, stepY * 0.22)));
+        ctx.fillText(String(nr), x + 2, y + Math.max(6, Math.min(8, stepY * 0.16)));
       }
     }
     ctx.restore();
@@ -2526,7 +2526,7 @@
     const style = document.createElement('style');
     style.textContent = [
       '#__la,#__la *{box-sizing:border-box}',
-      '#__la{position:fixed;top:16px;right:16px;width:min(760px,calc(100vw - 32px));height:min(760px,calc(100vh - 32px));min-width:430px;min-height:430px;max-width:calc(100vw - 16px);max-height:calc(100vh - 16px);resize:both;overflow:hidden;z-index:2147483647;user-select:none}',
+      '#__la{position:fixed;top:16px;right:16px;width:min(760px,calc(100vw - 32px));height:min(760px,calc(100vh - 32px));min-width:430px;min-height:430px;max-width:calc(100vw - 16px);max-height:calc(100vh - 16px);resize:horizontal;overflow:hidden;z-index:2147483647;user-select:none}',
       '#__la .card{min-width:0;height:100%;display:flex;flex-direction:column;background:#e9e8df}',
       '#__la .hdr{cursor:move}',
       '#__la .close{cursor:pointer}',
@@ -2556,7 +2556,7 @@
       '#__la .btn-danger{background:#b51b12!important;border-color:#7f100b!important;color:#fff!important}',
       '#__la .panel{display:none;flex-direction:column;gap:7px;min-height:0;overflow-y:auto;overflow-x:hidden;padding-right:2px}',
       '#__la .panel.on{display:flex;flex:1 1 auto}',
-      '#__la .sec{font-weight:bold;border-bottom:1px solid rgba(0,0,0,.18);padding-bottom:2px}',
+      '#__la .sec{font-weight:bold;border-bottom:1px solid rgba(0,0,0,.24);padding:5px 0 3px;margin-top:3px;color:#111}',
       '#__la pre{white-space:pre-wrap;word-break:break-word;background:#f7f7f2;border:1px solid rgba(0,0,0,.18);padding:6px;max-height:260px;overflow:auto;margin:0;font-size:11px}',
       '#__la #__la_out{min-height:130px}',
       '#__la [data-panel="saves"].on #__la_log{flex:1 1 220px;min-height:180px;max-height:none}',
@@ -2577,7 +2577,6 @@
           '<div class="row"><label>Art modus</label><select id="__la_mode"><option value="light_art">Light Art</option><option value="cylinder">Halve cilinder</option><option value="neon_prisma">Neon prisma</option><option value="mini_blocks">Mini blocks</option></select></div>' +
           '<div id="__la_mode_panel_light_art" class="mode-panel">' +
             '<div class="sec">Light Art</div>' +
-            '<div class="row"><label>Stijl</label><select id="__la_variant"><option value="stacked">Veel overlap / glow</option><option value="soft">Zachter leesbaar</option><option value="whitefill">Meer witte highlights</option></select></div>' +
             '<div class="row"><label>Blender</label><input id="__la_randomizer" type="range" min="0" max="100" step="1" value="' + esc(settings.randomizer != null ? settings.randomizer : 50) + '"><span id="__la_randomizer_label">' + esc(settings.randomizer != null ? settings.randomizer : 50) + '</span></div>' +
           '</div>' +
           '<div id="__la_mode_panel_cylinder" class="mode-panel" style="display:none">' +
@@ -2596,16 +2595,16 @@
           '<div class="row"><label>Max lampen</label><input id="__la_max" type="range" min="500" max="120000" step="500" value="' + esc(settings.maxLights) + '"><span id="__la_max_label">' + esc(settings.maxLights) + '</span></div>' +
           '<div class="row"><label>Transparantie</label><input id="__la_alpha" type="range" min="1" max="255" value="' + esc(settings.alpha) + '" title="hogere waarde negeert meer half-transparante pixels"><label><input id="__la_crop" type="checkbox"' + (settings.crop ? ' checked' : '') + '> rand wegknippen</label></div>' +
           '<div class="sec">Chunks</div>' +
-          '<div class="row"><label><input id="__la_chunk_mode" type="checkbox"' + (settings.chunkMode ? ' checked' : '') + '> in stukken</label><label>Chunk tegels</label><input id="__la_chunk_size" type="number" value="' + esc(settings.chunkSize) + '"><label>Chunks per zijde</label><input id="__la_chunk_cols" type="number" min="1" max="8" value="' + esc(settings.chunkCols) + '" title="2 = 4 chunks (40x40), 4 = 16 chunks (80x80)"><label>Rand overlap</label><input id="__la_chunk_bleed" type="number" value="' + esc(settings.chunkBleed) + '"></div>' +
+          '<div class="row"><label><input id="__la_chunk_mode" type="checkbox"' + (settings.chunkMode ? ' checked' : '') + '> in stukken</label></div>' +
           '<div class="row"><label>Welke stukken</label><input id="__la_chunk_select" type="text" placeholder="leeg = auto, bv. 1 of 1,2,4,5" value="' + esc(settings.chunkSelection) + '"></div>' +
-          '<div class="row"><label>Naar rechts</label><input id="__la_chunk_rx" type="number" title="x verschil naar volgende chunk rechts" value="' + esc(settings.chunkRightX) + '"><input id="__la_chunk_ry" type="number" title="y verschil naar volgende chunk rechts" value="' + esc(settings.chunkRightY) + '"><label>Naar boven</label><input id="__la_chunk_ux" type="number" title="x verschil naar chunk erboven" value="' + esc(settings.chunkUpX) + '"><input id="__la_chunk_uy" type="number" title="y verschil naar chunk erboven" value="' + esc(settings.chunkUpY) + '"></div>' +
-          '<div class="row"><button id="__la_plan" class="btn btn-secondary btn-sm flex-grow-1">Reload foto-preview</button></div>' +
+          '<div class="row"><button id="__la_reset_gen" class="btn btn-secondary btn-sm flex-grow-1">Generator terug naar default</button></div>' +
           '<div class="sec">Koop en bouw</div><div class="prog"><div class="bar" id="__la_bar"></div></div><div id="__la_status">Klaar.</div>' +
-          '<div class="row"><button id="__la_room_preview" class="btn btn-primary btn-sm flex-grow-1">Canvas kamer-preview</button><button id="__la_place_preview" class="btn btn-primary btn-sm flex-grow-1">Plaats preview in kamer</button></div>' +
-          '<div class="row"><button id="__la_build" class="btn btn-warning btn-sm flex-grow-1">Koop+Bouw</button><button id="__la_info" class="btn btn-primary btn-sm">Plan info</button></div>' +
+          '<div class="row"><button id="__la_place_preview" class="btn btn-primary btn-sm flex-grow-1">Plaats preview in kamer</button></div>' +
+          '<div class="row"><button id="__la_build" class="btn btn-warning btn-sm flex-grow-1">Koop+Bouw</button></div>' +
           '<div class="row"><button id="__la_stop" class="btn btn-danger btn-sm flex-grow-1">Stop</button></div>' +
           '<div class="row"><button id="__la_continue" class="btn btn-success btn-sm flex-grow-1">Continue</button></div>' +
-          '<div class="row"><button id="__la_reset_gen" class="btn btn-secondary btn-sm flex-grow-1">Generator terug naar default</button></div>' +
+          '<div class="row"><button id="__la_info" class="btn btn-primary btn-sm flex-grow-1">Plan info</button></div>' +
+          '<div class="row"><button id="__la_go_saves" class="btn btn-secondary btn-sm flex-grow-1">Saves</button></div>' +
         '</div>' +
         '<div class="panel" data-panel="color">' +
           '<div class="sec">Kleur van bronfoto</div>' +
@@ -2633,7 +2632,7 @@
           '<div class="row"><label>Na plaatsen</label><input id="__la_delay" type="number" value="' + esc(settings.delay) + '"><label>Na :bs/:bh</label><input id="__la_setting_delay" type="number" value="' + esc(settings.settingDelay) + '"></div>' +
           '<div class="row"><label>Per batch</label><input id="__la_burst" type="number" value="' + esc(settings.burst) + '"><label>Batch pauze</label><input id="__la_burst_pause" type="number" value="' + esc(settings.burstPause) + '"><label>Retry wacht</label><input id="__la_retry" type="number" value="' + esc(settings.retry) + '"><label>Pogingen</label><input id="__la_attempts" type="number" value="' + esc(settings.attempts) + '"></div>' +
           '<div class="sec">Chunk camera markers</div>' +
-          '<div class="row"><button id="__la_markers" class="btn btn-warning btn-sm flex-grow-1">Koop+Plaats markers</button><label>BH</label><input id="__la_marker_bh" type="number" value="' + esc(settings.markerBh) + '"><label>Rot</label><input id="__la_marker_rot" type="number" value="' + esc(settings.markerRot) + '"></div>' +
+          '<div class="row"><label>BH</label><input id="__la_marker_bh" type="number" value="' + esc(settings.markerBh) + '"><label>Rot</label><input id="__la_marker_rot" type="number" value="' + esc(settings.markerRot) + '"></div>' +
           '<div class="row"><label>Cyl 14</label><input id="__la_marker_cyl_type" type="number" value="' + esc(settings.markerCylinderType) + '"><input id="__la_marker_cyl_page" type="number" value="' + esc(settings.markerCylinderPage) + '"><input id="__la_marker_cyl_offer" type="number" value="' + esc(settings.markerCylinderOffer) + '"></div>' +
           '<div class="row"><label>Corner</label><input id="__la_marker_corner_type" type="number" value="' + esc(settings.markerCornerType) + '"><input id="__la_marker_corner_page" type="number" value="' + esc(settings.markerCornerPage) + '"><input id="__la_marker_corner_offer" type="number" value="' + esc(settings.markerCornerOffer) + '"></div>' +
           '<div class="row"><label>Numbers</label><input id="__la_marker_num_type" type="number" value="' + esc(settings.markerNumberType) + '"><input id="__la_marker_num_page" type="number" value="' + esc(settings.markerNumberPage) + '"><input id="__la_marker_num_offer" type="number" value="' + esc(settings.markerNumberOffer) + '"></div>' +
@@ -2647,9 +2646,6 @@
           '<div class="row"><button id="__la_reset_build" class="btn btn-secondary btn-sm flex-grow-1">Settings terug naar default</button></div>' +
         '</div>' +
         '<div class="panel" data-panel="saves">' +
-          '<div class="sec">Room packet preview</div>' +
-          '<textarea id="__la_packet_text" class="form-control" placeholder="Plak hier {in:Objects} of {in:ObjectAdd} packet text"></textarea>' +
-          '<div class="row"><button id="__la_packet_preview" class="btn btn-primary btn-sm flex-grow-1">Maak preview van packet</button></div>' +
           '<div class="sec">Plan info</div><pre id="__la_out"></pre>' +
           '<div class="sec">Logboek</div><pre id="__la_log"></pre>' +
           '<div class="row"><button id="__la_refresh_log" class="btn btn-primary btn-sm flex-grow-1">Refresh log</button><button id="__la_copy_log" class="btn btn-success btn-sm flex-grow-1">Copy log</button><button id="__la_clear_log" class="btn btn-danger btn-sm flex-grow-1">Wis log</button></div>' +
@@ -2660,7 +2656,7 @@
     window.__la_root = root;
     window.__la_neonPrisma = { config: NEON_PRISMA, nearest: nearestNeonPrisma };
     root.querySelector('#__la_mode').value = settings.generatorMode || 'light_art';
-    root.querySelector('#__la_variant').value = settings.variant || 'stacked';
+    if (root.querySelector('#__la_variant')) root.querySelector('#__la_variant').value = settings.variant || 'stacked';
     function updateModePanel() {
       var mode = root.querySelector('#__la_mode').value || 'light_art';
       root.querySelectorAll('.mode-panel').forEach(function(p) {
@@ -2794,7 +2790,7 @@
         else el.value = settings[key] == null ? '' : settings[key];
       });
       root.querySelector('#__la_mode').value = settings.generatorMode || 'light_art';
-      root.querySelector('#__la_variant').value = settings.variant || 'stacked';
+      if (root.querySelector('#__la_variant')) root.querySelector('#__la_variant').value = settings.variant || 'stacked';
       const randomLabel = root.querySelector('#__la_randomizer_label');
       if (randomLabel) randomLabel.textContent = String(settings.randomizer);
       updateMaxLabel();
@@ -2845,12 +2841,8 @@
       };
       img.src = url;
     });
-    root.querySelector('#__la_plan').addEventListener('click', function() { try { makePlan(root); } catch(ex) { root.querySelector('#__la_status').textContent = ex.message; } });
     root.querySelector('#__la_mode').addEventListener('change', function() { collectSettings(root); updateModePanel(); redrawCurrentPreview(); });
     root.querySelector('#__la_randomizer').addEventListener('input', function() { root.querySelector('#__la_randomizer_label').textContent = this.value; });
-    root.querySelector('#__la_room_preview').addEventListener('click', function() {
-      try { renderCurrentBuildPreview(root); } catch(ex) { root.querySelector('#__la_status').textContent = 'Kamer-preview fout: ' + ex.message; }
-    });
     root.querySelector('#__la_place_preview').addEventListener('click', function() {
       togglePlacePreview(root);
     });
@@ -2862,7 +2854,6 @@
       if (checkpoint && String(checkpoint.stage || '').toLowerCase().includes('marker')) buyAndPlaceChunkMarkers(root);
       else build(root);
     });
-    root.querySelector('#__la_markers').addEventListener('click', function() { buyAndPlaceChunkMarkers(root); });
     root.querySelector('#__la_stop').addEventListener('click', function() {
       stopRequested = true;
       logBuild(root, 'stop gevraagd', { checkpoint: loadCheckpoint() });
@@ -2872,14 +2863,10 @@
       root.querySelectorAll('[data-panel]').forEach(function(p) { p.classList.toggle('on', p.getAttribute('data-panel') === 'saves'); });
       root.querySelectorAll('[data-tab]').forEach(function(b) { b.classList.toggle('active', b.getAttribute('data-tab') === 'saves'); });
     });
-    root.querySelector('#__la_packet_preview').addEventListener('click', function() {
-      try {
-        renderRoomPacketPreview(root);
-        renderSavesPanel(root);
-      } catch(ex) {
-        const el = root.querySelector('#__la_status');
-        if (el) el.textContent = 'Packet preview fout: ' + ex.message;
-      }
+    root.querySelector('#__la_go_saves').addEventListener('click', function() {
+      renderSavesPanel(root);
+      root.querySelectorAll('[data-panel]').forEach(function(p) { p.classList.toggle('on', p.getAttribute('data-panel') === 'saves'); });
+      root.querySelectorAll('[data-tab]').forEach(function(b) { b.classList.toggle('active', b.getAttribute('data-tab') === 'saves'); });
     });
     root.querySelector('#__la_refresh_log').addEventListener('click', function() { renderSavesPanel(root); });
     root.querySelector('#__la_copy_log').addEventListener('click', function() {

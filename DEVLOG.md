@@ -1051,6 +1051,42 @@ Fixed to: `y = anchorY - (logicalH - 1 - localY)` — image-top now maps to room
 
 ---
 
+## [2026-06-28] Codex - Session 23
+
+**Done:**
+- Restored the old-style subtle chunk overlay on both canvases: short dashed lines and tiny corner numbers.
+- Removed Light Art style selector because it did not create a clear enough difference.
+- Moved `Generator terug naar default` to the old reload-photo button position; photo preview still updates automatically from inputs.
+- Simplified Generator chunk UI by hiding advanced fixed chunk geometry fields.
+- Removed unneeded UI buttons/sections:
+  - Canvas kamer-preview.
+  - Koop+Plaats markers button.
+  - Room packet preview section in Saves.
+- Reordered Koop en bouw buttons:
+  - Plaats preview in kamer.
+  - Koop+Bouw.
+  - Stop.
+  - Continue.
+  - Plan info.
+  - Saves.
+- Disabled vertical resizing; the panel can now only be resized horizontally.
+
+**Changed files:**
+- `pixelart-lightart.js:1387` - old-style tiny dashed chunk overlay/numbers.
+- `pixelart-lightart.js:2529` - panel resize changed to horizontal only.
+- `pixelart-lightart.js:2607` - new Koop en bouw button order and Saves shortcut.
+- `pixelart-lightart.js:2659` / `pixelart-lightart.js:2793` - variant selector references guarded after removing it from UI.
+- `pixelart-lightart.js:2866` - Saves shortcut opens the Saves tab.
+
+**Verification:**
+- Ran `node --check pixelart-lightart.js` successfully.
+
+**Open / next:**
+- Saves/watchdog UX still needs a proper pass later.
+- Chunk advanced defaults remain in code, but are hidden from the normal UI.
+
+---
+
 ## HOW TO UPDATE THIS FILE
 
 At **start of session**: read latest entry, understand state.

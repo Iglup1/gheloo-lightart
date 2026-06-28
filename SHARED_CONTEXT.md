@@ -474,3 +474,30 @@ This is the compressed handoff from the long Codex/Kenjy conversation so Claude 
 - UI:
   - Generator, Color, and Settings panels now each have a "terug naar default" button.
   - Reset buttons restore only their own group and do not clear logs/saves.
+
+### 2026-06-28 current UI shape
+
+- Normal user-facing Generator tab should stay compact:
+  - Art modus.
+  - Blender.
+  - Preview pixels / Art grootte.
+  - Max lampen.
+  - Transparantie/crop.
+  - Chunks on/off and Welke stukken.
+  - Generator reset.
+  - Koop en bouw controls.
+- Hidden advanced chunk defaults still exist in code (`chunkSize`, `chunkCols`, `chunkBleed`, `chunkRight*`, `chunkUp*`) but are not shown because Kenjy does not want to tweak them manually.
+- Removed from UI for now:
+  - Light Art style selector.
+  - Canvas kamer-preview button.
+  - Koop+Plaats markers button.
+  - Saves tab room-packet preview section.
+- Koop en bouw button order should remain:
+  - Plaats preview in kamer.
+  - Koop+Bouw.
+  - Stop.
+  - Continue.
+  - Plan info.
+  - Saves.
+- Panel resize is horizontal only. Do not re-enable vertical resize unless Kenjy explicitly asks.
+- Chunk overlays should use the older subtle style: small dashed grid lines and tiny numbers in the upper-left corner of each chunk on both source and furniture canvases.
