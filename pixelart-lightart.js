@@ -66,6 +66,12 @@
     redPower: 100,
     greenPower: 100,
     bluePower: 100,
+    cameraMoreSat: 0,
+    cameraHyperSat: 0,
+    cameraLessSat: 0,
+    cameraBleach: 0,
+    cameraGray: 0,
+    cameraRosy: 0,
     focus: 55,
     bgDim: 45,
     darkCut: 5,
@@ -252,6 +258,71 @@
   function satOf(r, g, b) {
     const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
     return mx ? (mx - mn) / mx : 0;
+  }
+  function mixByte(a, b, t) { return byte(a + (b - a) * clamp(t, 0, 1)); }
+  function scaleSaturationRgb(r, g, b, scale) {
+    const gray = r * 0.299 + g * 0.587 + b * 0.114;
+    return {
+      r: byte(gray + (r - gray) * scale),
+      g: byte(gray + (g - gray) * scale),
+      b: byte(gray + (b - gray) * scale)
+    };
+  }
+  function cameraFilterRgb(r, g, b) {
+    let rr = r, gg = g, bb = b;
+    const more = clamp(num(settings.cameraMoreSat, 0), 0, 100) / 100;
+    const hyper = clamp(num(settings.cameraHyperSat, 0), 0, 100) / 100;
+    const less = clamp(num(settings.cameraLessSat, 0), 0, 100) / 100;
+    const bleach = clamp(num(settings.cameraBleach, 0), 0, 100) / 100;
+    const gray = clamp(num(settings.cameraGray, 0), 0, 100) / 100;
+    const rosy = clamp(num(settings.cameraRosy, 0), 0, 100) / 100;
+
+    if (more) {
+      const c = scaleSaturationRgb(rr, gg, bb, 1 + more * 0.85);
+      rr = c.r; gg = c.g; bb = c.b;
+    }
+    if (hyper) {
+      const c = scaleSaturationRgb(rr, gg, bb, 1 + hyper * 1.95);
+      rr = byte((c.r - 128) * (1 + hyper * 0.16) + 128);
+      gg = byte((c.g - 128) * (1 + hyper * 0.16) + 128);
+      bb = byte((c.b - 128) * (1 + hyper * 0.16) + 128);
+    }
+    if (less) {
+      const c = scaleSaturationRgb(rr, gg, bb, 1 - less * 0.82);
+      rr = c.r; gg = c.g; bb = c.b;
+    }
+    if (gray) {
+      const l = byte(rr * 0.299 + gg * 0.587 + bb * 0.114);
+      rr = mixByte(rr, l, gray);
+      gg = mixByte(gg, l, gray);
+      bb = mixByte(bb, l, gray);
+    }
+    if (bleach) {
+      const c = scaleSaturationRgb(rr, gg, bb, 1 - bleach * 0.76);
+      rr = mixByte(c.r, 226, bleach * 0.62);
+      gg = mixByte(c.g, 210, bleach * 0.62);
+      bb = mixByte(c.b, 176, bleach * 0.62);
+    }
+    if (rosy) {
+      rr = mixByte(rr, 255, rosy * 0.28);
+      gg = mixByte(gg, 118, rosy * 0.22);
+      bb = mixByte(bb, 72, rosy * 0.18);
+    }
+    return { r: rr, g: gg, b: bb };
+  }
+  function applyCameraPreviewFilters(canvas) {
+    const total = ['cameraMoreSat','cameraHyperSat','cameraLessSat','cameraBleach','cameraGray','cameraRosy']
+      .reduce(function(sum, k) { return sum + Math.abs(num(settings[k], 0)); }, 0);
+    if (!total) return;
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const data = img.data;
+    for (let i = 0; i < data.length; i += 4) {
+      if (data[i + 3] < 1) continue;
+      const c = cameraFilterRgb(data[i], data[i + 1], data[i + 2]);
+      data[i] = c.r; data[i + 1] = c.g; data[i + 2] = c.b;
+    }
+    ctx.putImageData(img, 0, 0);
   }
   function inputNum(root, id, fallback) {
     const el = root.querySelector(id);
@@ -1077,6 +1148,8 @@
       generatorMode:'#__la_mode', variant:'#__la_variant', renderWidth:'#__la_renderw', roomW:'#__la_roomw', roomH:'#__la_roomh',
       alpha:'#__la_alpha', sat:'#__la_sat', bright:'#__la_bright', contrast:'#__la_contrast', gamma:'#__la_gamma',
       redPower:'#__la_red_power', greenPower:'#__la_green_power', bluePower:'#__la_blue_power',
+      cameraMoreSat:'#__la_cam_more_sat', cameraHyperSat:'#__la_cam_hyper_sat', cameraLessSat:'#__la_cam_less_sat',
+      cameraBleach:'#__la_cam_bleach', cameraGray:'#__la_cam_gray', cameraRosy:'#__la_cam_rosy',
       focus:'#__la_focus', bgDim:'#__la_bgdim', darkCut:'#__la_dark', coarseStep:'#__la_coarse',
       midStep:'#__la_mid', detailStep:'#__la_fine', intensity:'#__la_intensity', overlap:'#__la_overlap',
       stack:'#__la_stack', mix:'#__la_mix', whiteFill:'#__la_whitefill', randomizer:'#__la_randomizer', maxLights:'#__la_max',
@@ -1259,6 +1332,17 @@
     drawFn(scale);
     ctx.restore();
   }
+  function applySourceColorFilters(canvas) {
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const data = img.data;
+    for (let i = 0; i < data.length; i += 4) {
+      if (data[i + 3] < 1 || (data[i] + data[i + 1] + data[i + 2]) < 3) continue;
+      const c = adjustRgb(data[i], data[i + 1], data[i + 2], +settings.sat, +settings.bright, +settings.contrast, +settings.gamma, +settings.redPower, +settings.greenPower, +settings.bluePower);
+      data[i] = c.r; data[i + 1] = c.g; data[i + 2] = c.b;
+    }
+    ctx.putImageData(img, 0, 0);
+  }
   function drawChunkBoundariesOnly(ctx, w, h) {
     if (!settings.chunkMode) return;
     const chunk = Math.max(1, +settings.chunkSize || 20);
@@ -1277,8 +1361,9 @@
     ctx.setLineDash([]);
     ctx.restore();
   }
-  function drawChunkOverlayLogical(ctx, w, h) {
+  function drawChunkOverlayLogical(ctx, w, h, opts) {
     if (!settings.chunkMode) return;
+    opts = opts || {};
     const chunk = Math.max(1, +settings.chunkSize || 20);
     const info = chunkGridInfo();
     const lightArt = settings.generatorMode === 'light_art';
@@ -1287,25 +1372,27 @@
     const stepX = (chunk / refW) * w;
     const stepY = (chunk / refH) * h;
     ctx.save();
-    ctx.strokeStyle = 'rgba(255,255,255,.48)';
-    ctx.fillStyle = 'rgba(255,255,255,.85)';
+    const showNumbers = !!opts.forceNumbers || (!opts.source && previewView.zoom >= 1.85);
+    ctx.strokeStyle = opts.source ? 'rgba(255,255,255,.38)' : 'rgba(255,255,255,.42)';
+    ctx.fillStyle = 'rgba(255,255,255,.74)';
     ctx.lineWidth = 1;
-    ctx.setLineDash([5, 4]);
+    ctx.setLineDash([6, 6]);
     for (let x = 0; x <= w + 0.1; x += stepX) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke(); }
     for (let y = 0; y <= h + 0.1; y += stepY) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke(); }
     ctx.setLineDash([]);
-    ctx.font = '10px Arial';
+    ctx.font = Math.max(6, Math.min(10, Math.round(Math.min(stepX, stepY) * 0.18))) + 'px Arial';
     const selected = selectedChunksSet();
     for (let col = 0; col < info.cols; col++) {
       for (let rowTop = 0; rowTop < info.rows; rowTop++) {
         const nr = chunkNumberForGrid(col, rowTop);
         const x = col * stepX, y = rowTop * stepY;
         if (selected && selected.has(nr)) {
-          ctx.fillStyle = 'rgba(25,135,84,.18)';
+          ctx.fillStyle = 'rgba(25,135,84,.12)';
           ctx.fillRect(x, y, stepX, stepY);
         }
+        if (!showNumbers) continue;
         ctx.fillStyle = selected && selected.has(nr) ? 'rgba(144,255,194,.95)' : 'rgba(255,255,255,.85)';
-        ctx.fillText(String(nr), x + 4, y + 12);
+        ctx.fillText(String(nr), x + 3, y + Math.max(8, Math.min(12, stepY * 0.22)));
       }
     }
     ctx.restore();
@@ -1378,7 +1465,12 @@
       sctx.imageSmoothingEnabled = true;
       sctx.imageSmoothingQuality = 'high';
       sctx.drawImage(srcEl, srcBox.x, srcBox.y, srcBox.w, srcBox.h, panX, panY, drawW, drawH);
-      drawChunkBoundariesOnly(sctx, gw, gh); // lines only, no numbers
+      sctx.restore();
+      applySourceColorFilters(source);
+      sctx.save();
+      sctx.translate(tx, ty);
+      sctx.scale(fit, fit);
+      drawChunkOverlayLogical(sctx, gw, gh, { source: true });
       sctx.restore();
     }
     const ctx = canvas.getContext('2d');
@@ -1447,6 +1539,7 @@
       ctx.restore();
       drawChunkOverlayLogical(ctx, w, h);
     });
+    applyCameraPreviewFilters(canvas);
     // Sprite loading status (small debug text bottom-left of canvas).
     ctx.save();
     ctx.font = '9px monospace';
@@ -2499,6 +2592,13 @@
           '<div class="row"><label>Rood</label><input id="__la_red_power" type="range" min="0" max="180" value="' + esc(settings.redPower) + '"></div>' +
           '<div class="row"><label>Groen</label><input id="__la_green_power" type="range" min="0" max="180" value="' + esc(settings.greenPower) + '"></div>' +
           '<div class="row"><label>Blauw</label><input id="__la_blue_power" type="range" min="0" max="180" value="' + esc(settings.bluePower) + '"></div>' +
+          '<div class="sec">Camera preview filter</div>' +
+          '<div class="row"><label>Meer verzadiging</label><input id="__la_cam_more_sat" type="range" min="0" max="100" value="' + esc(settings.cameraMoreSat) + '"></div>' +
+          '<div class="row"><label>Hyper verzadigd</label><input id="__la_cam_hyper_sat" type="range" min="0" max="100" value="' + esc(settings.cameraHyperSat) + '"></div>' +
+          '<div class="row"><label>Minder verzadiging</label><input id="__la_cam_less_sat" type="range" min="0" max="100" value="' + esc(settings.cameraLessSat) + '"></div>' +
+          '<div class="row"><label>Bleek</label><input id="__la_cam_bleach" type="range" min="0" max="100" value="' + esc(settings.cameraBleach) + '"></div>' +
+          '<div class="row"><label>Grijs</label><input id="__la_cam_gray" type="range" min="0" max="100" value="' + esc(settings.cameraGray) + '"></div>' +
+          '<div class="row"><label>Rossig</label><input id="__la_cam_rosy" type="range" min="0" max="100" value="' + esc(settings.cameraRosy) + '"></div>' +
         '</div>' +
         '<div class="panel" data-panel="build">' +
           '<div class="sec">Bouwpositie</div>' +
@@ -2644,6 +2744,10 @@
       el.addEventListener('input', function() {
         collectSettings(root);
         updateMaxLabel();
+        if (['__la_cam_more_sat','__la_cam_hyper_sat','__la_cam_less_sat','__la_cam_bleach','__la_cam_gray','__la_cam_rosy'].includes(el.id)) {
+          redrawCurrentPreview();
+          return;
+        }
         if (image && ['__la_sat','__la_bright','__la_contrast','__la_gamma','__la_red_power','__la_green_power','__la_blue_power','__la_focus','__la_bgdim','__la_dark','__la_randomizer','__la_variant','__la_alpha','__la_coarse','__la_mid','__la_fine','__la_renderw','__la_roomw','__la_roomh','__la_chunk_mode','__la_chunk_size','__la_chunk_cols','__la_chunk_select','__la_chunk_bleed','__la_max'].includes(el.id)) {
           clearTimeout(timer);
           timer = setTimeout(function() { try { makePlan(root); } catch(ex) { root.querySelector('#__la_status').textContent = ex.message; } }, 180);

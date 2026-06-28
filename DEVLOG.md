@@ -988,6 +988,37 @@ Fixed to: `y = anchorY - (logicalH - 1 - localY)` — image-top now maps to room
 
 ---
 
+## [2026-06-28] Codex - Session 21
+
+**Done:**
+- Split source color editing from camera-style preview filtering.
+- `Bron + color` now redraws from the original image and applies the real source color settings, so saturation/contrast/RGB sliders visibly affect the image that drives the build plan.
+- Added preview-only camera filters for the furniture preview: more saturation, hyper saturation, less saturation, bleach, gray, and rosy.
+- Camera filters only rerender the preview canvas and do not call `makePlan(...)`, so they do not change the generated furniture/build plan.
+- Restored subtle chunk grid behavior on both preview canvases: normal zoom shows dashed chunk boundaries; chunk numbers are small and only appear on the furniture preview after zooming in.
+
+**Changed files:**
+- `pixelart-lightart.js:69` - added camera-preview filter defaults.
+- `pixelart-lightart.js:271` - added camera filter RGB transforms.
+- `pixelart-lightart.js:313` - added furniture-preview-only filter application.
+- `pixelart-lightart.js:1151` - persisted camera filter slider values.
+- `pixelart-lightart.js:1335` - added source-canvas color application.
+- `pixelart-lightart.js:1364` - made chunk overlays subtle/zoom-aware.
+- `pixelart-lightart.js:1469` - source preview now applies real source color settings.
+- `pixelart-lightart.js:1542` - furniture preview applies camera filters after rendering.
+- `pixelart-lightart.js:2595` - added camera filter sliders to the Color tab.
+- `pixelart-lightart.js:2747` - camera filter sliders rerender preview without rebuilding plan.
+- `SHARED_CONTEXT.md` - documented the source-vs-camera-filter split.
+
+**Verification:**
+- Ran `node --check pixelart-lightart.js` successfully.
+
+**Open / next:**
+- Retest camera filters against Leet's edit tool screenshots.
+- Continue Blender/color recipe tuning after confirming the UI previews now represent the right two stages.
+
+---
+
 ## HOW TO UPDATE THIS FILE
 
 At **start of session**: read latest entry, understand state.

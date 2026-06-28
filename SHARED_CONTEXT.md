@@ -444,3 +444,17 @@ This is the compressed handoff from the long Codex/Kenjy conversation so Claude 
 - Root cause found in `pixelart-lightart.js:1409`: Light Art used `reserveTile(...)`, which spreads overlapping same-color lights to nearby tiles. That is wrong for Light Art because Kenjy wants lights to overlap/stack for strength and color mixing.
 - Second root cause found after Kenjy shared Wired Tool screenshots: Codex had used marker/label coordinates and plain room-grid rectangle mapping instead of the actual camera-2D outline. The outline starts are `1=(2,42)`, `2=(2,13)`, `3=(32,13)`, `4=(28,39)`.
 - Fix direction: for `settings.generatorMode === 'light_art'`, use the calculated `{ x, y }` directly; only non-Light-Art modes should use `reserveTile(...)`. Chunk numbering must follow `bs` state order `1/2/3/4`, and Light Art projection must use `roomX = startX + localX * 0.5 + localY`, `roomY = startY - localX * 0.5 + localY`.
+
+### 2026-06-28 source color vs camera preview filters
+
+- Kenjy clarified two separate image stages:
+  - `Bron + color` is the real edited source image. Its saturation/brightness/contrast/gamma/RGB sliders must affect the generated furniture plan.
+  - `Meubel preview` may have camera-edit filters that mimic Leet's camera editor, but those filters are only for previewing a later screenshot look. They must not affect furniture selection, packet preview, purchase counts, or build output.
+- Current implementation:
+  - Source color settings are applied onto the source canvas in `applySourceColorFilters(...)` and the plan still uses the adjusted `work` buffer from `makePlan(...)`.
+  - Camera filters are applied only after furniture preview rendering in `applyCameraPreviewFilters(...)`.
+  - Camera sliders in the Color tab are: `Meer verzadiging`, `Hyper verzadigd`, `Minder verzadiging`, `Bleek`, `Grijs`, `Rossig`.
+  - Camera slider events rerender only the preview canvas and intentionally do not call `makePlan(...)`.
+- Chunk overlay rule:
+  - Both previews should show subtle dashed chunk boundaries.
+  - Chunk numbers should not cover the photo at normal zoom; they appear small only when zoomed in on the furniture preview.
