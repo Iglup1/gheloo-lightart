@@ -1087,6 +1087,36 @@ Fixed to: `y = anchorY - (logicalH - 1 - localY)` — image-top now maps to room
 
 ---
 
+## [2026-06-28] Codex - Session 24
+
+**Done:**
+- Added a GitHub-tracked `shared-context/` folder for files Claude and Codex should both inspect.
+- Added `shared-context/README.md` and `shared-context/ASSET_INDEX.md` with rules for screenshots, packets, source images, previews, and notes.
+- Added a `grid tonen` checkbox in Generator > Chunks so preview grids can be toggled on/off.
+- Restored the chunk grid rule to the old tiny-number style on both canvases.
+- Made section titles more readable with larger font and more spacing.
+- Replaced native browser resize with a custom right-edge horizontal resize handle to avoid the panel acting like it can resize vertically and then showing clipped/blank space.
+
+**Changed files:**
+- `pixelart-lightart.js:104` - added `showGrid` default.
+- `pixelart-lightart.js:1198` - collects grid toggle state.
+- `pixelart-lightart.js:1391` - overlay respects `showGrid`.
+- `pixelart-lightart.js:2532` - native resize disabled.
+- `pixelart-lightart.js:2533` / `pixelart-lightart.js:2906` - custom horizontal resize handle.
+- `pixelart-lightart.js:2563` - clearer section heading styling.
+- `pixelart-lightart.js:2602` - Chunks row now includes `grid tonen`.
+- `shared-context/` - new shared asset/context folder.
+- `SHARED_CONTEXT.md` - documented the shared asset workflow.
+
+**Verification:**
+- Ran `node --check pixelart-lightart.js` successfully.
+
+**Open / next:**
+- Future screenshots/files with accessible local paths should be copied into `shared-context/assets/` and indexed.
+- Saves/watchdog UX remains a later pass.
+
+---
+
 ## HOW TO UPDATE THIS FILE
 
 At **start of session**: read latest entry, understand state.

@@ -457,7 +457,7 @@ This is the compressed handoff from the long Codex/Kenjy conversation so Claude 
   - Camera slider events rerender only the preview canvas and intentionally do not call `makePlan(...)`.
 - Chunk overlay rule:
   - Both previews should show subtle dashed chunk boundaries.
-  - Chunk numbers should not cover the photo at normal zoom; they appear small only when zoomed in on the furniture preview.
+  - Chunk numbers should use the older tiny corner style on both canvases.
 
 ### 2026-06-28 updated guide v4 color families
 
@@ -501,3 +501,17 @@ This is the compressed handoff from the long Codex/Kenjy conversation so Claude 
   - Saves.
 - Panel resize is horizontal only. Do not re-enable vertical resize unless Kenjy explicitly asks.
 - Chunk overlays should use the older subtle style: small dashed grid lines and tiny numbers in the upper-left corner of each chunk on both source and furniture canvases.
+
+### 2026-06-28 shared-context asset workflow
+
+- Kenjy asked for screenshots/files/packets to be shared in GitHub so Claude can inspect the same evidence instead of only reading summaries.
+- New folder:
+  - `shared-context/README.md`
+  - `shared-context/ASSET_INDEX.md`
+  - `shared-context/assets/`
+  - `shared-context/notes/`
+- Workflow:
+  - If Kenjy provides a local file path, copy the file into the relevant `shared-context/assets/...` subfolder and index it.
+  - If Kenjy provides raw packet text, save it as a `.txt` file under `shared-context/assets/packets/` and index it.
+  - If a screenshot is only embedded in chat and no local path is exposed, summarize it in `SHARED_CONTEXT.md` and ask for/upload a file only if exact pixel-level inspection is required.
+  - Keep `SHARED_CONTEXT.md` detailed enough that Claude understands what changed, what Kenjy asked, and why.

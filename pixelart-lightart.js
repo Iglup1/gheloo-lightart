@@ -101,6 +101,7 @@
     retry: 185,
     attempts: 20,
     chunkMode: true,
+    showGrid: true,
     chunkSize: 20,
     chunkCols: 2,
     chunkSelection: '',
@@ -1194,6 +1195,7 @@
     });
     settings.crop = !!root.querySelector('#__la_crop')?.checked;
     settings.chunkMode = !!root.querySelector('#__la_chunk_mode')?.checked;
+    settings.showGrid = root.querySelector('#__la_show_grid') ? !!root.querySelector('#__la_show_grid').checked : true;
     settings.baseBh = Math.max(0, parseFloat(String(settings.baseBh).replace(',', '.')) || 0);
     settings.bhStep = Math.max(0.1, parseFloat(String(settings.bhStep).replace(',', '.')) || DEFAULTS.bhStep);
     settings.settingDelay = Math.max(1000, parseFloat(settings.settingDelay) || DEFAULTS.settingDelay);
@@ -1386,6 +1388,7 @@
   }
   function drawChunkOverlayLogical(ctx, w, h, opts) {
     if (!settings.chunkMode) return;
+    if (!settings.showGrid) return;
     opts = opts || {};
     const chunk = Math.max(1, +settings.chunkSize || 20);
     const info = chunkGridInfo();
@@ -2526,7 +2529,8 @@
     const style = document.createElement('style');
     style.textContent = [
       '#__la,#__la *{box-sizing:border-box}',
-      '#__la{position:fixed;top:16px;right:16px;width:min(760px,calc(100vw - 32px));height:min(760px,calc(100vh - 32px));min-width:430px;min-height:430px;max-width:calc(100vw - 16px);max-height:calc(100vh - 16px);resize:horizontal;overflow:hidden;z-index:2147483647;user-select:none}',
+      '#__la{position:fixed;top:16px;right:16px;width:min(760px,calc(100vw - 32px));height:min(760px,calc(100vh - 32px));min-width:430px;min-height:430px;max-width:calc(100vw - 16px);max-height:calc(100vh - 16px);resize:none;overflow:hidden;z-index:2147483647;user-select:none}',
+      '#__la_resize_x{position:absolute;right:0;top:31px;bottom:0;width:8px;cursor:ew-resize;z-index:2}',
       '#__la .card{min-width:0;height:100%;display:flex;flex-direction:column;background:#e9e8df}',
       '#__la .hdr{cursor:move}',
       '#__la .close{cursor:pointer}',
@@ -2556,7 +2560,7 @@
       '#__la .btn-danger{background:#b51b12!important;border-color:#7f100b!important;color:#fff!important}',
       '#__la .panel{display:none;flex-direction:column;gap:7px;min-height:0;overflow-y:auto;overflow-x:hidden;padding-right:2px}',
       '#__la .panel.on{display:flex;flex:1 1 auto}',
-      '#__la .sec{font-weight:bold;border-bottom:1px solid rgba(0,0,0,.24);padding:5px 0 3px;margin-top:3px;color:#111}',
+      '#__la .sec{font-size:14px;font-weight:700;border-bottom:1px solid rgba(0,0,0,.24);padding:9px 0 6px;margin:8px 0 2px;color:#111;line-height:1.15}',
       '#__la pre{white-space:pre-wrap;word-break:break-word;background:#f7f7f2;border:1px solid rgba(0,0,0,.18);padding:6px;max-height:260px;overflow:auto;margin:0;font-size:11px}',
       '#__la #__la_out{min-height:130px}',
       '#__la [data-panel="saves"].on #__la_log{flex:1 1 220px;min-height:180px;max-height:none}',
@@ -2568,7 +2572,7 @@
     const root = document.createElement('div');
     root.id = '__la';
     root.innerHTML =
-      '<div class="d-flex overflow-hidden position-relative flex-column nitro-card theme-primary nitro-catalog card"><div class="d-flex position-relative align-items-center justify-content-center nitro-card-header hdr" id="__la_hdr"><span class="nitro-card-header-text">PixelArt</span><div class="position-absolute end-0 nitro-card-header-close close" id="__la_close"></div></div><div class="container-fluid content-area body">' +
+      '<div class="d-flex overflow-hidden position-relative flex-column nitro-card theme-primary nitro-catalog card"><div class="d-flex position-relative align-items-center justify-content-center nitro-card-header hdr" id="__la_hdr"><span class="nitro-card-header-text">PixelArt</span><div class="position-absolute end-0 nitro-card-header-close close" id="__la_close"></div></div><div id="__la_resize_x"></div><div class="container-fluid content-area body">' +
         '<input id="__la_file" type="file" accept="image/*">' +
         '<div class="preview-grid"><div class="preview-box"><div class="preview-title">Bron + color</div><canvas id="__la_source"></canvas></div><div class="preview-box"><div class="preview-title">Meubel preview</div><canvas id="__la_preview"></canvas></div></div><div id="__la_meta">Geen afbeelding</div>' +
         '<div class="tabs menu"><button class="btn btn-secondary btn-sm active" data-tab="gen">Generator</button><button class="btn btn-secondary btn-sm" data-tab="color">Color</button><button class="btn btn-secondary btn-sm" data-tab="build">Settings</button><button class="btn btn-secondary btn-sm" data-tab="saves">Saves</button></div>' +
@@ -2595,7 +2599,7 @@
           '<div class="row"><label>Max lampen</label><input id="__la_max" type="range" min="500" max="120000" step="500" value="' + esc(settings.maxLights) + '"><span id="__la_max_label">' + esc(settings.maxLights) + '</span></div>' +
           '<div class="row"><label>Transparantie</label><input id="__la_alpha" type="range" min="1" max="255" value="' + esc(settings.alpha) + '" title="hogere waarde negeert meer half-transparante pixels"><label><input id="__la_crop" type="checkbox"' + (settings.crop ? ' checked' : '') + '> rand wegknippen</label></div>' +
           '<div class="sec">Chunks</div>' +
-          '<div class="row"><label><input id="__la_chunk_mode" type="checkbox"' + (settings.chunkMode ? ' checked' : '') + '> in stukken</label></div>' +
+          '<div class="row"><label><input id="__la_chunk_mode" type="checkbox"' + (settings.chunkMode ? ' checked' : '') + '> in stukken</label><label><input id="__la_show_grid" type="checkbox"' + (settings.showGrid !== false ? ' checked' : '') + '> grid tonen</label></div>' +
           '<div class="row"><label>Welke stukken</label><input id="__la_chunk_select" type="text" placeholder="leeg = auto, bv. 1 of 1,2,4,5" value="' + esc(settings.chunkSelection) + '"></div>' +
           '<div class="row"><button id="__la_reset_gen" class="btn btn-secondary btn-sm flex-grow-1">Generator terug naar default</button></div>' +
           '<div class="sec">Koop en bouw</div><div class="prog"><div class="bar" id="__la_bar"></div></div><div id="__la_status">Klaar.</div>' +
@@ -2765,7 +2769,7 @@
     const resetFieldIds = {
       generatorMode:'#__la_mode', variant:'#__la_variant', renderWidth:'#__la_renderw', roomW:'#__la_roomw', roomH:'#__la_roomh',
       alpha:'#__la_alpha', crop:'#__la_crop', randomizer:'#__la_randomizer', maxLights:'#__la_max',
-      chunkMode:'#__la_chunk_mode', chunkSize:'#__la_chunk_size', chunkCols:'#__la_chunk_cols', chunkSelection:'#__la_chunk_select',
+      chunkMode:'#__la_chunk_mode', showGrid:'#__la_show_grid', chunkSize:'#__la_chunk_size', chunkCols:'#__la_chunk_cols', chunkSelection:'#__la_chunk_select',
       chunkBleed:'#__la_chunk_bleed', chunkRightX:'#__la_chunk_rx', chunkRightY:'#__la_chunk_ry', chunkUpX:'#__la_chunk_ux', chunkUpY:'#__la_chunk_uy',
       sat:'#__la_sat', bright:'#__la_bright', contrast:'#__la_contrast', gamma:'#__la_gamma',
       redPower:'#__la_red_power', greenPower:'#__la_green_power', bluePower:'#__la_blue_power',
@@ -2808,7 +2812,7 @@
       }
       root.querySelector('#__la_status').textContent = label + ' terug naar default.';
     }
-    const generatorResetKeys = ['generatorMode','variant','renderWidth','roomW','roomH','alpha','crop','randomizer','maxLights','chunkMode','chunkSize','chunkCols','chunkSelection','chunkBleed','chunkRightX','chunkRightY','chunkUpX','chunkUpY','imgPanX','imgPanY','imgScale'];
+    const generatorResetKeys = ['generatorMode','variant','renderWidth','roomW','roomH','alpha','crop','randomizer','maxLights','chunkMode','showGrid','chunkSize','chunkCols','chunkSelection','chunkBleed','chunkRightX','chunkRightY','chunkUpX','chunkUpY','imgPanX','imgPanY','imgScale'];
     const colorResetKeys = ['sat','bright','contrast','gamma','redPower','greenPower','bluePower','cameraMoreSat','cameraHyperSat','cameraLessSat','cameraBleach','cameraGray','cameraRosy'];
     const buildResetKeys = ['startX','startY','xyStep','baseBh','bhStep','rotation','delay','settingDelay','burst','burstPause','retry','attempts','markerCylinderType','markerCylinderPage','markerCylinderOffer','markerCornerType','markerCornerPage','markerCornerOffer','markerNumberType','markerNumberPage','markerNumberOffer','markerBh','markerRot','markerNumberBh','markerNumberRot','typeXXL','typeXL','typeL','typeM','typeS','pageXXL','pageXL','pageL','pageM','pageS','offerXXL','offerXL','offerL','offerM','offerS'];
     root.querySelector('#__la_reset_gen').addEventListener('click', function() { resetSettingsGroup(generatorResetKeys, true, 'Generator'); });
@@ -2822,7 +2826,7 @@
           redrawCurrentPreview();
           return;
         }
-        if (image && ['__la_sat','__la_bright','__la_contrast','__la_gamma','__la_red_power','__la_green_power','__la_blue_power','__la_focus','__la_bgdim','__la_dark','__la_randomizer','__la_variant','__la_alpha','__la_coarse','__la_mid','__la_fine','__la_renderw','__la_roomw','__la_roomh','__la_chunk_mode','__la_chunk_size','__la_chunk_cols','__la_chunk_select','__la_chunk_bleed','__la_max'].includes(el.id)) {
+        if (image && ['__la_sat','__la_bright','__la_contrast','__la_gamma','__la_red_power','__la_green_power','__la_blue_power','__la_focus','__la_bgdim','__la_dark','__la_randomizer','__la_variant','__la_alpha','__la_coarse','__la_mid','__la_fine','__la_renderw','__la_roomw','__la_roomh','__la_chunk_mode','__la_show_grid','__la_chunk_size','__la_chunk_cols','__la_chunk_select','__la_chunk_bleed','__la_max'].includes(el.id)) {
           clearTimeout(timer);
           timer = setTimeout(function() { try { makePlan(root); } catch(ex) { root.querySelector('#__la_status').textContent = ex.message; } }, 180);
         }
@@ -2898,6 +2902,30 @@
     let drag = false, ox = 0, oy = 0;
     hdr.addEventListener('mousedown', function(e) { if (e.target.id === '__la_close') return; drag = true; ox = e.clientX - root.getBoundingClientRect().left; oy = e.clientY - root.getBoundingClientRect().top; });
     document.addEventListener('mousemove', function(e) { if (!drag) return; root.style.right = 'auto'; root.style.left = (e.clientX - ox) + 'px'; root.style.top = (e.clientY - oy) + 'px'; });
+    (function() {
+      const handle = root.querySelector('#__la_resize_x');
+      let resizing = false, startX = 0, startW = 0;
+      handle.addEventListener('mousedown', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        resizing = true;
+        startX = e.clientX;
+        startW = root.getBoundingClientRect().width;
+      });
+      document.addEventListener('mousemove', function(e) {
+        if (!resizing) return;
+        const maxW = Math.max(430, window.innerWidth - 16);
+        const next = clamp(startW + (e.clientX - startX), 430, maxW);
+        root.style.width = next + 'px';
+        redrawCurrentPreview();
+      });
+      document.addEventListener('mouseup', function() {
+        if (!resizing) return;
+        resizing = false;
+        keepPanelInViewport();
+        redrawCurrentPreview();
+      });
+    })();
     function keepPanelInViewport() {
       const margin = 8;
       const r = root.getBoundingClientRect();
@@ -2905,6 +2933,7 @@
       let top = root.style.top ? parseFloat(root.style.top) : r.top;
       if (r.width > window.innerWidth - margin * 2) root.style.width = Math.max(320, window.innerWidth - margin * 2) + 'px';
       if (r.height > window.innerHeight - margin * 2) root.style.height = Math.max(360, window.innerHeight - margin * 2) + 'px';
+      if (r.height < 430 || r.height > window.innerHeight - margin * 2) root.style.height = Math.min(760, window.innerHeight - margin * 2) + 'px';
       const nr = root.getBoundingClientRect();
       if (nr.right > window.innerWidth - margin) left -= nr.right - (window.innerWidth - margin);
       if (nr.left < margin) left += margin - nr.left;
