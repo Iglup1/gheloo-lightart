@@ -178,6 +178,7 @@
   let previewPlacementItems = [];
   let previewPlacementRun = false;
   let roomGridOverlayActive = settings.roomGridOverlay !== false;
+  let roomGridOverlayRaf = 0;
 
   // Sprite sheet data extracted from leet.city nitro files (hfdiy_NewLight_X_xueze.nitro).
   // Each entry: glow (b) layer frames per colorCode 0-7, sprite size in pixels.
@@ -2392,11 +2393,16 @@
       document.querySelector('.nitro-room-view') ||
       document.body;
   }
+  function roomGridReferenceLocation() {
+    return Array.from(document.querySelectorAll('.object-location')).find(function(el) {
+      return el.id !== '__la_room_grid_overlay' && !el.closest('#__la');
+    });
+  }
   function roomGridOverlayBox(items, host, info) {
     const hostRect = host && host.getBoundingClientRect ? host.getBoundingClientRect() : { width: window.innerWidth, height: window.innerHeight };
-    const tilePx = 8;
-    const width = Math.max(72, Math.min(Math.max(90, hostRect.width - 24), info.cols * info.chunkSize * tilePx));
-    const height = Math.max(72, Math.min(Math.max(90, hostRect.height - 24), info.rows * info.chunkSize * tilePx));
+    const tilePx = 16;
+    const width = Math.max(72, info.cols * info.chunkSize * tilePx);
+    const height = Math.max(72, info.rows * info.chunkSize * tilePx);
     let left = Math.max(8, ((hostRect.width || window.innerWidth) - width) / 2);
     let top = Math.max(8, ((hostRect.height || window.innerHeight) - height) / 2);
     if (items && items.length) {
@@ -2416,8 +2422,25 @@
     return { left, top, width, height, chunkW: width / info.cols, chunkH: height / info.rows };
   }
   function removeRoomGridOverlay() {
+    if (roomGridOverlayRaf) cancelAnimationFrame(roomGridOverlayRaf);
+    roomGridOverlayRaf = 0;
     const old = document.getElementById('__la_room_grid_overlay');
     if (old) old.remove();
+  }
+  function anchorRoomGridOverlay(overlay, box) {
+    const ref = roomGridReferenceLocation();
+    if (!ref) return;
+    const startRef = ref.getBoundingClientRect();
+    const startLeft = box.left;
+    const startTop = box.top;
+    function tick() {
+      if (!overlay.parentElement) return;
+      const now = ref.getBoundingClientRect();
+      overlay.style.left = Math.round(startLeft + (now.left - startRef.left)) + 'px';
+      overlay.style.top = Math.round(startTop + (now.top - startRef.top)) + 'px';
+      roomGridOverlayRaf = requestAnimationFrame(tick);
+    }
+    roomGridOverlayRaf = requestAnimationFrame(tick);
   }
   function renderRoomGridOverlay(root, items) {
     removeRoomGridOverlay();
@@ -2436,6 +2459,7 @@
     overlay.innerHTML =
       '<div class="__la-room-grid-lines" style="--cw:' + box.chunkW + 'px;--ch:' + box.chunkH + 'px"></div>';
     host.appendChild(overlay);
+    anchorRoomGridOverlay(overlay, box);
     updateRoomGridToggle(root);
   }
   function toggleRoomGridOverlay(root) {

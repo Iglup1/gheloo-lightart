@@ -1293,6 +1293,34 @@ Fixed to: `y = anchorY - (logicalH - 1 - localY)` — image-top now maps to room
 
 ---
 
+## [2026-06-28] Codex - Session 30
+
+**Done:**
+- Kept the restored one-large-art preview baseline.
+- Fixed the room grid overlay so it is no longer just a static screen-positioned layer: it now tracks the movement delta of an existing Leet `.object-location` widget each frame, so camera/room movement carries the grid with it.
+- Fixed the room grid scale: chunk cells now use `tilePx = 16`, so a 20-tile chunk is drawn as a 20x20 chunk guide instead of appearing half-size/10x10.
+- Updated shared context/project memory with the clarified rule: no marker-meubel grid, but room-anchored overlay above the art.
+
+**Changed files:**
+- `pixelart-lightart.js:181` - added RAF tracking state for the room grid overlay.
+- `pixelart-lightart.js:2396` - added `.object-location` reference lookup for camera movement tracking.
+- `pixelart-lightart.js:2403` - changed room grid cell scale to `tilePx = 16`.
+- `pixelart-lightart.js:2425` - grid cleanup now cancels the RAF loop.
+- `pixelart-lightart.js:2430` - added `anchorRoomGridOverlay(...)`, which follows a real object-location widget each frame.
+- `pixelart-lightart.js:2462` - rendered room grid now starts the anchoring loop.
+- `SHARED_CONTEXT.md` - documented the room-anchored overlay and 20x20 grid sizing.
+- `shared-context/notes/PROJECT_MEMORY.md` - durable memory updated for Claude/Codex.
+- `shared-context/SHARED_CONTEXT.md` - refreshed mirror of root shared context.
+
+**Verification:**
+- Ran `node --check pixelart-lightart.js` successfully.
+
+**Open / next:**
+- Test in Leet while moving the camera: the grid should move with the room instead of staying fixed on the screen.
+- If no `.object-location` widget exists in the room, the overlay may not have a movement reference yet; then inspect the live room DOM for the camera transform source.
+
+---
+
 ## HOW TO UPDATE THIS FILE
 
 At **start of session**: read latest entry, understand state.

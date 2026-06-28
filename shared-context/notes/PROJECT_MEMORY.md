@@ -130,6 +130,7 @@ Markers:
 - Room preview grid overlay should be subtle and no-number. Kenjy rejected both the marker-meubel grid and the later room-anchored class experiment.
 - Current requested baseline is commit `74d5eb0`: one large projected isometric Light Art preview with the older GUI/grid overlay above the art.
 - `Plaats preview in kamer` must not buy furniture. It should only inject fake incoming preview objects. Buying belongs to `Koop+Build`.
+- Current grid correction: the overlay should feel room-anchored like a `.object-location` widget, not fixed to the user's screen. It follows camera movement by tracking an existing `.object-location` reference each frame. Grid cells must be full 20x20 chunk cells (`tilePx = 16`), not half-size 10x10.
 
 ## Current User Feedback To Preserve
 

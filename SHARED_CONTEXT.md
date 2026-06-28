@@ -595,3 +595,14 @@ This is the compressed handoff from the long Codex/Kenjy conversation so Claude 
 - Important preview rule:
   - `Plaats preview in kamer` must not buy furniture. It should only generate/inject fake incoming preview objects.
   - Buying is reserved for `Koop+Build`, which still calls `buyMissing(root)`.
+
+### 2026-06-28 room-anchored overlay grid sizing
+
+- Kenjy clarified again: the grid must not be screen-anchored. It should feel anchored in the room above the art, like a furniture/object-location UI.
+- Do not return to marker furniture objects for the grid.
+- Current approach:
+  - Keep the single large art preview.
+  - Render the grid as a DOM overlay with `.object-location` styling.
+  - Attach to the same parent as an existing `.object-location` widget when available.
+  - Track a real `.object-location` reference every animation frame and apply its camera movement delta to `#__la_room_grid_overlay`.
+- Grid chunk cells should represent 20x20 furniture tiles, not half-size 10x10. Implementation uses `tilePx = 16` in `roomGridOverlayBox(...)`.
