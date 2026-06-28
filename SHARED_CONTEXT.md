@@ -567,3 +567,18 @@ This is the compressed handoff from the long Codex/Kenjy conversation so Claude 
   - The grid no longer uses hardcoded `left:120px; top:120px`.
   - The grid stores/uses the current preview objects and estimates overlay position/size from their room-coordinate bounds.
 - If this still does not follow the room exactly in live Leet, inspect the parent of the real scoreboard `.object-location` and adjust `roomGridOverlayHost()` to that exact container.
+
+### 2026-06-28 room grid must be room content, not screen UI
+
+- Kenjy clarified the grid should not be a normal GUI/HTML layer on top of the screen.
+- Desired behaviour:
+  - It should spawn in the room as preview content, like the light preview objects.
+  - It should move with the room/camera because it is part of the fake incoming `Objects` preview.
+  - The `grids` button should control whether these guide objects are included.
+  - The guide chunks should be visually twice as large as the base chunk size.
+- Current implementation:
+  - Removed use of the DOM room grid overlay for `Plaats preview in kamer`.
+  - `makeRoomGridGuideObjects()` creates client-side fake marker/corner objects along chunk borders.
+  - These guide objects are appended to the same fake incoming `Objects` packet as the preview lamps when `grids` is active.
+  - Toggling `grids` off while a preview is active injects `ObjectRemove` for only the guide object ids.
+  - Guide size is `chunkSize * 2`.

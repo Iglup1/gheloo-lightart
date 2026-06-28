@@ -176,6 +176,7 @@
   let previewPlacementActive = false;
   let previewPlacementIds = [];
   let previewPlacementItems = [];
+  let previewGridGuideIds = [];
   let previewPlacementRun = false;
   let roomGridOverlayActive = settings.roomGridOverlay !== false;
 
@@ -198,7 +199,6 @@
   window.__la_shutdown = function() {
     active = false;
     try { if (window.__la_resizeObserver) window.__la_resizeObserver.disconnect(); } catch(_) {}
-    removeRoomGridOverlay();
     const old = document.getElementById('__la');
     if (old) old.remove();
   };
@@ -1971,20 +1971,6 @@
       const lx = isLA ? p.px : (maxPx ? (p.px / maxPx) * mapW : p.px);
       const ly = isLA ? p.py : (maxPy ? (p.py / maxPy) * mapH : p.py);
 
-      // Light Art preview: project whole art as one isometric plane, no chunk split.
-      // startY = mapW/2 keeps roomY >= 0 for all pixels. Client-side accepts any coords.
-      if (isLA && !withInventory) {
-        const fsX = 2;
-        const fsY = Math.ceil(mapW / 2) + 2;
-        const id = p.id || (out.length + 1);
-        const sxFine = Math.round(lx * 2) / 2;
-        const yBase = Math.floor(ly);
-        const yFrac = clamp(ly - yBase, 0, 0.99);
-        const z = normalizeHeight(baseBh + yFrac * bhStep);
-        out.push({ id, typeId: p.typeId, x: Math.round(fsX + sxFine * 0.5 + yBase), y: Math.round(fsY - sxFine * 0.5 + yBase), z, rotation, state: p.state, size: p.size });
-        return;
-      }
-
       const chunkNr = chunkNumberForRoomPoint(lx, ly);
       if (chunkMode && selected && !selected.has(chunkNr)) return;
       let id = p.id || (out.length + 1);
@@ -2069,6 +2055,52 @@
         marker: true
       };
     });
+  }
+  function makeRoomGridGuideObjects() {
+    if (!settings.chunkMode || settings.generatorMode !== 'light_art') return [];
+    const info = chunkGridInfo();
+    const selected = selectedChunksSet();
+    const step = 4;
+    const guideSize = info.chunkSize * 2;
+    const seen = {};
+    const out = [];
+    function addPoint(nr, frameStart, lx, ly) {
+      const sxFine = Math.round(lx * 2) / 2;
+      const yBase = Math.floor(ly);
+      const x = Math.round(frameStart.x + (sxFine * 0.5) + yBase);
+      const y = Math.round(frameStart.y - (sxFine * 0.5) + yBase);
+      const key = x + ',' + y;
+      if (seen[key]) return;
+      seen[key] = true;
+      out.push({
+        id: 0,
+        typeId: +settings.markerCornerType,
+        x,
+        y,
+        z: normalizeHeight(settings.markerBh),
+        rotation: +settings.markerRot || 2,
+        state: '0',
+        size: 'grid',
+        gridGuide: true,
+        nr
+      });
+    }
+    for (let row = 0; row < info.rows; row++) {
+      for (let col = 0; col < info.cols; col++) {
+        const nr = chunkNumberForGrid(col, row);
+        if (selected && !selected.has(nr)) continue;
+        const exact = exactLightArtFrameStart(nr);
+        const anchor = exact ? null : chunkAnchor(col, row);
+        const frameStart = exact || { x: anchor.x - info.chunkSize + 1, y: anchor.y - info.chunkSize + 1 };
+        for (let i = 0; i <= guideSize; i += step) {
+          addPoint(nr, frameStart, i, 0);
+          addPoint(nr, frameStart, i, guideSize);
+          addPoint(nr, frameStart, 0, i);
+          addPoint(nr, frameStart, guideSize, i);
+        }
+      }
+    }
+    return out;
   }
   function ackMatches(ack, item, afterTs) {
     if (!ack || ack.at < afterTs) return false;
@@ -2381,76 +2413,41 @@
     btn.classList.toggle('active', roomGridOverlayActive);
     btn.setAttribute('aria-pressed', roomGridOverlayActive ? 'true' : 'false');
   }
-  function roomGridOverlayHost() {
-    const existingLocation = Array.from(document.querySelectorAll('.object-location')).find(function(el) {
-      return el.id !== '__la_room_grid_overlay' && !el.closest('#__la');
-    });
-    if (existingLocation && existingLocation.parentElement) return existingLocation.parentElement;
-    return document.querySelector('.nitro-room-widgets') ||
-      document.querySelector('.room-widgets') ||
-      document.querySelector('.nitro-room') ||
-      document.querySelector('.nitro-room-view') ||
-      document.body;
-  }
-  function roomGridOverlayBox(items, host, info) {
-    const hostRect = host && host.getBoundingClientRect ? host.getBoundingClientRect() : { width: window.innerWidth, height: window.innerHeight };
-    const tilePx = 8;
-    const width = Math.max(72, Math.min(Math.max(90, hostRect.width - 24), info.cols * info.chunkSize * tilePx));
-    const height = Math.max(72, Math.min(Math.max(90, hostRect.height - 24), info.rows * info.chunkSize * tilePx));
-    let left = Math.max(8, ((hostRect.width || window.innerWidth) - width) / 2);
-    let top = Math.max(8, ((hostRect.height || window.innerHeight) - height) / 2);
-    if (items && items.length) {
-      const minX = Math.min.apply(null, items.map(function(o) { return +o.x || 0; }));
-      const maxX = Math.max.apply(null, items.map(function(o) { return +o.x || 0; }));
-      const minY = Math.min.apply(null, items.map(function(o) { return +o.y || 0; }));
-      const maxY = Math.max.apply(null, items.map(function(o) { return +o.y || 0; }));
-      const cx = (minX + maxX) / 2;
-      const cy = (minY + maxY) / 2;
-      const roomCenterX = (hostRect.width || window.innerWidth) / 2;
-      const roomTop = Math.max(24, (hostRect.height || window.innerHeight) * 0.12);
-      left = roomCenterX + ((cx - cy) * 16) - (width / 2);
-      top = roomTop + ((cx + cy) * 8) - (height / 2);
-      left = clamp(left, 4, Math.max(4, (hostRect.width || window.innerWidth) - width - 4));
-      top = clamp(top, 4, Math.max(4, (hostRect.height || window.innerHeight) - height - 4));
-    }
-    return { left, top, width, height, chunkW: width / info.cols, chunkH: height / info.rows };
-  }
-  function removeRoomGridOverlay() {
-    const old = document.getElementById('__la_room_grid_overlay');
-    if (old) old.remove();
-  }
-  function renderRoomGridOverlay(root, items) {
-    removeRoomGridOverlay();
-    if (!roomGridOverlayActive || !previewPlacementActive || !settings.chunkMode) return;
-    const info = chunkGridInfo();
-    const host = roomGridOverlayHost();
-    const box = roomGridOverlayBox(items || previewPlacementItems, host, info);
-    const overlay = document.createElement('div');
-    overlay.id = '__la_room_grid_overlay';
-    overlay.className = 'position-absolute visible object-location';
-    overlay.style.left = Math.round(box.left) + 'px';
-    overlay.style.top = Math.round(box.top) + 'px';
-    overlay.style.width = Math.round(box.width) + 'px';
-    overlay.style.height = Math.round(box.height) + 'px';
-    overlay.setAttribute('data-chunks', info.cols + 'x' + info.rows);
-    overlay.innerHTML =
-      '<div class="__la-room-grid-lines" style="--cw:' + box.chunkW + 'px;--ch:' + box.chunkH + 'px"></div>';
-    host.appendChild(overlay);
-    updateRoomGridToggle(root);
-  }
   function toggleRoomGridOverlay(root) {
     roomGridOverlayActive = !roomGridOverlayActive;
     settings.roomGridOverlay = roomGridOverlayActive;
     saveSettings();
     updateRoomGridToggle(root);
-    if (roomGridOverlayActive) {
-      renderRoomGridOverlay(root);
-      if (!previewPlacementActive && root) {
-        const el = root.querySelector('#__la_status');
-        if (el) el.textContent = 'Grids staan aan en verschijnen bij Plaats preview in kamer.';
-      }
-    } else {
-      removeRoomGridOverlay();
+    const el = root && root.querySelector('#__la_status');
+    if (!previewPlacementActive) {
+      if (el) el.textContent = roomGridOverlayActive
+        ? 'Grids staan aan en spawnen mee bij Plaats preview in kamer.'
+        : 'Grids staan uit voor de volgende preview.';
+      return;
+    }
+    if (!roomGridOverlayActive) {
+      const ids = previewGridGuideIds.slice();
+      ids.forEach(injectObjectRemove);
+      previewPlacementIds = previewPlacementIds.filter(function(id) { return ids.indexOf(id) === -1; });
+      previewPlacementItems = previewPlacementItems.filter(function(item) { return !item.gridGuide; });
+      previewGridGuideIds = [];
+      if (el) el.textContent = 'Grid-guide uit kamer verwijderd.';
+      return;
+    }
+    const guides = makeRoomGridGuideObjects();
+    if (!guides.length) {
+      if (el) el.textContent = 'Geen grid-guide objecten voor deze preview.';
+      return;
+    }
+    const fakeBase = 1600000000 + (Date.now() % 300000000);
+    guides.forEach(function(item, idx) { item.id = fakeBase + idx; });
+    if (injectObjectsPacket(guides)) {
+      previewGridGuideIds = guides.map(function(item) { return item.id; });
+      previewPlacementIds = previewPlacementIds.concat(previewGridGuideIds);
+      previewPlacementItems = previewPlacementItems.concat(guides);
+      if (el) el.textContent = 'Grid-guide in kamer gespawned: ' + guides.length + ' objecten.';
+    } else if (el) {
+      el.textContent = 'Grid-guide packet kon niet worden geinjecteerd.';
     }
   }
   async function togglePlacePreview(root) {
@@ -2468,9 +2465,9 @@
         }
         previewPlacementIds = [];
         previewPlacementItems = [];
+        previewGridGuideIds = [];
         previewPlacementActive = false;
         updatePreviewToggle(root);
-        removeRoomGridOverlay();
         root.querySelector('#__la_status').textContent = hidden ? 'Preview client-side verborgen: ' + hidden + ' meubels.' : 'Preview kon niet client-side worden verwijderd.';
       } finally {
         running = false;
@@ -2486,22 +2483,24 @@
       root.querySelector('#__la_status').textContent = 'Inventory controleren en ontbrekende meubels kopen...';
       await buyMissing(root);
       if (stopRequested) return;
-      const items = makeProjectedBuildObjects(root, false);
+      let items = makeProjectedBuildObjects(root, false);
+      if (roomGridOverlayActive) items = items.concat(makeRoomGridGuideObjects());
       const fakeBase = 700000000 + (Date.now() % 900000000);
       previewPlacementIds = items.map(function(item, idx) {
         item.id = fakeBase + idx;
         return item.id;
       });
       previewPlacementItems = items.slice();
+      previewGridGuideIds = items.filter(function(item) { return item.gridGuide; }).map(function(item) { return item.id; });
       root.querySelector('#__la_status').textContent = 'Preview packet injecteren...';
       const ok = injectObjectsPacket(items);
       previewPlacementActive = !!ok && previewPlacementIds.length > 0;
       if (!previewPlacementActive) {
         previewPlacementIds = [];
         previewPlacementItems = [];
+        previewGridGuideIds = [];
       }
       updatePreviewToggle(root);
-      renderRoomGridOverlay(root, items);
       root.querySelector('#__la_status').textContent = previewPlacementActive
         ? 'Preview geplaatst: ' + previewPlacementIds.length + ' meubels.'
         : 'Preview packet kon niet worden geinjecteerd.';
@@ -2509,9 +2508,9 @@
     } catch (ex) {
       previewPlacementIds = [];
       previewPlacementItems = [];
+      previewGridGuideIds = [];
       previewPlacementActive = false;
       updatePreviewToggle(root);
-      removeRoomGridOverlay();
       root.querySelector('#__la_status').textContent = 'Preview fout: ' + ex.message;
       logBuild(root, 'preview fout', { message: ex.message });
     } finally {
@@ -2663,8 +2662,6 @@
       '#__la [data-panel="saves"].on #__la_log{flex:1 1 220px;min-height:180px;max-height:none}',
       '#__la .prog{height:8px;background:rgba(0,0,0,.14);overflow:hidden;border-radius:4px}',
       '#__la .bar{height:100%;width:0;background:#198754}',
-      '#__la_room_grid_overlay{z-index:2147483000;pointer-events:none;opacity:.62}',
-      '#__la_room_grid_overlay .__la-room-grid-lines{width:100%;height:100%;border:1px dashed rgba(255,255,255,.45);background-image:linear-gradient(rgba(255,255,255,.34) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.34) 1px,transparent 1px);background-size:var(--cw) var(--ch),var(--cw) var(--ch);box-shadow:0 0 0 1px rgba(0,0,0,.25) inset}',
       '@media (max-width:560px){#__la .preview-grid{grid-template-columns:1fr}#__la canvas{height:130px}}'
     ].join('');
     document.head.appendChild(style);
@@ -3051,7 +3048,7 @@
     window.addEventListener('resize', keepPanelInViewport);
     keepPanelInViewport();
     root.style.display = '';
-    if (window.__ext_onStop) window.__ext_onStop(function() { active = false; removeRoomGridOverlay(); root.remove(); style.remove(); });
+    if (window.__ext_onStop) window.__ext_onStop(function() { active = false; root.remove(); style.remove(); });
   }
 
   window.onPacket('ObjectAdd', function(p) {

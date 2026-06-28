@@ -1117,6 +1117,37 @@ Fixed to: `y = anchorY - (logicalH - 1 - localY)` — image-top now maps to room
 
 ---
 
+## [2026-06-28] Codex - Session 28
+
+**Done:**
+- Changed the room grid from a DOM/screen overlay into fake room preview objects.
+- Removed the old HTML room-grid overlay path from the active preview flow.
+- `grids` now controls whether guide objects are appended to the same fake incoming `Objects` packet as the preview lamps.
+- When a preview is active, toggling `grids` off injects `ObjectRemove` for only the grid guide ids.
+- Guide chunks are drawn at `chunkSize * 2` as requested.
+- Preview Light Art no longer uses the old single-plane projection branch, so preview coordinates use the chunk-frame logic like real builds.
+
+**Changed files:**
+- `pixelart-lightart.js:179` - added `previewGridGuideIds` tracking for grid-only removal.
+- `pixelart-lightart.js:1980` - removed the `isLA && !withInventory` single-plane preview branch.
+- `pixelart-lightart.js:2059` - added `makeRoomGridGuideObjects()` to create fake room guide objects.
+- `pixelart-lightart.js:2064` - guide chunks use `chunkSize * 2`.
+- `pixelart-lightart.js:2094` - guide frames support exact known chunks and fallback from marker anchors.
+- `pixelart-lightart.js:2429` - toggling grids off removes only grid guide objects.
+- `pixelart-lightart.js:2437` - toggling grids on injects a new fake `Objects` packet for guide objects.
+- `pixelart-lightart.js:2487` - active grids are appended to preview objects before fake ids and packet injection.
+- `SHARED_CONTEXT.md` - documented that grids must be room content, not fixed GUI.
+- `shared-context/notes/PROJECT_MEMORY.md` - updated durable grid rule.
+- `shared-context/SHARED_CONTEXT.md` - refreshed mirror.
+
+**Verification:**
+- Ran `node --check pixelart-lightart.js` successfully.
+
+**Open / next:**
+- Test whether the marker/corner guide furniture is visually subtle enough in Leet camera. If too thick/ugly, change `makeRoomGridGuideObjects()` to use a different type/spacing/state.
+
+---
+
 ## [2026-06-28] Codex - Session 27
 
 **Done:**

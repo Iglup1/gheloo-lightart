@@ -128,7 +128,8 @@ Markers:
 - Camera preview filters affect only the preview image, not the furniture choices.
 - Canvas chunk grids should be tiny old-style dotted lines with small corner numbers.
 - Room preview grid overlay should be a subtle UI overlay, no numbers, toggled by a dark-blue active `grids` button beside `Plaats preview in kamer`.
-- The room preview grid should live in the same room-relative `.object-location` overlay layer as Leet widgets/scoreboards when possible. It must not be a normal fixed screen overlay.
+- The room preview grid must not be a normal fixed screen overlay. Kenjy wants it to spawn as room preview content, like furniture, so it moves with the room/camera.
+- The `grids` button controls client-side fake guide objects that are appended to the fake incoming `Objects` preview packet. Guide chunks are visually `chunkSize * 2`.
 
 ## Current User Feedback To Preserve
 
