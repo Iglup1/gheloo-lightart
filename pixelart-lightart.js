@@ -102,6 +102,7 @@
     attempts: 20,
     chunkMode: true,
     showGrid: true,
+    roomGridOverlay: true,
     chunkSize: 20,
     chunkCols: 2,
     chunkSelection: '',
@@ -175,6 +176,7 @@
   let previewPlacementActive = false;
   let previewPlacementIds = [];
   let previewPlacementRun = false;
+  let roomGridOverlayActive = settings.roomGridOverlay !== false;
 
   // Sprite sheet data extracted from leet.city nitro files (hfdiy_NewLight_X_xueze.nitro).
   // Each entry: glow (b) layer frames per colorCode 0-7, sprite size in pixels.
@@ -195,6 +197,7 @@
   window.__la_shutdown = function() {
     active = false;
     try { if (window.__la_resizeObserver) window.__la_resizeObserver.disconnect(); } catch(_) {}
+    removeRoomGridOverlay();
     const old = document.getElementById('__la');
     if (old) old.remove();
   };
@@ -2362,9 +2365,65 @@
   }
   function updatePreviewToggle(root) {
     const btn = root && root.querySelector('#__la_place_preview');
+    if (btn) {
+      btn.classList.toggle('active', previewPlacementActive);
+      btn.textContent = previewPlacementActive ? 'Verwijder preview uit kamer' : 'Plaats preview in kamer';
+    }
+    updateRoomGridToggle(root);
+  }
+  function updateRoomGridToggle(root) {
+    const btn = root && root.querySelector('#__la_room_grid_toggle');
     if (!btn) return;
-    btn.classList.toggle('active', previewPlacementActive);
-    btn.textContent = previewPlacementActive ? 'Verwijder preview uit kamer' : 'Plaats preview in kamer';
+    btn.classList.toggle('active', roomGridOverlayActive);
+    btn.setAttribute('aria-pressed', roomGridOverlayActive ? 'true' : 'false');
+  }
+  function roomGridOverlayHost() {
+    return document.querySelector('.nitro-room-widgets') ||
+      document.querySelector('.room-widgets') ||
+      document.querySelector('.nitro-room') ||
+      document.querySelector('.nitro-room-view') ||
+      document.body;
+  }
+  function removeRoomGridOverlay() {
+    const old = document.getElementById('__la_room_grid_overlay');
+    if (old) old.remove();
+  }
+  function renderRoomGridOverlay(root) {
+    removeRoomGridOverlay();
+    if (!roomGridOverlayActive || !previewPlacementActive || !settings.chunkMode) return;
+    const info = chunkGridInfo();
+    const host = roomGridOverlayHost();
+    const overlay = document.createElement('div');
+    const tilePx = 8;
+    const width = Math.max(72, Math.min(520, info.cols * info.chunkSize * tilePx));
+    const height = Math.max(72, Math.min(520, info.rows * info.chunkSize * tilePx));
+    const chunkW = width / info.cols;
+    const chunkH = height / info.rows;
+    overlay.id = '__la_room_grid_overlay';
+    overlay.className = 'position-absolute visible object-location';
+    overlay.style.left = '120px';
+    overlay.style.top = '120px';
+    overlay.style.width = width + 'px';
+    overlay.style.height = height + 'px';
+    overlay.innerHTML =
+      '<div class="__la-room-grid-lines" style="--cw:' + chunkW + 'px;--ch:' + chunkH + 'px"></div>';
+    host.appendChild(overlay);
+    updateRoomGridToggle(root);
+  }
+  function toggleRoomGridOverlay(root) {
+    roomGridOverlayActive = !roomGridOverlayActive;
+    settings.roomGridOverlay = roomGridOverlayActive;
+    saveSettings();
+    updateRoomGridToggle(root);
+    if (roomGridOverlayActive) {
+      renderRoomGridOverlay(root);
+      if (!previewPlacementActive && root) {
+        const el = root.querySelector('#__la_status');
+        if (el) el.textContent = 'Grids staan aan en verschijnen bij Plaats preview in kamer.';
+      }
+    } else {
+      removeRoomGridOverlay();
+    }
   }
   async function togglePlacePreview(root) {
     if (running) return;
@@ -2382,6 +2441,7 @@
         previewPlacementIds = [];
         previewPlacementActive = false;
         updatePreviewToggle(root);
+        removeRoomGridOverlay();
         root.querySelector('#__la_status').textContent = hidden ? 'Preview client-side verborgen: ' + hidden + ' meubels.' : 'Preview kon niet client-side worden verwijderd.';
       } finally {
         running = false;
@@ -2408,6 +2468,7 @@
       previewPlacementActive = !!ok && previewPlacementIds.length > 0;
       if (!previewPlacementActive) previewPlacementIds = [];
       updatePreviewToggle(root);
+      renderRoomGridOverlay(root);
       root.querySelector('#__la_status').textContent = previewPlacementActive
         ? 'Preview geplaatst: ' + previewPlacementIds.length + ' meubels.'
         : 'Preview packet kon niet worden geinjecteerd.';
@@ -2416,6 +2477,7 @@
       previewPlacementIds = [];
       previewPlacementActive = false;
       updatePreviewToggle(root);
+      removeRoomGridOverlay();
       root.querySelector('#__la_status').textContent = 'Preview fout: ' + ex.message;
       logBuild(root, 'preview fout', { message: ex.message });
     } finally {
@@ -2529,18 +2591,18 @@
     const style = document.createElement('style');
     style.textContent = [
       '#__la,#__la *{box-sizing:border-box}',
-      '#__la{position:fixed;top:16px;right:16px;width:min(760px,calc(100vw - 32px));height:min(760px,calc(100vh - 32px));min-width:430px;min-height:430px;max-width:calc(100vw - 16px);max-height:calc(100vh - 16px);resize:none;overflow:hidden;z-index:2147483647;user-select:none}',
+      '#__la{position:fixed;top:16px;right:16px;width:min(760px,calc(100vw - 32px));height:min(760px,calc(100vh - 32px));min-width:min(560px,calc(100vw - 16px));min-height:430px;max-width:calc(100vw - 16px);max-height:calc(100vh - 16px);resize:none;overflow:hidden;z-index:2147483647;user-select:none}',
       '#__la_resize_x{position:absolute;right:0;top:31px;bottom:0;width:8px;cursor:ew-resize;z-index:2}',
       '#__la .card{min-width:0;height:100%;display:flex;flex-direction:column;background:#e9e8df}',
       '#__la .hdr{cursor:move}',
       '#__la .close{cursor:pointer}',
-      '#__la .body{flex:1 1 auto;box-sizing:border-box;width:100%;min-width:0;min-height:0;overflow:hidden;padding:8px;display:flex;flex-direction:column;gap:7px;background:#e9e8df}',
+      '#__la .body{flex:1 1 auto;box-sizing:border-box;width:100%;min-width:0;min-height:0;overflow:hidden;padding:8px 10px 8px 8px;display:flex;flex-direction:column;gap:7px;background:#e9e8df}',
       '#__la .preview-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;min-height:150px;flex:0 0 auto}',
       '#__la .preview-box{display:flex;flex-direction:column;min-width:0;gap:2px}',
       '#__la .preview-title{font-size:11px;font-style:italic;color:#333}',
       '#__la canvas{width:100%;height:clamp(125px,26vh,220px);flex:0 0 auto;background:#050505;border:1px solid rgba(0,0,0,.25);object-fit:contain;cursor:grab}',
       '#__la canvas:active{cursor:grabbing}',
-      '#__la .row{display:flex;align-items:center;gap:6px;width:100%;min-width:0;flex-wrap:wrap}',
+      '#__la .row{display:flex;align-items:center;gap:7px;width:100%;min-width:0;flex-wrap:wrap;margin:0 0 3px}',
       '#__la label{min-width:64px;font-weight:bold}',
       '#__la input,#__la select{min-width:0}',
       '#__la textarea{width:100%;min-height:86px;resize:vertical;font-size:11px;font-family:monospace}',
@@ -2550,22 +2612,25 @@
       '#__la .tabs button{flex:1 1 0;min-width:0;width:auto;border-bottom-left-radius:0!important;border-bottom-right-radius:0!important}',
       '#__la .btn-primary,#__la .btn-secondary{background:#1f7f99!important;border-color:#0f5f75!important;color:#fff!important}',
       '#__la .btn-primary.active,#__la .btn-secondary.active{background:#155f73!important;border-color:#0b4b5e!important}',
-      '#__la #__la_place_preview{background:#3a9fd4!important;border-color:#2276a3!important;color:#fff!important}',
-      '#__la #__la_place_preview.active{background:#0d4a7a!important;border-color:#083454!important;color:#fff!important}',
+      '#__la #__la_place_preview,#__la #__la_room_grid_toggle{background:#3a9fd4!important;border-color:#2276a3!important;color:#fff!important}',
+      '#__la #__la_place_preview.active,#__la #__la_room_grid_toggle.active{background:#0d4a7a!important;border-color:#083454!important;color:#fff!important}',
       '#__la .tabs .btn-secondary{background:#d1d0c8!important;border-color:#111!important;color:#000!important}',
       '#__la .tabs .btn-secondary.active{background:#f3efe4!important;border-color:#111!important;color:#000!important}',
       '#__la .btn-success{background:#198754!important;border-color:#11653d!important;color:#fff!important}',
       '#__la .btn-warning{background:#f0b429!important;border-color:#b88512!important;color:#fff!important}',
       '#__la #__la_continue{background:#1f9b58!important;border-color:#13743f!important;color:#fff!important}',
       '#__la .btn-danger{background:#b51b12!important;border-color:#7f100b!important;color:#fff!important}',
-      '#__la .panel{display:none;flex-direction:column;gap:7px;min-height:0;overflow-y:auto;overflow-x:hidden;padding-right:2px}',
+      '#__la .panel{display:none;flex-direction:column;gap:6px;min-height:0;overflow-y:auto;overflow-x:hidden;padding:0 4px 0 0}',
       '#__la .panel.on{display:flex;flex:1 1 auto}',
-      '#__la .sec{font-size:14px;font-weight:700;border-bottom:1px solid rgba(0,0,0,.24);padding:9px 0 6px;margin:8px 0 2px;color:#111;line-height:1.15}',
+      '#__la .sec{font-size:15px;font-weight:700;border-bottom:1px solid rgba(0,0,0,.24);padding:11px 0 7px;margin:10px 0 4px;color:#111;line-height:1.2}',
+      '#__la .panel>.sec:first-child{margin-top:0}',
       '#__la pre{white-space:pre-wrap;word-break:break-word;background:#f7f7f2;border:1px solid rgba(0,0,0,.18);padding:6px;max-height:260px;overflow:auto;margin:0;font-size:11px}',
       '#__la #__la_out{min-height:130px}',
       '#__la [data-panel="saves"].on #__la_log{flex:1 1 220px;min-height:180px;max-height:none}',
       '#__la .prog{height:8px;background:rgba(0,0,0,.14);overflow:hidden;border-radius:4px}',
       '#__la .bar{height:100%;width:0;background:#198754}',
+      '#__la_room_grid_overlay{z-index:2147483000;pointer-events:none;opacity:.62}',
+      '#__la_room_grid_overlay .__la-room-grid-lines{width:100%;height:100%;border:1px dashed rgba(255,255,255,.45);background-image:linear-gradient(rgba(255,255,255,.34) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.34) 1px,transparent 1px);background-size:var(--cw) var(--ch),var(--cw) var(--ch);box-shadow:0 0 0 1px rgba(0,0,0,.25) inset}',
       '@media (max-width:560px){#__la .preview-grid{grid-template-columns:1fr}#__la canvas{height:130px}}'
     ].join('');
     document.head.appendChild(style);
@@ -2603,7 +2668,7 @@
           '<div class="row"><label>Welke stukken</label><input id="__la_chunk_select" type="text" placeholder="leeg = auto, bv. 1 of 1,2,4,5" value="' + esc(settings.chunkSelection) + '"></div>' +
           '<div class="row"><button id="__la_reset_gen" class="btn btn-secondary btn-sm flex-grow-1">Generator terug naar default</button></div>' +
           '<div class="sec">Koop en bouw</div><div class="prog"><div class="bar" id="__la_bar"></div></div><div id="__la_status">Klaar.</div>' +
-          '<div class="row"><button id="__la_place_preview" class="btn btn-primary btn-sm flex-grow-1">Plaats preview in kamer</button></div>' +
+          '<div class="row"><button id="__la_place_preview" class="btn btn-primary btn-sm flex-grow-1">Plaats preview in kamer</button><button id="__la_room_grid_toggle" class="btn btn-primary btn-sm" style="min-width:88px">grids</button></div>' +
           '<div class="row"><button id="__la_build" class="btn btn-warning btn-sm flex-grow-1">Koop+Bouw</button></div>' +
           '<div class="row"><button id="__la_stop" class="btn btn-danger btn-sm flex-grow-1">Stop</button></div>' +
           '<div class="row"><button id="__la_continue" class="btn btn-success btn-sm flex-grow-1">Continue</button></div>' +
@@ -2850,6 +2915,10 @@
     root.querySelector('#__la_place_preview').addEventListener('click', function() {
       togglePlacePreview(root);
     });
+    root.querySelector('#__la_room_grid_toggle').addEventListener('click', function() {
+      toggleRoomGridOverlay(root);
+    });
+    updateRoomGridToggle(root);
     root.querySelector('#__la_build').addEventListener('click', function() { buyAndBuild(root); });
     root.querySelector('#__la_continue').addEventListener('click', function() {
       checkpoint = loadCheckpoint();
@@ -2914,8 +2983,9 @@
       });
       document.addEventListener('mousemove', function(e) {
         if (!resizing) return;
-        const maxW = Math.max(430, window.innerWidth - 16);
-        const next = clamp(startW + (e.clientX - startX), 430, maxW);
+        const minW = Math.min(560, window.innerWidth - 16);
+        const maxW = Math.max(minW, window.innerWidth - 16);
+        const next = clamp(startW + (e.clientX - startX), minW, maxW);
         root.style.width = next + 'px';
         redrawCurrentPreview();
       });
@@ -2931,7 +3001,7 @@
       const r = root.getBoundingClientRect();
       let left = root.style.left ? parseFloat(root.style.left) : r.left;
       let top = root.style.top ? parseFloat(root.style.top) : r.top;
-      if (r.width > window.innerWidth - margin * 2) root.style.width = Math.max(320, window.innerWidth - margin * 2) + 'px';
+      if (r.width > window.innerWidth - margin * 2) root.style.width = Math.max(360, window.innerWidth - margin * 2) + 'px';
       if (r.height > window.innerHeight - margin * 2) root.style.height = Math.max(360, window.innerHeight - margin * 2) + 'px';
       if (r.height < 430 || r.height > window.innerHeight - margin * 2) root.style.height = Math.min(760, window.innerHeight - margin * 2) + 'px';
       const nr = root.getBoundingClientRect();
@@ -2947,7 +3017,7 @@
     window.addEventListener('resize', keepPanelInViewport);
     keepPanelInViewport();
     root.style.display = '';
-    if (window.__ext_onStop) window.__ext_onStop(function() { active = false; root.remove(); style.remove(); });
+    if (window.__ext_onStop) window.__ext_onStop(function() { active = false; removeRoomGridOverlay(); root.remove(); style.remove(); });
   }
 
   window.onPacket('ObjectAdd', function(p) {

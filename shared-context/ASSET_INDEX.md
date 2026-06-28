@@ -27,3 +27,15 @@ Created folders:
 - `assets/packets/`
 - `assets/previews/`
 - `notes/`
+
+## 2026-06-28 - project memory and context mirror
+
+- File: `shared-context/SHARED_CONTEXT.md`
+- From: Codex
+- Purpose: mirror the root shared context into the shared asset folder so Claude/Codex can read project status from one folder.
+- Important notes: keep this mirrored after meaningful context updates.
+
+- File: `shared-context/notes/PROJECT_MEMORY.md`
+- From: Codex
+- Purpose: detailed packet, chunk, UI, build-watchdog, and Light Art rules gathered from Kenjy's messages.
+- Important notes: embedded chat screenshots are summarized here because they are not accessible as local image files. Future actual files should be copied into `assets/...` and indexed.

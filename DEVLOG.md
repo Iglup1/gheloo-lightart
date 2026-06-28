@@ -1117,6 +1117,42 @@ Fixed to: `y = anchorY - (logicalH - 1 - localY)` — image-top now maps to room
 
 ---
 
+## [2026-06-28] Codex - Session 25
+
+**Done:**
+- Added a room-preview grid overlay that uses a scoreboard-like DOM layer (`position-absolute visible object-location`) instead of furniture, so the camera can see subtle chunk guide lines without number clutter.
+- Added a `grids` button next to `Plaats preview in kamer`; it is dark blue while active and is on by default.
+- The grid overlay appears with the injected room preview and is removed when the preview is removed or the extension stops.
+- Tightened UI aesthetics: safer minimum width, better right padding, horizontal-only resize clamp, and more consistent section heading spacing.
+- Added a detailed `shared-context/notes/PROJECT_MEMORY.md` for Claude/Codex with packets, light states, marker types, chunk coordinates, UI rules, and current Light Art expectations.
+- Mirrored root `SHARED_CONTEXT.md` into `shared-context/SHARED_CONTEXT.md` and indexed both shared files.
+
+**Changed files:**
+- `pixelart-lightart.js:105` - added `roomGridOverlay` default.
+- `pixelart-lightart.js:179` - runtime room grid toggle state.
+- `pixelart-lightart.js:2374` - room grid button state helper.
+- `pixelart-lightart.js:2380` - room overlay host lookup using Nitro room/widget containers first.
+- `pixelart-lightart.js:2391` - creates the subtle no-number grid overlay.
+- `pixelart-lightart.js:2414` - toggles/saves room grid overlay setting.
+- `pixelart-lightart.js:2471` - renders the grid after preview Objects injection.
+- `pixelart-lightart.js:2594` - panel min-width adjusted to reduce left-side clipping.
+- `pixelart-lightart.js:2615` - matching active/dark-blue styles for preview and grids buttons.
+- `pixelart-lightart.js:2632` - room grid overlay CSS.
+- `pixelart-lightart.js:2671` - `grids` button placed beside `Plaats preview in kamer`.
+- `pixelart-lightart.js:2918` - click handler for the grids button.
+- `shared-context/SHARED_CONTEXT.md` - root context mirrored into the shared folder.
+- `shared-context/notes/PROJECT_MEMORY.md` - detailed shared project memory.
+- `shared-context/ASSET_INDEX.md` - indexed the new shared files.
+
+**Verification:**
+- Ran `node --check pixelart-lightart.js` successfully.
+
+**Open / next:**
+- The room grid overlay is a best-effort DOM layer using Nitro-style classes; if Leet's room transform does not carry manually inserted `.object-location` nodes exactly like scoreboard widgets, inspect the live DOM parent and adjust `roomGridOverlayHost()`.
+- Continue improving Light Art blend/colour recipes after the UI/overlay pass.
+
+---
+
 ## HOW TO UPDATE THIS FILE
 
 At **start of session**: read latest entry, understand state.
