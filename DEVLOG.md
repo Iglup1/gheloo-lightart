@@ -1238,6 +1238,34 @@ Fixed to: `y = anchorY - (logicalH - 1 - localY)` — image-top now maps to room
 
 ---
 
+## [2026-06-28] Codex - Session 27
+
+**Done:**
+- Reverted the rejected preview-grid-as-marker-furniture direction. The room preview no longer appends fake marker/corner guide objects to the `{in:Objects}` preview packet.
+- Added a reusable `RoomAnchoredOverlay` class for Nitro/Habbo-style room overlays: it is absolute inside the room/canvas container, anchored to world coordinates, updates every frame with `requestAnimationFrame`, and inverse-scales with `1 / zoom`.
+- Rebuilt the `grids` toggle so it shows a subtle no-number UI grid above the preview art after `Plaats preview in kamer`, and removes it when the preview is removed or the extension stops.
+- Updated shared context to mark fake guide objects obsolete and document Kenjy's new room-anchored overlay requirement.
+
+**Changed files:**
+- `pixelart-lightart.js:2371` - added `RoomAnchoredOverlay` reusable class with `worldX`, `worldY`, offsets, `getCamera()`, `getZoom()`, `mount()`, `destroy()`, and `setWorldPosition()`.
+- `pixelart-lightart.js:2419` - exposed `window.__la_RoomAnchoredOverlay` for debugging/reuse.
+- `pixelart-lightart.js:2468` - added `roomOverlayGeometry(...)`; derives grid size/anchor from current preview object bounds and uses `chunkSize * 2` visual guide cells.
+- `pixelart-lightart.js:2499` - `renderRoomGridOverlay(...)` now creates `#__la_room_grid_overlay` as a room-anchored UI overlay instead of furniture.
+- `pixelart-lightart.js:2585` - after preview `{in:Objects}` injection, the script renders the UI overlay separately instead of injecting marker furniture.
+- `pixelart-lightart.js:2747` - added subtle room-grid overlay CSS.
+- `SHARED_CONTEXT.md` - corrected the latest room grid requirement: fake marker-object grids are obsolete.
+- `shared-context/notes/PROJECT_MEMORY.md` - durable UI rule now says the grid must be room-anchored DOM, not fake furniture.
+- `shared-context/SHARED_CONTEXT.md` - refreshed mirror of root shared context.
+
+**Verification:**
+- Ran `node --check pixelart-lightart.js` successfully.
+
+**Open / next:**
+- Test in Leet whether the fallback camera/zoom detection follows the same parent as the scoreboard widget. If it drifts, inspect the live scoreboard `.object-location` parent/transform and wire `currentRoomCamera()` / `currentRoomZoom()` to that exact source.
+- Continue Light Art blend/colour quality work after this overlay correction.
+
+---
+
 ## HOW TO UPDATE THIS FILE
 
 At **start of session**: read latest entry, understand state.

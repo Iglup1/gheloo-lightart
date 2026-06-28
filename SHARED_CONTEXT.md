@@ -568,17 +568,20 @@ This is the compressed handoff from the long Codex/Kenjy conversation so Claude 
   - The grid stores/uses the current preview objects and estimates overlay position/size from their room-coordinate bounds.
 - If this still does not follow the room exactly in live Leet, inspect the parent of the real scoreboard `.object-location` and adjust `roomGridOverlayHost()` to that exact container.
 
-### 2026-06-28 room grid must be room content, not screen UI
+### 2026-06-28 room-anchored grid correction
 
-- Kenjy clarified the grid should not be a normal GUI/HTML layer on top of the screen.
-- Desired behaviour:
-  - It should spawn in the room as preview content, like the light preview objects.
-  - It should move with the room/camera because it is part of the fake incoming `Objects` preview.
-  - The `grids` button should control whether these guide objects are included.
-  - The guide chunks should be visually twice as large as the base chunk size.
-- Current implementation:
-  - Removed use of the DOM room grid overlay for `Plaats preview in kamer`.
-  - `makeRoomGridGuideObjects()` creates client-side fake marker/corner objects along chunk borders.
-  - These guide objects are appended to the same fake incoming `Objects` packet as the preview lamps when `grids` is active.
-  - Toggling `grids` off while a preview is active injects `ObjectRemove` for only the guide object ids.
-  - Guide size is `chunkSize * 2`.
+- Obsolete: the fake marker/corner-object grid was wrong. Kenjy rejected the version that spawned marker furniture all over the room.
+- Current desired behaviour:
+  - The furniture preview itself is still one large fake incoming `{in:Objects}` packet.
+  - The grid guide is not furniture and must not add marker objects to that packet.
+  - The grid guide is a reusable room-anchored UI overlay, like a Nitro/Habbo context-menu/highscore widget.
+  - It is `position:absolute` in the room/canvas container, not `position:fixed`.
+  - It updates every frame with `requestAnimationFrame`.
+  - It uses room/world coordinates, subtracts camera offset, applies room zoom, and then uses inverse scale (`1 / zoom`) so visual size stays constant while the room moves/zooms underneath.
+  - The guide has no numbers and uses tiny/subtle grid lines above the art.
+  - Guide chunk cells are visually `chunkSize * 2`.
+- Current implementation in `pixelart-lightart.js`:
+  - `RoomAnchoredOverlay` reusable class at `pixelart-lightart.js:2371`.
+  - `roomOverlayGeometry(...)` derives the overlay from current preview object bounds at `pixelart-lightart.js:2468`.
+  - `renderRoomGridOverlay(...)` creates `#__la_room_grid_overlay` at `pixelart-lightart.js:2499`.
+  - Preview placement injects only the light objects, then calls the overlay renderer at `pixelart-lightart.js:2585`.
