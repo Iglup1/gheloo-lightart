@@ -760,13 +760,20 @@
     if (controlledRecipeTable) return controlledRecipeTable;
     const recipes = [
       [0], [1], [2], [3], [4], [5], [6], [7],
+      // Warm / fire / amber.
       [2,0], [2,2,0], [2,2,2,0], [2,3], [2,2,3], [2,3,0], [2,2,3,0],
-      [3,0], [3,3,0], [3,2,0],
-      [1,2], [1,2,2], [1,0],
-      [7,0], [7,7,0], [6,7], [6,7,0], [6,6,0], [6,2,0],
-      [5,0], [5,5,0], [5,6], [5,4], [5,4,0],
-      [4,0], [4,4,0], [4,3], [4,3,0], [4,5],
-      [2,2], [3,3], [4,4], [5,5], [6,6], [7,7]
+      [3,0], [3,3,0], [3,2,0], [3,3,2], [3,3,2,0],
+      [1,2], [1,2,2], [1,2,3], [1,2,3,0], [1,0], [1,1,2],
+      // Burgundy / magic / pink-purple. Useful for darker jackets and shadows.
+      [1,6], [1,7], [1,1,6], [1,2,6], [1,2,7], [2,6], [2,7],
+      [7,0], [7,7,0], [7,1], [7,1,0], [6,7], [6,7,0], [6,6,0], [6,2,0], [6,2], [6,1],
+      // Cold / ice.
+      [5,0], [5,5,0], [5,6], [5,6,0], [5,4], [5,4,0], [6,5,0],
+      // Toxic / nature.
+      [4,0], [4,4,0], [4,3], [4,3,0], [4,5], [4,5,0], [4,4,3],
+      // Muted/deep approximations. These are not black; they are dim mixed glows.
+      [2,6], [2,2,6], [2,5], [1,5], [3,6], [4,6], [5,2],
+      [2,2], [3,3], [4,4], [5,5], [6,6], [7,7], [1,1]
     ];
     controlledRecipeTable = recipes.map(function(codes) {
       const rgb = weightedRecipeColor(codes);
@@ -781,7 +788,12 @@
         whiteCount: unique[0] || 0,
         redCount: unique[1] || 0,
         cyanCount: unique[5] || 0,
-        warmCount: (unique[1] || 0) + (unique[2] || 0) + (unique[3] || 0)
+        warmCount: (unique[1] || 0) + (unique[2] || 0) + (unique[3] || 0),
+        magicCount: (unique[6] || 0) + (unique[7] || 0),
+        mutedCount: ((unique[1] || 0) && (unique[5] || 0) ? 1 : 0) +
+          ((unique[2] || 0) && (unique[6] || 0) ? 1 : 0) +
+          ((unique[3] || 0) && (unique[6] || 0) ? 1 : 0) +
+          ((unique[4] || 0) && (unique[6] || 0) ? 1 : 0)
       };
     });
     return controlledRecipeTable;
@@ -795,9 +807,14 @@
     const l = lum(r, g, b);
     const targetLab = rgbToLab(r, g, b);
     const warmSkin = isWarmSkinRange(r, g, b);
-    const whiteOk = allowWhite || warmSkin || (l > 0.36 && s < 0.32);
-    const redPure = r > g * 1.45 && r > b * 1.45;
-    const cyanPure = g > r * 1.28 && b > r * 1.28;
+    const warmHue = r > b * 1.10 && r >= g * 0.72;
+    const magicHue = b > g * 1.05 && r > g * 0.78;
+    const greenHue = g > r * 1.05 && g > b * 0.88;
+    const cyanHue = g > r * 1.08 && b > r * 0.92;
+    const deepColor = l < 0.34 && s > 0.18;
+    const whiteOk = allowWhite || warmSkin || (!deepColor && l > 0.36 && s < 0.32);
+    const redPure = r > g * 1.30 && r > b * 1.18;
+    const cyanPure = cyanHue && b > r * 1.04;
     const maxLen = mixPower > 78 ? 4 : (mixPower > 35 ? 3 : 2);
     let best = null, bestScore = Infinity;
     buildControlledRecipeTable().forEach(function(recipe) {
@@ -806,14 +823,20 @@
       let score = labDist(targetLab, recipe.lab);
       score += Math.abs(recipe.sat - s) * 16;
       score += Math.abs(recipe.lum - l) * 9;
-      if (recipe.cyanCount && !cyanPure && !(g > r * 1.12 && b > r * 0.85)) score += 30 + recipe.cyanCount * 18;
-      if (recipe.redCount && !redPure && !warmSkin) score += 25 + recipe.redCount * 16;
+      if (deepColor && recipe.whiteCount) score += 38 + recipe.whiteCount * 18;
+      if (deepColor && recipe.codes.length <= 2 && !recipe.whiteCount) score -= 7;
+      if (recipe.cyanCount && !cyanPure && !cyanHue) score += 24 + recipe.cyanCount * 12;
+      if (recipe.redCount && !redPure && !warmSkin && !warmHue && !magicHue) score += 18 + recipe.redCount * 10;
+      if (warmHue && recipe.warmCount) score -= 6;
+      if (magicHue && recipe.magicCount) score -= 8;
+      if (greenHue && recipe.codes.indexOf(4) !== -1) score -= 8;
+      if (s < 0.30 && recipe.mutedCount) score -= 5;
       if (warmSkin) {
         if (recipe.codes.indexOf(2) !== -1 && recipe.whiteCount) score -= 18;
         if (recipe.codes.indexOf(3) !== -1 && recipe.codes.indexOf(2) !== -1) score -= 6;
         if (recipe.cyanCount || recipe.codes.indexOf(4) !== -1 || recipe.codes.indexOf(6) !== -1) score += 45;
       }
-      if (s > 0.50 && recipe.whiteCount) score += recipe.whiteCount * 18;
+      if (s > 0.50 && recipe.whiteCount && !warmSkin) score += recipe.whiteCount * 18;
       score += recipe.codes.length * (mixPower < 50 ? 1.6 : 0.45);
       if (score < bestScore) { bestScore = score; best = recipe; }
     });
@@ -2582,6 +2605,7 @@
           '<div class="row"><button id="__la_build" class="btn btn-warning btn-sm flex-grow-1">Koop+Bouw</button><button id="__la_info" class="btn btn-primary btn-sm">Plan info</button></div>' +
           '<div class="row"><button id="__la_stop" class="btn btn-danger btn-sm flex-grow-1">Stop</button></div>' +
           '<div class="row"><button id="__la_continue" class="btn btn-success btn-sm flex-grow-1">Continue</button></div>' +
+          '<div class="row"><button id="__la_reset_gen" class="btn btn-secondary btn-sm flex-grow-1">Generator terug naar default</button></div>' +
         '</div>' +
         '<div class="panel" data-panel="color">' +
           '<div class="sec">Kleur van bronfoto</div>' +
@@ -2599,6 +2623,7 @@
           '<div class="row"><label>Bleek</label><input id="__la_cam_bleach" type="range" min="0" max="100" value="' + esc(settings.cameraBleach) + '"></div>' +
           '<div class="row"><label>Grijs</label><input id="__la_cam_gray" type="range" min="0" max="100" value="' + esc(settings.cameraGray) + '"></div>' +
           '<div class="row"><label>Rossig</label><input id="__la_cam_rosy" type="range" min="0" max="100" value="' + esc(settings.cameraRosy) + '"></div>' +
+          '<div class="row"><button id="__la_reset_color" class="btn btn-secondary btn-sm flex-grow-1">Color terug naar default</button></div>' +
         '</div>' +
         '<div class="panel" data-panel="build">' +
           '<div class="sec">Bouwpositie</div>' +
@@ -2619,6 +2644,7 @@
           '<div class="row"><label>L</label><input id="__la_type_l" type="number" value="' + esc(settings.typeL) + '"><input id="__la_page_l" type="number" value="' + esc(settings.pageL) + '"><input id="__la_offer_l" type="number" value="' + esc(settings.offerL) + '"></div>' +
           '<div class="row"><label>M</label><input id="__la_type_m" type="number" value="' + esc(settings.typeM) + '"><input id="__la_page_m" type="number" value="' + esc(settings.pageM) + '"><input id="__la_offer_m" type="number" value="' + esc(settings.offerM) + '"></div>' +
           '<div class="row"><label>S</label><input id="__la_type_s" type="number" value="' + esc(settings.typeS) + '"><input id="__la_page_s" type="number" value="' + esc(settings.pageS) + '"><input id="__la_offer_s" type="number" value="' + esc(settings.offerS) + '"></div>' +
+          '<div class="row"><button id="__la_reset_build" class="btn btn-secondary btn-sm flex-grow-1">Settings terug naar default</button></div>' +
         '</div>' +
         '<div class="panel" data-panel="saves">' +
           '<div class="sec">Room packet preview</div>' +
@@ -2740,6 +2766,58 @@
       if (el) el.textContent = String(root.querySelector('#__la_max')?.value || settings.maxLights);
     }
     updateMaxLabel();
+    const resetFieldIds = {
+      generatorMode:'#__la_mode', variant:'#__la_variant', renderWidth:'#__la_renderw', roomW:'#__la_roomw', roomH:'#__la_roomh',
+      alpha:'#__la_alpha', crop:'#__la_crop', randomizer:'#__la_randomizer', maxLights:'#__la_max',
+      chunkMode:'#__la_chunk_mode', chunkSize:'#__la_chunk_size', chunkCols:'#__la_chunk_cols', chunkSelection:'#__la_chunk_select',
+      chunkBleed:'#__la_chunk_bleed', chunkRightX:'#__la_chunk_rx', chunkRightY:'#__la_chunk_ry', chunkUpX:'#__la_chunk_ux', chunkUpY:'#__la_chunk_uy',
+      sat:'#__la_sat', bright:'#__la_bright', contrast:'#__la_contrast', gamma:'#__la_gamma',
+      redPower:'#__la_red_power', greenPower:'#__la_green_power', bluePower:'#__la_blue_power',
+      cameraMoreSat:'#__la_cam_more_sat', cameraHyperSat:'#__la_cam_hyper_sat', cameraLessSat:'#__la_cam_less_sat',
+      cameraBleach:'#__la_cam_bleach', cameraGray:'#__la_cam_gray', cameraRosy:'#__la_cam_rosy',
+      startX:'#__la_x', startY:'#__la_y', xyStep:'#__la_xystep', baseBh:'#__la_bh', bhStep:'#__la_bhstep',
+      rotation:'#__la_rot', delay:'#__la_delay', settingDelay:'#__la_setting_delay', burst:'#__la_burst', burstPause:'#__la_burst_pause',
+      retry:'#__la_retry', attempts:'#__la_attempts', markerCylinderType:'#__la_marker_cyl_type', markerCylinderPage:'#__la_marker_cyl_page',
+      markerCylinderOffer:'#__la_marker_cyl_offer', markerCornerType:'#__la_marker_corner_type', markerCornerPage:'#__la_marker_corner_page',
+      markerCornerOffer:'#__la_marker_corner_offer', markerNumberType:'#__la_marker_num_type', markerNumberPage:'#__la_marker_num_page',
+      markerNumberOffer:'#__la_marker_num_offer', markerBh:'#__la_marker_bh', markerRot:'#__la_marker_rot',
+      markerNumberBh:'#__la_marker_num_bh', markerNumberRot:'#__la_marker_num_rot',
+      typeXXL:'#__la_type_xxl', typeXL:'#__la_type_xl', typeL:'#__la_type_l', typeM:'#__la_type_m', typeS:'#__la_type_s',
+      pageXXL:'#__la_page_xxl', pageXL:'#__la_page_xl', pageL:'#__la_page_l', pageM:'#__la_page_m', pageS:'#__la_page_s',
+      offerXXL:'#__la_offer_xxl', offerXL:'#__la_offer_xl', offerL:'#__la_offer_l', offerM:'#__la_offer_m', offerS:'#__la_offer_s'
+    };
+    function syncSettingInputs(keys) {
+      keys.forEach(function(key) {
+        const el = root.querySelector(resetFieldIds[key]);
+        if (!el) return;
+        if (el.type === 'checkbox') el.checked = !!settings[key];
+        else el.value = settings[key] == null ? '' : settings[key];
+      });
+      root.querySelector('#__la_mode').value = settings.generatorMode || 'light_art';
+      root.querySelector('#__la_variant').value = settings.variant || 'stacked';
+      const randomLabel = root.querySelector('#__la_randomizer_label');
+      if (randomLabel) randomLabel.textContent = String(settings.randomizer);
+      updateMaxLabel();
+      updateModePanel();
+    }
+    function resetSettingsGroup(keys, rebuildPlan, label) {
+      keys.forEach(function(key) { settings[key] = DEFAULTS[key]; });
+      saveSettings();
+      syncSettingInputs(keys);
+      if (image && rebuildPlan) {
+        try { makePlan(root); }
+        catch(ex) { root.querySelector('#__la_status').textContent = ex.message; }
+      } else {
+        redrawCurrentPreview();
+      }
+      root.querySelector('#__la_status').textContent = label + ' terug naar default.';
+    }
+    const generatorResetKeys = ['generatorMode','variant','renderWidth','roomW','roomH','alpha','crop','randomizer','maxLights','chunkMode','chunkSize','chunkCols','chunkSelection','chunkBleed','chunkRightX','chunkRightY','chunkUpX','chunkUpY','imgPanX','imgPanY','imgScale'];
+    const colorResetKeys = ['sat','bright','contrast','gamma','redPower','greenPower','bluePower','cameraMoreSat','cameraHyperSat','cameraLessSat','cameraBleach','cameraGray','cameraRosy'];
+    const buildResetKeys = ['startX','startY','xyStep','baseBh','bhStep','rotation','delay','settingDelay','burst','burstPause','retry','attempts','markerCylinderType','markerCylinderPage','markerCylinderOffer','markerCornerType','markerCornerPage','markerCornerOffer','markerNumberType','markerNumberPage','markerNumberOffer','markerBh','markerRot','markerNumberBh','markerNumberRot','typeXXL','typeXL','typeL','typeM','typeS','pageXXL','pageXL','pageL','pageM','pageS','offerXXL','offerXL','offerL','offerM','offerS'];
+    root.querySelector('#__la_reset_gen').addEventListener('click', function() { resetSettingsGroup(generatorResetKeys, true, 'Generator'); });
+    root.querySelector('#__la_reset_color').addEventListener('click', function() { resetSettingsGroup(colorResetKeys, true, 'Color'); });
+    root.querySelector('#__la_reset_build').addEventListener('click', function() { resetSettingsGroup(buildResetKeys, false, 'Settings'); });
     root.querySelectorAll('input,select').forEach(function(el) {
       el.addEventListener('input', function() {
         collectSettings(root);

@@ -1019,6 +1019,38 @@ Fixed to: `y = anchorY - (logicalH - 1 - localY)` — image-top now maps to room
 
 ---
 
+## [2026-06-28] Codex - Session 22
+
+**Done:**
+- Read the updated `habbo_light_sprite_combinations_codex_guide_v2.txt` v4 guide.
+- Broadened controlled light recipes beyond skin tones:
+  - added warm/fire, burgundy/magic/pink-purple, cold/ice, toxic/nature, and muted/deep approximations.
+  - dark/deep source colors now avoid white recipes more strongly, because black/dark is "less light", not a stack of white light.
+  - warm, magic, green, cyan, and muted hues now influence recipe scoring instead of using only warm-skin rules.
+- Added per-tab reset buttons:
+  - Generator terug naar default.
+  - Color terug naar default.
+  - Settings terug naar default.
+
+**Changed files:**
+- `pixelart-lightart.js:759` - expanded the controlled recipe table from the updated guide.
+- `pixelart-lightart.js:793` - added muted recipe metadata.
+- `pixelart-lightart.js:805` - updated recipe scoring for deep/magic/warm/toxic/cold colors.
+- `pixelart-lightart.js:2608` - added Generator reset button.
+- `pixelart-lightart.js:2626` - added Color reset button.
+- `pixelart-lightart.js:2647` - added Settings reset button.
+- `pixelart-lightart.js:2803` - added reset group logic and field syncing.
+- `SHARED_CONTEXT.md` - documented guide v4 color-family behavior and reset buttons.
+
+**Verification:**
+- Ran `node --check pixelart-lightart.js` successfully.
+
+**Open / next:**
+- Retest the burgundy jacket image. It should prefer red/purple/pink/orange muted recipes instead of becoming mostly white/orange.
+- If deep colors are still too bright, reduce opacity or large-light strength for `deepColor` paths rather than adding black logic.
+
+---
+
 ## HOW TO UPDATE THIS FILE
 
 At **start of session**: read latest entry, understand state.

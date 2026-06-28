@@ -458,3 +458,19 @@ This is the compressed handoff from the long Codex/Kenjy conversation so Claude 
 - Chunk overlay rule:
   - Both previews should show subtle dashed chunk boundaries.
   - Chunk numbers should not cover the photo at normal zoom; they appear small only when zoomed in on the furniture preview.
+
+### 2026-06-28 updated guide v4 color families
+
+- Kenjy pointed to the updated `habbo_light_sprite_combinations_codex_guide_v2.txt` v4 and clarified the recipe system is not only for skin.
+- Important v4 rules:
+  - Black cannot be made by stacking lights; black/dark means no or less light.
+  - Dark/deep colors should use fewer layers, no white hotspot, lower opacity, and large colored aura.
+  - Families matter: warm/fire, cold/ice, magic/purple, toxic/nature, pastel, and muted/deep.
+  - White is for lighter/pastel/hot centers and should be avoided for deep saturated colors unless the source is actually bright.
+- Current code direction:
+  - Controlled recipe table includes warm, burgundy/magic/pink-purple, cold, toxic, and muted/deep recipes.
+  - `bestControlledRecipe(...)` uses hue flags for warm/magic/green/cyan/deep instead of only skin detection.
+  - Deep colors penalize white recipes and slightly prefer short no-white recipes.
+- UI:
+  - Generator, Color, and Settings panels now each have a "terug naar default" button.
+  - Reset buttons restore only their own group and do not clear logs/saves.
