@@ -226,8 +226,11 @@
   let lastBuildSettingSentAt = 0;
   let localInventory = { byType: {}, byItem: {}, loadedAt: 0 };
   let purchaseHistory = [];
+  let scoreboardPurchaseWait = [];
+  let scoreboardInventoryIds = [];
   let placeRemoveAcks = [];
   let lastCreatedRoom = { id: 0, name: '', at: 0 };
+  let lastGuestRoomResult = { id: 0, name: '', at: 0 };
   let previewFrame = { w: 1, h: 1, work: null };
   let sourceFrame = { w: 1, h: 1, work: null };
   let sourceImageRef = null; // { src, box, w, h } — for high-quality source canvas render
@@ -459,6 +462,10 @@
   function sendNumberPurchase(offerId) {
     sendOut('PurchaseFromCatalog', '{i:-1}{i:' + offerId + '}{i:0}{b:false}{b:true}', 3492);
   }
+  function sendScoreboardPurchase() {
+    scoreboardPurchaseWait.push({ remaining: 1, expires: Date.now() + 120000 });
+    sendOut('PurchaseFromCatalog', '{i:148}{i:232174}{i:0}{b:false}{b:true}', 3492);
+  }
   function sendCreateFlat(name) {
     sendOut('CreateFlat', packetString(name) + '{i:7}{i:1836016741}{i:1818178816}{i:8192}{i:2560}{b:false}{b:false}{b:false}', 2752);
   }
@@ -507,6 +514,44 @@
     }
     return currentRoomId() === parseInt(roomId, 10);
   }
+  async function waitGuestRoomResult(roomId, timeoutMs) {
+    const end = Date.now() + timeoutMs;
+    while (!stopRequested && Date.now() < end) {
+      if (lastGuestRoomResult.id === parseInt(roomId, 10)) return lastGuestRoomResult;
+      await sleep(100);
+    }
+    return null;
+  }
+  async function waitScoreboardInventoryId(afterTs, timeoutMs) {
+    const end = Date.now() + timeoutMs;
+    while (!stopRequested && Date.now() < end) {
+      const id = scoreboardInventoryIds.find(function(entry) { return entry.at >= afterTs; });
+      if (id) return id.id;
+      await sleep(100);
+    }
+    return 0;
+  }
+  async function ensureScoreboardAnchor(root) {
+    const afterTs = Date.now();
+    logBuild(root, 'scorebord kopen', { pageId: 148, offerId: 232174 });
+    sendScoreboardPurchase();
+    const itemId = await waitScoreboardInventoryId(afterTs, 10000);
+    if (!itemId) {
+      logBuild(root, 'scorebord overgeslagen', { reason: 'geen UnseenItems id' });
+      return 0;
+    }
+    const item = { id: itemId, typeId: 0, x: 1, y: 0, z: '63.0', rotation: 0, state: '0' };
+    await setBuildSetting(root, 'bh', item.z);
+    const ts = Date.now();
+    logBuild(root, 'scorebord plaatsen', { id: itemId, x: item.x, y: item.y, bh: item.z });
+    sendPlace(item);
+    const result = await waitObjectAddResult(item, 3000, ts);
+    const objectId = result && result.ack && result.ack.id ? result.ack.id : itemId;
+    await sleep(350);
+    logBuild(root, 'scorebord activeren', { id: objectId });
+    sendUseFurniture(objectId);
+    return objectId;
+  }
   async function prepareMegaRoom(root, roomName) {
     logBuild(root, 'nieuwe kamer maken', { roomName, beforeRoomId: currentRoomId() });
     const afterTs = Date.now();
@@ -517,6 +562,7 @@
     logBuild(root, 'nieuwe kamer gevonden', { roomName, roomId });
     sendOpenFlatConnection(roomId);
     await waitRoomReady(roomId, 15000);
+    await waitGuestRoomResult(roomId, 5000);
     await sleep(1000);
     logBuild(root, 'kamer settings sturen', { roomName, roomId });
     sendSaveRoomSettings(roomId, roomName);
@@ -529,6 +575,8 @@
     await sleep(500);
     sendUpdateFloorProperties();
     await sleep(1500);
+    await ensureScoreboardAnchor(root);
+    await sleep(500);
     return roomId;
   }
   async function purchaseAmount(pageId, offerId, amount, typeId) {
@@ -603,8 +651,17 @@
     const ids = parseUnseenItemIds(raw);
     if (!ids.length) return;
     const now = Date.now();
+    scoreboardPurchaseWait = scoreboardPurchaseWait.filter(function(j) { return j && j.remaining > 0 && j.expires > now; });
     purchaseHistory = purchaseHistory.filter(function(j) { return j && j.remaining > 0 && j.expires > now; });
     ids.forEach(function(id) {
+      while (scoreboardPurchaseWait.length && scoreboardPurchaseWait[0].remaining <= 0) scoreboardPurchaseWait.shift();
+      const scoreJob = scoreboardPurchaseWait[0];
+      if (scoreJob) {
+        scoreboardInventoryIds.push({ id: id, at: Date.now() });
+        if (scoreboardInventoryIds.length > 20) scoreboardInventoryIds.splice(0, scoreboardInventoryIds.length - 20);
+        scoreJob.remaining--;
+        return;
+      }
       while (purchaseHistory.length && purchaseHistory[0].remaining <= 0) purchaseHistory.shift();
       const job = purchaseHistory[0];
       if (!job) return;
@@ -2871,6 +2928,15 @@
       return null;
     }
   }
+  function parseGuestRoomResult(raw) {
+    const r = window.makeReader && window.makeReader(raw);
+    if (!r) return null;
+    try {
+      return { ok: r.bool(), id: r.int(), name: r.str(), at: Date.now() };
+    } catch(_) {
+      return null;
+    }
+  }
   function renderRoomObjectsPreview(root, objs, label) {
     if (!objs || !objs.length) throw new Error('Geen light objects om te previewen.');
     packetPreviewMode = true;
@@ -3433,6 +3499,11 @@
     if (!active) return;
     const d = parseFlatCreated(p.raw);
     if (d && d.id) lastCreatedRoom = d;
+  });
+  window.onPacket('GetGuestRoomResult', function(p) {
+    if (!active) return;
+    const d = parseGuestRoomResult(p.raw);
+    if (d && d.id) lastGuestRoomResult = d;
   });
   window.onPacket('FurniList', function(p) {
     if (!active || !p.parsed) return;

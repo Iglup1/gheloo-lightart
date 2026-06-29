@@ -135,6 +135,9 @@ Markers:
 - The room grid overlay must be layered below normal Leet/Nitro windows and extension UIs. It should be above room/furniture only, not a topmost screen overlay.
 - Scorebord anchor packets supplied by Kenjy:
   - Buy: `{out:PurchaseFromCatalog}{i:148}{i:232174}{i:0}{b:false}{b:true}`
+  - Purchase OK example: `{in:PurchaseOK}{i:232174}{s:"highscore_mostwin*1"}...`
+  - New scorebord item id comes through `UnseenItems`, example `{in:UnseenItems}{i:1}{i:1}{i:1}{i:77943756}`.
+  - Client-side remove shape: `{in:ObjectRemove}{s:"77943756"}{i:17586}{i:218103808}{b:false}`.
   - Place example: `{out:PlaceObject}{s:"78083750 1 0 0"}`
   - Activate after placement: `{out:UseFurniture}{i:78083750}{i:0}`
   - Correction: do not use `bs 1` for activating this scorebord; use `UseFurniture`.
@@ -160,7 +163,13 @@ Then wait for:
 {in:FlatCreated}{i:ROOM_ID}{s:"naam"}
 ```
 
-Then send:
+After opening/entering the room, `GetGuestRoomResult` can also confirm the room id:
+
+```txt
+{in:GetGuestRoomResult}{b:true}{i:ROOM_ID}{s:"naam"}...
+```
+
+Use this actual room id for every room-id-dependent packet such as `SaveRoomSettings`. Then send:
 
 ```txt
 {out:OpenFlatConnection}{i:ROOM_ID}{s:""}
@@ -183,6 +192,8 @@ shared-context/assets/packets/2026-06-29-update-floor-properties-63x63.txt
 Implementation detail: the raw floor payload is multi-line in the shared asset for readability, but Gheloo's `GPacket.fromExpression()` cannot parse string tokens across real newlines, so the extension removes newline characters before sending it.
 
 Chunk remap rule: for each room group, global chunks are temporarily mapped to local room chunks 1-4. So room 2 builds global `5,6,7,8`, but their furniture coordinates use the exact local frame starts/anchors for `1,2,3,4`.
+
+Current scorebord automation rule: after preparing each generated room, the extension buys one scorebord, reads its real item id from `UnseenItems`, places it at `x:1, y:0, rot:0` with `bh 63.0`, then activates it using `UseFurniture`.
 
 ## Current User Feedback To Preserve
 

@@ -1375,6 +1375,35 @@ Fixed to: `y = anchorY - (logicalH - 1 - localY)` — image-top now maps to room
 
 ---
 
+## [2026-06-29] Codex - Session 34
+
+**Done:**
+- Wired the scorebord anchor purchase/place/activate flow using Kenjy's packet examples.
+- Added a dedicated scorebord `UnseenItems` path so the purchased highscore item id is not mistaken for light inventory.
+- Added `GetGuestRoomResult` parsing so the extension can remember the actual opened room id after entering a newly-created room.
+- Mega-room preparation now waits for `GetGuestRoomResult` briefly, then buys/places/activates one scorebord anchor in each generated room.
+
+**Changed files:**
+- `pixelart-lightart.js:229` - added scorebord purchase wait state.
+- `pixelart-lightart.js:233` - added last `GetGuestRoomResult` room state.
+- `pixelart-lightart.js:465` - added `sendScoreboardPurchase()` for page `148`, offer `232174`.
+- `pixelart-lightart.js:517` - added `waitGuestRoomResult(...)`.
+- `pixelart-lightart.js:525` - added `waitScoreboardInventoryId(...)`.
+- `pixelart-lightart.js:534` - added `ensureScoreboardAnchor(...)`: buy scorebord, read `UnseenItems` id, set `bh 63.0`, place at `1 0 0`, activate via `UseFurniture`.
+- `pixelart-lightart.js:565` and `pixelart-lightart.js:578` - room prep now waits for room result and creates the scorebord anchor.
+- `pixelart-lightart.js:650` - `mapUnseenItems(...)` now handles scorebord ids before normal light inventory mapping.
+- `pixelart-lightart.js:2931` and `pixelart-lightart.js:3503` - parse/listen to `GetGuestRoomResult`.
+- `SHARED_CONTEXT.md`, `shared-context/SHARED_CONTEXT.md`, `shared-context/notes/PROJECT_MEMORY.md` - documented scorebord `PurchaseOK`/`UnseenItems` and `GetGuestRoomResult` room-id rule.
+
+**Verification:**
+- Ran `node --check pixelart-lightart.js` successfully.
+- Ran `git diff --check` successfully; only the existing CRLF normalization warning was reported.
+
+**Open / next:**
+- Live-test whether the scorebord `ObjectAdd` id equals the inventory id after placement. If not, activation still uses the ack id when available, but the log should confirm this.
+
+---
+
 ## [2026-06-29] Codex - Session 33
 
 **Done:**

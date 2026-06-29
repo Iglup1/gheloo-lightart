@@ -625,6 +625,9 @@ This is the compressed handoff from the long Codex/Kenjy conversation so Claude 
 - Do not use a near-max z-index for `#__la_room_grid_overlay`; it should not cover catalog/shop/extensions windows.
 - Kenjy supplied the scorebord/context-menu anchor workflow:
   - Buy scorebord: `{out:PurchaseFromCatalog}{i:148}{i:232174}{i:0}{b:false}{b:true}`
+  - Purchase confirmation: `{in:PurchaseOK}{i:232174}{s:"highscore_mostwin*1"}...`
+  - New inventory id arrives through `UnseenItems`, example `{in:UnseenItems}{i:1}{i:1}{i:1}{i:77943756}`.
+  - Preview/client removal shape: `{in:ObjectRemove}{s:"77943756"}{i:17586}{i:218103808}{b:false}`.
   - Place scorebord example: `{out:PlaceObject}{s:"78083750 1 0 0"}`
   - Activate scorebord after placement: `{out:UseFurniture}{i:78083750}{i:0}`
 - Important correction: no `bs 1` is needed for the scorebord. Place it normally, then send `UseFurniture` to activate the UI.
@@ -657,4 +660,11 @@ This is the compressed handoff from the long Codex/Kenjy conversation so Claude 
   - Example: global chunks `5,6,7,8` are selected for room 2 but placed using local chunk anchors `1,2,3,4`.
 - Current implementation notes:
   - `buyMissing(root)` still buys/scans for the whole plan before the mega-room build starts.
-  - Scorebord auto-purchase/place/activate is not yet fully wired into the mega-room flow; only the packet rules are documented and `UseFurniture` helper exists.
+  - Scorebord auto-purchase/place/activate is now wired per generated room:
+    - Scorebord purchase waits for the `UnseenItems` id.
+    - It places the scorebord at `x:1, y:0, rot:0` with `bh 63.0`.
+    - It activates with `UseFurniture` after placement.
+- Kenjy supplied `GetGuestRoomResult` after opening a newly-created room:
+  - Example: `{in:GetGuestRoomResult}{b:true}{i:5053231}{s:"e1"}...`
+  - The second field after the boolean is the room id (`5053231` in the example).
+  - Any packets that need room id, especially `SaveRoomSettings`, must use this created/opened room id.
