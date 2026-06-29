@@ -39,3 +39,10 @@ Created folders:
 - From: Codex
 - Purpose: detailed packet, chunk, UI, build-watchdog, and Light Art rules gathered from Kenjy's messages.
 - Important notes: embedded chat screenshots are summarized here because they are not accessible as local image files. Future actual files should be copied into `assets/...` and indexed.
+
+## 2026-06-29 - 63x63 update floor properties packet
+
+- File: `shared-context/assets/packets/2026-06-29-update-floor-properties-63x63.txt`
+- From: Kenjy
+- Purpose: raw `UpdateFloorProperties` payload used after auto-creating each Light Art mega room so the room becomes the large build floor again.
+- Important notes: keep the file as raw shared evidence. In `pixelart-lightart.js`, newline characters are stripped before sending because Gheloo's `GPacket.fromExpression()` cannot parse string tokens across literal newlines.

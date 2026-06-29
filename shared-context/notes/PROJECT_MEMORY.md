@@ -139,6 +139,51 @@ Markers:
   - Activate after placement: `{out:UseFurniture}{i:78083750}{i:0}`
   - Correction: do not use `bs 1` for activating this scorebord; use `UseFurniture`.
 
+## Mega-Room Build Flow
+
+Kenjy's target Light Art build mode is 4 chunks per room:
+
+- Create `projectName1`, build global chunks `1,2,3,4`.
+- Create `projectName2`, build global chunks `5,6,7,8`.
+- Continue until all selected chunks are done.
+- The `Project naam` UI field is the room/save prefix. Empty means use the image filename without extension.
+
+Required room packet flow per room:
+
+```txt
+{out:CreateFlat}{s:"naam"}{i:7}{i:1836016741}{i:1818178816}{i:8192}{i:2560}{b:false}{b:false}{b:false}
+```
+
+Then wait for:
+
+```txt
+{in:FlatCreated}{i:ROOM_ID}{s:"naam"}
+```
+
+Then send:
+
+```txt
+{out:OpenFlatConnection}{i:ROOM_ID}{s:""}
+{out:SaveRoomSettings}{i:ROOM_ID}{s:"naam"}{i:0}{i:196608}{i:10}{i:32}{i:0}{i:0}{i:256}{i:0}{i:0}{i:0}{i:1}{i:0}{i:0}{i:0}{i:0}{i:0}{i:0}
+```
+
+Send `SaveRoomSettings` twice with 1 second between packets. Then:
+
+```txt
+{out:AssignRights}{i:37968}
+{out:AssignRights}{i:4502029}
+```
+
+Then send the 63x63 `UpdateFloorProperties` payload from:
+
+```txt
+shared-context/assets/packets/2026-06-29-update-floor-properties-63x63.txt
+```
+
+Implementation detail: the raw floor payload is multi-line in the shared asset for readability, but Gheloo's `GPacket.fromExpression()` cannot parse string tokens across real newlines, so the extension removes newline characters before sending it.
+
+Chunk remap rule: for each room group, global chunks are temporarily mapped to local room chunks 1-4. So room 2 builds global `5,6,7,8`, but their furniture coordinates use the exact local frame starts/anchors for `1,2,3,4`.
+
 ## Current User Feedback To Preserve
 
 - Blender 0 should be closer to pixel art with small lights.

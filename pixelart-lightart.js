@@ -3,6 +3,57 @@
   const SETTINGS_KEY = '__gheloo_lightart_js_settings_v1';
   const LOG_KEY = '__gheloo_lightart_js_log_v1';
   const CHECKPOINT_KEY = '__gheloo_lightart_js_checkpoint_v1';
+  const FLOOR_PROPERTIES_PAYLOAD = String.raw`{i:272576560}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808455472}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464397}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{s:"000000000000000000000000000000000000000000000000000000000000000
+0000000000000000000000000000000000000000000000000000000000000000
+0000000000000000000000000000000000000000000000000000000000000000
+0000000000000000000000000000000000000000000000000000000000000000
+0000000000000000000000000000000000000000000000000000000000000000
+0000000000000000000000000000000000000000000000000000000000000000
+0000000000000000000000000000000000000000000000000000000000000000
+0000000000000000000000000000000000000000000000000000000000000000
+0000000000000000000000000000000000000000000000000000000000000000
+0000000000000000000000000000000000000000000000000000000000000000
+0000000000000000000000000000000000000000000000000000000000000000
+0000000000000000000000000000000000000000000000000000000000000000
+0000000000000000000000000000000000000000000000000000000000000000
+0000000000000000000000000000000000000000000000000000000000000000
+0000000000000000000000000000000000000000000000000000000000000000
+0000000000000000000000000000000000000000000000000000000000000000
+0000000000000000000000000000000000000000000000000000000000000000
+0000000000000000000000000000000000000000000000000000000000000000
+0000000000000000000000000000000000000000000000000000000000000000
+0000000000000000000000000000000000000000000000000000000000000000
+0000000000000000000000000000000000000000000000000000000000000000
+0000000000000000000000000000000000000000000000000000000000000000
+0000000000000000000000000000000000000000000000000000000000000000
+0000000000000000000000000000000000000000000000000000000000000000
+0000000000000000000000000000000000000000000000000000000000000000
+0000000000000000000000000000000000000000000000000000000000000000
+0000000000000000000000000000000000000000000000000000000000000000
+0000000000000000000000000000000000000000000000000000000000000000
+0000000000000000000000000000000000000000000000000000000000000000
+0000000000000000000000000000000000000000000000000000000000000000
+0000000000000000000000000000000000000000000000000000000000000000
+0000000000000000000000000000000000000000000000000000000000000000
+0000000000000000000000000000000000000000000000000000000000000000
+0000000000000000000000000000000000000000000000000000000000000000
+0000000000000000000000000000000000000000000000000000000000000000
+0000000000000000000000000000000000000000000000000000000000000000
+0000000000000000000000000000000000000000000000000000000000000000
+0000000000000000000000000000000000000000000000000000000000000000
+0000000000000000000000000000000000000000000000000000000000000000
+0000000000000000000000000000000000000000000000000000000000000000
+0000000000000000000000000000000000000000000000000000000000000000
+0000000000000000000000000000000000000000000000000000000000000000
+0000000000000000000000000000000000000000000000000000000000000000
+0000000000000000000000000000000000000000000000000000000000000000
+0000000000000000000000000000000000000000000000000000000000000000
+0000000000000000000000000000000000000000000000000000000000000000
+0000000000000000000000000000000000000000000000000000000000000000
+0000000000000000000000000000000000000000000000000000000000000000
+0000000000000000000000000000000000000000000000000000000000000000
+0000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000000000000000000000000"}{i:808455472}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464397}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:221261872}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:806170672}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808455472}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464397}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:221261872}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:806170672}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808455472}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464384}{i:0}{i:2560}{i:512}{i:0}{i:255}{x:ff}{u:65535}`;
 
   const LIGHT_TYPES = {
     XXL: { typeId: 886600850, pageId: 368, offerId: 36841, radius: 170, name: 'hfdiy_NewLight_XXL_xueze' },
@@ -53,6 +104,11 @@
 
   const DEFAULTS = {
     generatorMode: 'light_art',
+    projectName: '',
+    megaRooms: true,
+    chunksPerRoom: 4,
+    rightsAkaId: 37968,
+    rightsSelfId: 4502029,
     variant: 'stacked',
     renderWidth: 1000,
     roomW: 63,
@@ -171,6 +227,7 @@
   let localInventory = { byType: {}, byItem: {}, loadedAt: 0 };
   let purchaseHistory = [];
   let placeRemoveAcks = [];
+  let lastCreatedRoom = { id: 0, name: '', at: 0 };
   let previewFrame = { w: 1, h: 1, work: null };
   let sourceFrame = { w: 1, h: 1, work: null };
   let sourceImageRef = null; // { src, box, w, h } — for high-quality source canvas render
@@ -401,6 +458,78 @@
   }
   function sendNumberPurchase(offerId) {
     sendOut('PurchaseFromCatalog', '{i:-1}{i:' + offerId + '}{i:0}{b:false}{b:true}', 3492);
+  }
+  function sendCreateFlat(name) {
+    sendOut('CreateFlat', packetString(name) + '{i:7}{i:1836016741}{i:1818178816}{i:8192}{i:2560}{b:false}{b:false}{b:false}', 2752);
+  }
+  function sendOpenFlatConnection(roomId) {
+    sendOut('OpenFlatConnection', '{i:' + parseInt(roomId, 10) + '}{s:""}', 2312);
+  }
+  function sendSaveRoomSettings(roomId, name) {
+    sendOut('SaveRoomSettings', '{i:' + parseInt(roomId, 10) + '}' + packetString(name) + '{i:0}{i:196608}{i:10}{i:32}{i:0}{i:0}{i:256}{i:0}{i:0}{i:0}{i:1}{i:0}{i:0}{i:0}{i:0}{i:0}{i:0}', 1969);
+  }
+  function sendAssignRights(userId) {
+    sendOut('AssignRights', '{i:' + parseInt(userId, 10) + '}', 808);
+  }
+  function sendUpdateFloorProperties() {
+    sendOut('UpdateFloorProperties', FLOOR_PROPERTIES_PAYLOAD.replace(/\r?\n/g, ''), 875);
+  }
+  function sendUseFurniture(itemId) {
+    sendOut('UseFurniture', '{i:' + parseInt(itemId, 10) + '}{i:0}', 99);
+  }
+  function currentRoomId() {
+    return parseInt(window.Room && window.Room.id, 10) || 0;
+  }
+  async function waitRoomIdChange(beforeId, timeoutMs) {
+    const end = Date.now() + timeoutMs;
+    while (!stopRequested && Date.now() < end) {
+      const id = currentRoomId();
+      if (id && id !== beforeId) return id;
+      await sleep(100);
+    }
+    return currentRoomId();
+  }
+  async function waitFlatCreated(afterTs, roomName, timeoutMs) {
+    const end = Date.now() + timeoutMs;
+    while (!stopRequested && Date.now() < end) {
+      if (lastCreatedRoom.id && lastCreatedRoom.at >= afterTs && (!roomName || lastCreatedRoom.name === roomName)) {
+        return lastCreatedRoom;
+      }
+      await sleep(100);
+    }
+    return null;
+  }
+  async function waitRoomReady(roomId, timeoutMs) {
+    const end = Date.now() + timeoutMs;
+    while (!stopRequested && Date.now() < end) {
+      if (currentRoomId() === parseInt(roomId, 10)) return true;
+      await sleep(100);
+    }
+    return currentRoomId() === parseInt(roomId, 10);
+  }
+  async function prepareMegaRoom(root, roomName) {
+    logBuild(root, 'nieuwe kamer maken', { roomName, beforeRoomId: currentRoomId() });
+    const afterTs = Date.now();
+    sendCreateFlat(roomName);
+    const created = await waitFlatCreated(afterTs, roomName, 12000);
+    if (!created || !created.id) throw new Error('FlatCreated room id niet gevonden voor ' + roomName);
+    const roomId = created.id;
+    logBuild(root, 'nieuwe kamer gevonden', { roomName, roomId });
+    sendOpenFlatConnection(roomId);
+    await waitRoomReady(roomId, 15000);
+    await sleep(1000);
+    logBuild(root, 'kamer settings sturen', { roomName, roomId });
+    sendSaveRoomSettings(roomId, roomName);
+    await sleep(1000);
+    sendSaveRoomSettings(roomId, roomName);
+    await sleep(500);
+    sendAssignRights(settings.rightsAkaId || 37968);
+    await sleep(250);
+    sendAssignRights(settings.rightsSelfId || 4502029);
+    await sleep(500);
+    sendUpdateFloorProperties();
+    await sleep(1500);
+    return roomId;
   }
   async function purchaseAmount(pageId, offerId, amount, typeId) {
     const count = Math.max(1, Math.min(100, Math.round(parseFloat(amount) || 1)));
@@ -1180,7 +1309,7 @@
   }
   function collectSettings(root) {
     const ids = {
-      generatorMode:'#__la_mode', variant:'#__la_variant', renderWidth:'#__la_renderw', roomW:'#__la_roomw', roomH:'#__la_roomh',
+      generatorMode:'#__la_mode', projectName:'#__la_project_name', variant:'#__la_variant', renderWidth:'#__la_renderw', roomW:'#__la_roomw', roomH:'#__la_roomh',
       alpha:'#__la_alpha', sat:'#__la_sat', bright:'#__la_bright', contrast:'#__la_contrast', gamma:'#__la_gamma',
       redPower:'#__la_red_power', greenPower:'#__la_green_power', bluePower:'#__la_blue_power',
       cameraMoreSat:'#__la_cam_more_sat', cameraHyperSat:'#__la_cam_hyper_sat', cameraLessSat:'#__la_cam_less_sat',
@@ -1192,6 +1321,7 @@
       rotation:'#__la_rot', delay:'#__la_delay', settingDelay:'#__la_setting_delay', burst:'#__la_burst', burstPause:'#__la_burst_pause', retry:'#__la_retry', attempts:'#__la_attempts',
       chunkSize:'#__la_chunk_size', chunkCols:'#__la_chunk_cols', chunkSelection:'#__la_chunk_select', chunkBleed:'#__la_chunk_bleed',
       chunkRightX:'#__la_chunk_rx', chunkRightY:'#__la_chunk_ry', chunkUpX:'#__la_chunk_ux', chunkUpY:'#__la_chunk_uy',
+      chunksPerRoom:'#__la_chunks_per_room', rightsAkaId:'#__la_rights_aka', rightsSelfId:'#__la_rights_self',
       markerCylinderType:'#__la_marker_cyl_type', markerCylinderPage:'#__la_marker_cyl_page', markerCylinderOffer:'#__la_marker_cyl_offer',
       markerCornerType:'#__la_marker_corner_type', markerCornerPage:'#__la_marker_corner_page', markerCornerOffer:'#__la_marker_corner_offer',
       markerNumberType:'#__la_marker_num_type', markerNumberPage:'#__la_marker_num_page', markerNumberOffer:'#__la_marker_num_offer',
@@ -1206,6 +1336,7 @@
     });
     settings.crop = !!root.querySelector('#__la_crop')?.checked;
     settings.chunkMode = !!root.querySelector('#__la_chunk_mode')?.checked;
+    settings.megaRooms = root.querySelector('#__la_mega_rooms') ? !!root.querySelector('#__la_mega_rooms').checked : !!settings.megaRooms;
     settings.showGrid = root.querySelector('#__la_show_grid') ? !!root.querySelector('#__la_show_grid').checked : true;
     settings.baseBh = Math.max(0, parseFloat(String(settings.baseBh).replace(',', '.')) || 0);
     settings.bhStep = Math.max(0.1, parseFloat(String(settings.bhStep).replace(',', '.')) || DEFAULTS.bhStep);
@@ -1213,6 +1344,9 @@
     settings.burstPause = Math.max(185, parseFloat(settings.burstPause) || DEFAULTS.burstPause);
     settings.retry = Math.max(185, parseFloat(settings.retry) || DEFAULTS.retry);
     settings.delay = Math.max(0, parseFloat(settings.delay) || DEFAULTS.delay);
+    settings.chunksPerRoom = Math.max(1, Math.min(4, parseInt(settings.chunksPerRoom, 10) || DEFAULTS.chunksPerRoom));
+    settings.rightsAkaId = parseInt(settings.rightsAkaId, 10) || DEFAULTS.rightsAkaId;
+    settings.rightsSelfId = parseInt(settings.rightsSelfId, 10) || DEFAULTS.rightsSelfId;
     saveSettings();
   }
   function makePlan(root) {
@@ -1769,9 +1903,13 @@
         : Math.max(1, Math.round(roomH / chunkSize));
     return { roomW, roomH, chunkSize, cols, rows };
   }
+  function mappedRoomChunkNumber(nr) {
+    const map = settings.__chunkRoomLocalMap || null;
+    return (map && map[nr]) ? map[nr] : nr;
+  }
   function exactChunkAnchor(nr) {
     const info = chunkGridInfo();
-    if (Math.round(info.chunkSize) !== 20 || info.cols !== 2) return null;
+    if (Math.round(info.chunkSize) !== 20) return null;
     const anchors = {
       1: { x: 21, y: 61 },
       2: { x: 21, y: 32 },
@@ -1782,7 +1920,7 @@
   }
   function exactLightArtFrameStart(nr) {
     const info = chunkGridInfo();
-    if (Math.round(info.chunkSize) !== 20 || info.cols !== 2) return null;
+    if (Math.round(info.chunkSize) !== 20) return null;
     const starts = {
       1: { x: 2, y: 42 },
       2: { x: 2, y: 13 },
@@ -1824,7 +1962,8 @@
     const info = chunkGridInfo();
     const rowFromBottom = info.rows - 1 - rowFromTop;
     const nr = chunkNumberForGrid(col, rowFromTop);
-    const exact = exactChunkAnchor(nr);
+    const localNr = mappedRoomChunkNumber(nr);
+    const exact = exactChunkAnchor(localNr);
     if (exact) return { x: exact.x, y: exact.y, rowFromBottom };
     const startX = Math.round(+settings.startX || 21);
     const startY = Math.round(+settings.startY || 62);
@@ -1832,9 +1971,12 @@
     const rightY = parseFloat(String(settings.chunkRightY).replace(',', '.')) || 0;
     const upX = parseFloat(String(settings.chunkUpX).replace(',', '.')) || 0;
     const upY = parseFloat(String(settings.chunkUpY).replace(',', '.')) || 0;
+    const localCol = localNr !== nr ? ((localNr - 1) % 2) : col;
+    const localRowFromTop = localNr !== nr ? Math.floor((localNr - 1) / 2) : rowFromTop;
+    const localRowFromBottom = localNr !== nr ? Math.max(0, 1 - localRowFromTop) : rowFromBottom;
     return {
-      x: Math.round(startX + col * rightX + rowFromBottom * upX),
-      y: Math.round(startY + col * rightY + rowFromBottom * upY),
+      x: Math.round(startX + localCol * rightX + localRowFromBottom * upX),
+      y: Math.round(startY + localCol * rightY + localRowFromBottom * upY),
       rowFromBottom
     };
   }
@@ -1881,7 +2023,7 @@
       resumeSkip = checkpoint && String(checkpoint.stage || '').toLowerCase().includes('marker') ? (parseInt(checkpoint.completed, 10) || 0) : 0;
     }
     try {
-      collectSettings(root);
+      if (!internalRun) collectSettings(root);
       const specs = markerSpecs();
       logBuild(root, 'markers gestart', { total: specs.length, resumeSkip });
       root.querySelector('#__la_status').textContent = 'Markers kopen/scannen...';
@@ -1941,14 +2083,14 @@
     const rotation = settings.generatorMode === 'light_art' ? 0 : Math.round(+settings.rotation || 2);
     const chunkMode = !!settings.chunkMode;
     const chunkSize = Math.max(4, +settings.chunkSize || 20);
-    const chunkCols = Math.max(1, Math.round(+settings.chunkCols || 2));
+    const gridInfo = chunkGridInfo();
+    const chunkCols = Math.max(1, gridInfo.cols || Math.round(+settings.chunkCols || 2));
     const bleed = Math.max(0, +settings.chunkBleed || 0);
     const rightX = parseFloat(String(settings.chunkRightX).replace(',', '.')) || 0;
     const rightY = parseFloat(String(settings.chunkRightY).replace(',', '.')) || 0;
     const upX = parseFloat(String(settings.chunkUpX).replace(',', '.')) || 0;
     const upY = parseFloat(String(settings.chunkUpY).replace(',', '.')) || 0;
     const selected = selectedChunksSet();
-    const gridInfo = chunkGridInfo();
     const mapW = chunkMode ? gridInfo.cols * chunkSize : roomW;
     const mapH = chunkMode ? gridInfo.rows * chunkSize : roomH;
     const out = [], missing = {};
@@ -1993,6 +2135,7 @@
       }
 
       const chunkNr = chunkNumberForRoomPoint(lx, ly);
+      const roomChunkNr = mappedRoomChunkNumber(chunkNr);
       if (chunkMode && selected && !selected.has(chunkNr)) return;
       let id = p.id || (out.length + 1);
       if (withInventory) {
@@ -2004,7 +2147,7 @@
       if (chunkMode) {
         chunkCol = clamp(Math.floor(lx / chunkSize), 0, chunkCols - 1);
         chunkRow = clamp(Math.floor(ly / chunkSize), 0, Math.max(0, gridInfo.rows - 1));
-        chunkIndex = chunkNr - 1;
+        chunkIndex = roomChunkNr - 1;
         localX = lx - chunkCol * chunkSize;
         localY = ly - chunkRow * chunkSize;
         if (bleed) {
@@ -2012,7 +2155,7 @@
           localY = clamp(localY, -bleed, chunkSize + bleed);
         }
         const rowFromBottom = Math.max(0, gridInfo.rows - 1 - chunkRow);
-        const exact = exactChunkAnchor(chunkNr);
+        const exact = exactChunkAnchor(roomChunkNr);
         if (exact) {
           anchorX = exact.x;
           anchorY = exact.y;
@@ -2033,7 +2176,7 @@
         const yBase = Math.floor(localY);
         const yFrac = clamp(localY - yBase, 0, 0.99);
         z = normalizeHeight(baseBh + yFrac * bhStep);
-        const frameStart = chunkMode ? exactLightArtFrameStart(chunkNr) : null;
+        const frameStart = chunkMode ? exactLightArtFrameStart(roomChunkNr) : null;
         if (frameStart) {
           const rawX = Math.round(frameStart.x + (sxFine * 0.5) + yBase);
           const rawY = Math.round(frameStart.y - (sxFine * 0.5) + yBase);
@@ -2060,6 +2203,56 @@
   }
   function makeBuildItems(root) {
     return makeProjectedBuildObjects(root, true);
+  }
+  function allBuildChunkNumbers() {
+    const info = chunkGridInfo();
+    const selected = selectedChunksSet();
+    const out = [];
+    const total = Math.max(1, info.cols * info.rows);
+    for (let n = 1; n <= total; n++) {
+      if (!selected || selected.has(n)) out.push(n);
+    }
+    return out;
+  }
+  function chunkGroupsForRooms() {
+    const chunks = allBuildChunkNumbers();
+    const perRoom = Math.max(1, Math.min(4, parseInt(settings.chunksPerRoom, 10) || 4));
+    const groups = [];
+    for (let i = 0; i < chunks.length; i += perRoom) groups.push(chunks.slice(i, i + perRoom));
+    return groups;
+  }
+  function projectNameBase() {
+    const typed = String(settings.projectName || '').trim();
+    const raw = typed || imageName || 'lightart';
+    return raw.replace(/\.[a-z0-9]+$/i, '').replace(/[^\w\- ]+/g, '').trim() || 'lightart';
+  }
+  function withChunkRoomMap(chunks, fn) {
+    const oldSelection = settings.chunkSelection;
+    const oldMap = settings.__chunkRoomLocalMap;
+    const map = {};
+    chunks.forEach(function(nr, idx) { map[nr] = idx + 1; });
+    settings.chunkSelection = chunks.join(',');
+    settings.__chunkRoomLocalMap = map;
+    try {
+      return fn();
+    } finally {
+      settings.chunkSelection = oldSelection;
+      settings.__chunkRoomLocalMap = oldMap;
+    }
+  }
+  async function withChunkRoomMapAsync(chunks, fn) {
+    const oldSelection = settings.chunkSelection;
+    const oldMap = settings.__chunkRoomLocalMap;
+    const map = {};
+    chunks.forEach(function(nr, idx) { map[nr] = idx + 1; });
+    settings.chunkSelection = chunks.join(',');
+    settings.__chunkRoomLocalMap = map;
+    try {
+      return await fn();
+    } finally {
+      settings.chunkSelection = oldSelection;
+      settings.__chunkRoomLocalMap = oldMap;
+    }
   }
   function makeMarkerPreviewObjects() {
     if (!settings.chunkMode) return [];
@@ -2347,6 +2540,46 @@
       running = false;
     }
   }
+  async function buildMegaRooms(root) {
+    if (packetPreviewMode) {
+      const el = root && root.querySelector('#__la_status');
+      if (el) el.textContent = 'Packet preview is alleen om te kijken. Klik eerst Preview bij een foto.';
+      return;
+    }
+    if (roomPreviewOriginalPlan) {
+      plan = roomPreviewOriginalPlan;
+      roomPreviewOriginalPlan = null;
+    }
+    if (!plan.length) makePlan(root);
+    collectSettings(root);
+    const groups = chunkGroupsForRooms();
+    const base = projectNameBase();
+    logBuild(root, 'mega rooms build gestart', { base, groups });
+    progressStart = Date.now();
+    for (let gi = 0; gi < groups.length; gi++) {
+      if (stopRequested) break;
+      const chunks = groups[gi];
+      const roomName = base + (gi + 1);
+      await prepareMegaRoom(root, roomName);
+      await withChunkRoomMapAsync(chunks, async function() {
+        logBuild(root, 'kamer chunks starten', { roomName, chunks });
+        if (settings.chunkMode) await buyAndPlaceChunkMarkers(root, true);
+        if (window.Inventory && Object.keys(window.Inventory.items || {}).length) rebuildLocalInventoryFromWindow();
+        requestInventory();
+        await waitInventoryReady(8000);
+        const items = makeBuildItems(root);
+        logBuild(root, 'kamer build items', { roomName, chunks, total: items.length });
+        await placeGrouped(root, items, 'Kamer ' + (gi + 1), 0, items.length);
+        logBuild(root, 'kamer klaar', { roomName, chunks, total: items.length });
+      });
+      await sleep(1200);
+    }
+    sendChatCommand(':bh'); sendChatCommand(':bs'); sendChatCommand(':bd');
+    clearCheckpoint();
+    resumeSkip = 0;
+    logBuild(root, 'mega rooms build klaar', { rooms: groups.length });
+    root.querySelector('#__la_status').textContent = stopRequested ? 'Gestopt.' : 'Alle kamers klaar.';
+  }
   async function buyAndBuild(root) {
     if (running) return;
     if (packetPreviewMode) {
@@ -2364,13 +2597,19 @@
     try {
       logBuild(root, 'koop+bouw gestart', { imageName, plan: plan.length });
       const ok = await buyMissing(root);
-      if (ok && !stopRequested && settings.chunkMode) await buyAndPlaceChunkMarkers(root, true);
-      running = false;
-      if (ok && !stopRequested) await build(root);
+      if (ok && !stopRequested && settings.megaRooms && settings.chunkMode) {
+        await buildMegaRooms(root);
+      } else if (ok && !stopRequested) {
+        if (settings.chunkMode) await buyAndPlaceChunkMarkers(root, true);
+        running = false;
+        await build(root);
+        return;
+      }
     } catch (ex) {
       logBuild(root, 'koop+bouw fout', { message: ex.message });
       const el = root.querySelector('#__la_status');
       if (el) el.textContent = 'Fout: ' + ex.message;
+    } finally {
       running = false;
     }
   }
@@ -2623,6 +2862,15 @@
       return null;
     }
   }
+  function parseFlatCreated(raw) {
+    const r = window.makeReader && window.makeReader(raw);
+    if (!r) return null;
+    try {
+      return { id: r.int(), name: r.str(), at: Date.now() };
+    } catch(_) {
+      return null;
+    }
+  }
   function renderRoomObjectsPreview(root, objs, label) {
     if (!objs || !objs.length) throw new Error('Geen light objects om te previewen.');
     packetPreviewMode = true;
@@ -2689,8 +2937,14 @@
     plan.forEach(function(p) { counts[p.size + ' ' + p.colorName] = (counts[p.size + ' ' + p.colorName] || 0) + 1; });
     return JSON.stringify({
       imageName,
+      projectName: projectNameBase(),
       total: plan.length,
       checkpoint: loadCheckpoint(),
+      megaRooms: {
+        enabled: !!settings.megaRooms,
+        chunksPerRoom: settings.chunksPerRoom,
+        groups: chunkGroupsForRooms()
+      },
       chunks: {
         enabled: !!settings.chunkMode,
         size: settings.chunkSize,
@@ -2767,6 +3021,7 @@
         '<div class="panel on" data-panel="gen">' +
           '<div class="sec">Generator</div>' +
           '<div class="row"><label>Art modus</label><select id="__la_mode"><option value="light_art">Light Art</option><option value="cylinder">Halve cilinder</option><option value="neon_prisma">Neon prisma</option><option value="mini_blocks">Mini blocks</option></select></div>' +
+          '<div class="row"><label>Project naam</label><input id="__la_project_name" type="text" placeholder="leeg = fotonaam" value="' + esc(settings.projectName) + '"></div>' +
           '<div id="__la_mode_panel_light_art" class="mode-panel">' +
             '<div class="sec">Light Art</div>' +
             '<div class="row"><label>Blender</label><input id="__la_randomizer" type="range" min="0" max="100" step="1" value="' + esc(settings.randomizer != null ? settings.randomizer : 50) + '"><span id="__la_randomizer_label">' + esc(settings.randomizer != null ? settings.randomizer : 50) + '</span></div>' +
@@ -2823,6 +3078,9 @@
           '<div class="row"><label>Bouwhoogte</label><input id="__la_bh" type="text" value="' + esc(settings.baseBh) + '"><label>Hoogte stap</label><input id="__la_bhstep" type="text" value="' + esc(settings.bhStep) + '"></div>' +
           '<div class="row"><label>Na plaatsen</label><input id="__la_delay" type="number" value="' + esc(settings.delay) + '"><label>Na :bs/:bh</label><input id="__la_setting_delay" type="number" value="' + esc(settings.settingDelay) + '"></div>' +
           '<div class="row"><label>Per batch</label><input id="__la_burst" type="number" value="' + esc(settings.burst) + '"><label>Batch pauze</label><input id="__la_burst_pause" type="number" value="' + esc(settings.burstPause) + '"><label>Retry wacht</label><input id="__la_retry" type="number" value="' + esc(settings.retry) + '"><label>Pogingen</label><input id="__la_attempts" type="number" value="' + esc(settings.attempts) + '"></div>' +
+          '<div class="sec">Mega kamers</div>' +
+          '<div class="row"><label><input id="__la_mega_rooms" type="checkbox"' + (settings.megaRooms ? ' checked' : '') + '> 4 chunks per kamer</label><label>Per kamer</label><input id="__la_chunks_per_room" type="number" min="1" max="4" value="' + esc(settings.chunksPerRoom) + '"></div>' +
+          '<div class="row"><label>Rechten IDs</label><input id="__la_rights_aka" type="number" value="' + esc(settings.rightsAkaId) + '"><input id="__la_rights_self" type="number" value="' + esc(settings.rightsSelfId) + '"></div>' +
           '<div class="sec">Chunk camera markers</div>' +
           '<div class="row"><label>BH</label><input id="__la_marker_bh" type="number" value="' + esc(settings.markerBh) + '"><label>Rot</label><input id="__la_marker_rot" type="number" value="' + esc(settings.markerRot) + '"></div>' +
           '<div class="row"><label>Cyl 14</label><input id="__la_marker_cyl_type" type="number" value="' + esc(settings.markerCylinderType) + '"><input id="__la_marker_cyl_page" type="number" value="' + esc(settings.markerCylinderPage) + '"><input id="__la_marker_cyl_offer" type="number" value="' + esc(settings.markerCylinderOffer) + '"></div>' +
@@ -2955,7 +3213,7 @@
     }
     updateMaxLabel();
     const resetFieldIds = {
-      generatorMode:'#__la_mode', variant:'#__la_variant', renderWidth:'#__la_renderw', roomW:'#__la_roomw', roomH:'#__la_roomh',
+      generatorMode:'#__la_mode', projectName:'#__la_project_name', variant:'#__la_variant', renderWidth:'#__la_renderw', roomW:'#__la_roomw', roomH:'#__la_roomh',
       alpha:'#__la_alpha', crop:'#__la_crop', randomizer:'#__la_randomizer', maxLights:'#__la_max',
       chunkMode:'#__la_chunk_mode', showGrid:'#__la_show_grid', chunkSize:'#__la_chunk_size', chunkCols:'#__la_chunk_cols', chunkSelection:'#__la_chunk_select',
       chunkBleed:'#__la_chunk_bleed', chunkRightX:'#__la_chunk_rx', chunkRightY:'#__la_chunk_ry', chunkUpX:'#__la_chunk_ux', chunkUpY:'#__la_chunk_uy',
@@ -2965,7 +3223,7 @@
       cameraBleach:'#__la_cam_bleach', cameraGray:'#__la_cam_gray', cameraRosy:'#__la_cam_rosy',
       startX:'#__la_x', startY:'#__la_y', xyStep:'#__la_xystep', baseBh:'#__la_bh', bhStep:'#__la_bhstep',
       rotation:'#__la_rot', delay:'#__la_delay', settingDelay:'#__la_setting_delay', burst:'#__la_burst', burstPause:'#__la_burst_pause',
-      retry:'#__la_retry', attempts:'#__la_attempts', markerCylinderType:'#__la_marker_cyl_type', markerCylinderPage:'#__la_marker_cyl_page',
+      retry:'#__la_retry', attempts:'#__la_attempts', megaRooms:'#__la_mega_rooms', chunksPerRoom:'#__la_chunks_per_room', rightsAkaId:'#__la_rights_aka', rightsSelfId:'#__la_rights_self', markerCylinderType:'#__la_marker_cyl_type', markerCylinderPage:'#__la_marker_cyl_page',
       markerCylinderOffer:'#__la_marker_cyl_offer', markerCornerType:'#__la_marker_corner_type', markerCornerPage:'#__la_marker_corner_page',
       markerCornerOffer:'#__la_marker_corner_offer', markerNumberType:'#__la_marker_num_type', markerNumberPage:'#__la_marker_num_page',
       markerNumberOffer:'#__la_marker_num_offer', markerBh:'#__la_marker_bh', markerRot:'#__la_marker_rot',
@@ -3000,9 +3258,9 @@
       }
       root.querySelector('#__la_status').textContent = label + ' terug naar default.';
     }
-    const generatorResetKeys = ['generatorMode','variant','renderWidth','roomW','roomH','alpha','crop','randomizer','maxLights','chunkMode','showGrid','chunkSize','chunkCols','chunkSelection','chunkBleed','chunkRightX','chunkRightY','chunkUpX','chunkUpY','imgPanX','imgPanY','imgScale'];
+    const generatorResetKeys = ['generatorMode','projectName','variant','renderWidth','roomW','roomH','alpha','crop','randomizer','maxLights','chunkMode','showGrid','chunkSize','chunkCols','chunkSelection','chunkBleed','chunkRightX','chunkRightY','chunkUpX','chunkUpY','imgPanX','imgPanY','imgScale'];
     const colorResetKeys = ['sat','bright','contrast','gamma','redPower','greenPower','bluePower','cameraMoreSat','cameraHyperSat','cameraLessSat','cameraBleach','cameraGray','cameraRosy'];
-    const buildResetKeys = ['startX','startY','xyStep','baseBh','bhStep','rotation','delay','settingDelay','burst','burstPause','retry','attempts','markerCylinderType','markerCylinderPage','markerCylinderOffer','markerCornerType','markerCornerPage','markerCornerOffer','markerNumberType','markerNumberPage','markerNumberOffer','markerBh','markerRot','markerNumberBh','markerNumberRot','typeXXL','typeXL','typeL','typeM','typeS','pageXXL','pageXL','pageL','pageM','pageS','offerXXL','offerXL','offerL','offerM','offerS'];
+    const buildResetKeys = ['startX','startY','xyStep','baseBh','bhStep','rotation','delay','settingDelay','burst','burstPause','retry','attempts','megaRooms','chunksPerRoom','rightsAkaId','rightsSelfId','markerCylinderType','markerCylinderPage','markerCylinderOffer','markerCornerType','markerCornerPage','markerCornerOffer','markerNumberType','markerNumberPage','markerNumberOffer','markerBh','markerRot','markerNumberBh','markerNumberRot','typeXXL','typeXL','typeL','typeM','typeS','pageXXL','pageXL','pageL','pageM','pageS','offerXXL','offerXL','offerL','offerM','offerS'];
     root.querySelector('#__la_reset_gen').addEventListener('click', function() { resetSettingsGroup(generatorResetKeys, true, 'Generator'); });
     root.querySelector('#__la_reset_color').addEventListener('click', function() { resetSettingsGroup(colorResetKeys, true, 'Color'); });
     root.querySelector('#__la_reset_build').addEventListener('click', function() { resetSettingsGroup(buildResetKeys, false, 'Settings'); });
@@ -3170,6 +3428,11 @@
   window.onPacket('PurchaseOK', function() {
     if (!active) return;
     purchaseOkCounter++;
+  });
+  window.onPacket('FlatCreated', function(p) {
+    if (!active) return;
+    const d = parseFlatCreated(p.raw);
+    if (d && d.id) lastCreatedRoom = d;
   });
   window.onPacket('FurniList', function(p) {
     if (!active || !p.parsed) return;

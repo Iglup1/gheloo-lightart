@@ -631,3 +631,30 @@ This is the compressed handoff from the long Codex/Kenjy conversation so Claude 
 - The grid overlay should continue using the `.object-location` movement reference. Scorebord DOM examples from Kenjy:
   - `<div class="position-absolute visible object-location" style="left: 607px; top: 245px;">...`
   - After moving the room/camera, the same kind of widget can become e.g. `left: 400px; top: 252px`.
+
+### 2026-06-29 mega-room build flow for Light Art
+
+- Kenjy wants the build function to create rooms automatically and build 4 chunks per room.
+- Room names use a project/photo name prefix plus a number:
+  - `projectName1` builds chunks `1,2,3,4`.
+  - `projectName2` builds chunks `5,6,7,8`.
+  - Repeat until all selected/generated chunks are done.
+- The JavaScript extension now has a `Project naam` input. Empty means use the loaded image filename without extension.
+- The mega-room packet sequence must be:
+  1. `CreateFlat` with the target room name.
+  2. Wait for `FlatCreated` and read `{i:roomId}{s:name}`.
+  3. Send `OpenFlatConnection` with the created room id.
+  4. Send `SaveRoomSettings` twice with 1 second between sends, using the created room id and room name.
+  5. Send `AssignRights` for Kenjy's aka id `37968`.
+  6. Send `AssignRights` for Kenjy's own id `4502029`.
+  7. Send `UpdateFloorProperties` using the 63x63 floor payload from `shared-context/assets/packets/2026-06-29-update-floor-properties-63x63.txt`.
+  8. Build the 4 mapped chunks in that room, then continue with the next room.
+- Important parser detail:
+  - Gheloo's `GPacket.fromExpression()` regex does not parse `{s:"..."}` over actual newlines.
+  - The floor payload is stored readable in shared context, but the extension removes newline characters before sending it.
+- Chunk mapping rule:
+  - Global chunks are temporarily remapped to local room positions 1-4 during each room build.
+  - Example: global chunks `5,6,7,8` are selected for room 2 but placed using local chunk anchors `1,2,3,4`.
+- Current implementation notes:
+  - `buyMissing(root)` still buys/scans for the whole plan before the mega-room build starts.
+  - Scorebord auto-purchase/place/activate is not yet fully wired into the mega-room flow; only the packet rules are documented and `UseFurniture` helper exists.

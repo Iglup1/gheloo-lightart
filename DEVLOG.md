@@ -1375,6 +1375,38 @@ Fixed to: `y = anchorY - (logicalH - 1 - localY)` — image-top now maps to room
 
 ---
 
+## [2026-06-29] Codex - Session 33
+
+**Done:**
+- Added the first JavaScript mega-room build flow for Light Art: create a new room per group of 4 chunks, enter it, apply room settings/rights/floor, then build that room's chunks.
+- Added `Project naam` so room names and future saves can use `projectName1`, `projectName2`, etc. Empty falls back to the image filename.
+- Added `FlatCreated` parsing and `OpenFlatConnection` fallback, matching the older Python flow that waited for the created room id before entering.
+- Added global-to-local chunk remapping so chunks `5,6,7,8` build inside the second room using local chunk positions `1,2,3,4`.
+- Stored Kenjy's 63x63 `UpdateFloorProperties` packet in shared context and documented the exact packet order for Claude/Codex.
+
+**Changed files:**
+- `pixelart-lightart.js:6` - added the 63x63 floor payload constant.
+- `pixelart-lightart.js:462` - added room packet helpers: `CreateFlat`, `OpenFlatConnection`, `SaveRoomSettings`, `AssignRights`, `UpdateFloorProperties`, `UseFurniture`.
+- `pixelart-lightart.js:492` - added waits for `FlatCreated` and room-ready state.
+- `pixelart-lightart.js:510` - added `prepareMegaRoom(...)` sequence: create, enter, save settings twice, rights, floor.
+- `pixelart-lightart.js:1906` - added chunk remapping support for 4 chunks per generated room.
+- `pixelart-lightart.js:2243` - added temporary per-room chunk selection/remap wrapper.
+- `pixelart-lightart.js:2543` - added `buildMegaRooms(...)` and connected it to `Koop+Build`.
+- `pixelart-lightart.js:2865` and `pixelart-lightart.js:3432` - parse/listen to `FlatCreated`.
+- `pixelart-lightart.js:3024` and `pixelart-lightart.js:3082` - added project name and mega-room settings UI.
+- `shared-context/assets/packets/2026-06-29-update-floor-properties-63x63.txt` - copied Kenjy's raw floor packet.
+- `SHARED_CONTEXT.md`, `shared-context/SHARED_CONTEXT.md`, `shared-context/notes/PROJECT_MEMORY.md`, `shared-context/ASSET_INDEX.md` - documented the mega-room flow and packet rules.
+
+**Verification:**
+- Ran `node --check pixelart-lightart.js` successfully.
+- Ran `git diff --check` successfully; only the existing CRLF normalization warning was reported.
+
+**Open / next:**
+- Live-test whether `CreateFlat` on this hotel always emits `FlatCreated` and whether `OpenFlatConnection` enters the room without extra navigation packets.
+- Scorebord auto purchase/place/activate is still not fully wired into the build flow; current code only has the `UseFurniture` helper and documented packet rules.
+
+---
+
 ## HOW TO UPDATE THIS FILE
 
 At **start of session**: read latest entry, understand state.
