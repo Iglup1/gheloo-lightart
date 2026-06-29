@@ -618,3 +618,16 @@ This is the compressed handoff from the long Codex/Kenjy conversation so Claude 
   - `#__la_room_grid_lock` is the lock/unlock button.
   - Unlocked grid can be dragged with mouse.
   - Locked grid follows `.object-location` style movement per frame.
+
+### 2026-06-29 scorebord anchor packets and overlay layer
+
+- The room grid overlay must sit above the room/furniture preview, but below normal Leet/Nitro windows and extension UIs.
+- Do not use a near-max z-index for `#__la_room_grid_overlay`; it should not cover catalog/shop/extensions windows.
+- Kenjy supplied the scorebord/context-menu anchor workflow:
+  - Buy scorebord: `{out:PurchaseFromCatalog}{i:148}{i:232174}{i:0}{b:false}{b:true}`
+  - Place scorebord example: `{out:PlaceObject}{s:"78083750 1 0 0"}`
+  - Activate scorebord after placement: `{out:UseFurniture}{i:78083750}{i:0}`
+- Important correction: no `bs 1` is needed for the scorebord. Place it normally, then send `UseFurniture` to activate the UI.
+- The grid overlay should continue using the `.object-location` movement reference. Scorebord DOM examples from Kenjy:
+  - `<div class="position-absolute visible object-location" style="left: 607px; top: 245px;">...`
+  - After moving the room/camera, the same kind of widget can become e.g. `left: 400px; top: 252px`.

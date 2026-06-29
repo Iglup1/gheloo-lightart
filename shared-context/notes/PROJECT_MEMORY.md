@@ -132,6 +132,12 @@ Markers:
 - `Plaats preview in kamer` must not buy furniture. It should only inject fake incoming preview objects. Buying belongs to `Koop+Build`.
 - Current grid correction: the overlay should feel room-anchored like a `.object-location` widget, not fixed to the user's screen. It follows camera movement by tracking an existing `.object-location` reference each frame. Grid cells must be full 20x20 chunk cells (`tilePx = 16`), not half-size 10x10.
 - Final interaction rule from Kenjy: the grid should be draggable while `los`; after the user aligns it above the art, clicking `vast` stores the offset to a real `.object-location` widget (`style.left/top`) and then follows that widget every frame. This is the expected way to make it feel locked in the room without marker furniture.
+- The room grid overlay must be layered below normal Leet/Nitro windows and extension UIs. It should be above room/furniture only, not a topmost screen overlay.
+- Scorebord anchor packets supplied by Kenjy:
+  - Buy: `{out:PurchaseFromCatalog}{i:148}{i:232174}{i:0}{b:false}{b:true}`
+  - Place example: `{out:PlaceObject}{s:"78083750 1 0 0"}`
+  - Activate after placement: `{out:UseFurniture}{i:78083750}{i:0}`
+  - Correction: do not use `bs 1` for activating this scorebord; use `UseFurniture`.
 
 ## Current User Feedback To Preserve
 

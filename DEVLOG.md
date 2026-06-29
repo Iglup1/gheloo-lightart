@@ -1354,6 +1354,27 @@ Fixed to: `y = anchorY - (logicalH - 1 - localY)` — image-top now maps to room
 
 ---
 
+## [2026-06-29] Codex - Session 32
+
+**Done:**
+- Lowered the room grid overlay layer so it sits above the room/furniture preview but below Leet/Nitro windows and extension UIs.
+- Documented Kenjy's scorebord anchor packets and the correction that activation uses `UseFurniture`, not `bs 1`.
+
+**Changed files:**
+- `pixelart-lightart.js:2755` - changed `#__la_room_grid_overlay` z-index from near-topmost to a low room-overlay layer.
+- `SHARED_CONTEXT.md` - added scorebord anchor packet notes and overlay layer rule.
+- `shared-context/notes/PROJECT_MEMORY.md` - saved the durable scorebord packet/activation rule.
+- `shared-context/SHARED_CONTEXT.md` - refreshed mirror of root shared context.
+
+**Verification:**
+- Ran `node --check pixelart-lightart.js` successfully.
+- Ran `git diff --check` successfully; only existing CRLF normalization warnings were reported.
+
+**Open / next:**
+- Next pass can automate scorebord purchase/place/activate as a stable `.object-location` anchor if Kenjy wants it inside the extension workflow.
+
+---
+
 ## HOW TO UPDATE THIS FILE
 
 At **start of session**: read latest entry, understand state.
