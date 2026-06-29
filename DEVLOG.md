@@ -1321,6 +1321,39 @@ Fixed to: `y = anchorY - (logicalH - 1 - localY)` — image-top now maps to room
 
 ---
 
+## [2026-06-29] Codex - Session 31
+
+**Done:**
+- Added the requested manual grid workflow: the room grid overlay is draggable while `los`, then can be locked with a `vast` button.
+- Locking stores the grid offset relative to a real Leet `.object-location` widget using that widget's `style.left/top`.
+- While locked, the grid updates every frame to `reference.left/top + saved offset`, so it follows the room/camera movement seen in the scoreboard element.
+- Persisted free/locked grid positions in settings so the placement survives re-render/reload.
+- Updated shared context/project memory with Kenjy's exact interaction rule and scoreboard examples.
+
+**Changed files:**
+- `pixelart-lightart.js:106` - added persisted room grid lock/free/offset defaults.
+- `pixelart-lightart.js:187` - added runtime grid drag state.
+- `pixelart-lightart.js:2391` - lock button state/text now shows `vast` or `los`.
+- `pixelart-lightart.js:2415` - helper reads `.object-location` `style.left/top`.
+- `pixelart-lightart.js:2447` - locked/free saved positions are applied when rendering the grid.
+- `pixelart-lightart.js:2462` - locked grid follows reference `.object-location` each frame.
+- `pixelart-lightart.js:2474` - unlocked grid can be dragged.
+- `pixelart-lightart.js:2488` - `toggleRoomGridLock(...)` stores offset and toggles lock.
+- `pixelart-lightart.js:2794` - added the `vast/los` button next to `grids`.
+- `pixelart-lightart.js:3044` - wired the lock button.
+- `pixelart-lightart.js:3097` - document drag handlers move/save the unlocked grid.
+- `SHARED_CONTEXT.md` - documented draggable then lock-to-object workflow.
+- `shared-context/notes/PROJECT_MEMORY.md` - durable memory updated for Claude/Codex.
+- `shared-context/SHARED_CONTEXT.md` - refreshed mirror of root shared context.
+
+**Verification:**
+- Ran `node --check pixelart-lightart.js` successfully.
+
+**Open / next:**
+- Test in Leet: click `Plaats preview in kamer`, turn `grids` on, drag the grid over the art while button says `los`, click `los` so it becomes `vast`, then move the room/camera. The grid should follow the same delta as the scoreboard `.object-location`.
+
+---
+
 ## HOW TO UPDATE THIS FILE
 
 At **start of session**: read latest entry, understand state.

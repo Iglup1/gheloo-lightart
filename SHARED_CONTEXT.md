@@ -606,3 +606,15 @@ This is the compressed handoff from the long Codex/Kenjy conversation so Claude 
   - Attach to the same parent as an existing `.object-location` widget when available.
   - Track a real `.object-location` reference every animation frame and apply its camera movement delta to `#__la_room_grid_overlay`.
 - Grid chunk cells should represent 20x20 furniture tiles, not half-size 10x10. Implementation uses `tilePx = 16` in `roomGridOverlayBox(...)`.
+
+### 2026-06-29 draggable grid lock workflow
+
+- Kenjy clarified the desired interaction:
+  - The grid overlay may appear on screen at first, but must be manually draggable.
+  - When it is visually aligned with the art, a `vast/los` button should lock it to the room.
+  - Locking means store the offset from a real `.object-location` widget (for example scoreboard) using the widget's `style.left/top`.
+  - While locked, every frame set the grid position to `reference.left/top + saved offset`, so when the room/camera moves and the scoreboard location changes from e.g. `left:607px; top:245px` to `left:400px; top:252px`, the grid follows by the same delta.
+- Current code:
+  - `#__la_room_grid_lock` is the lock/unlock button.
+  - Unlocked grid can be dragged with mouse.
+  - Locked grid follows `.object-location` style movement per frame.

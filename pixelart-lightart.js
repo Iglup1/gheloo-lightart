@@ -103,6 +103,11 @@
     chunkMode: true,
     showGrid: true,
     roomGridOverlay: true,
+    roomGridLocked: false,
+    roomGridOffsetX: 0,
+    roomGridOffsetY: 0,
+    roomGridFreeLeft: null,
+    roomGridFreeTop: null,
     chunkSize: 20,
     chunkCols: 2,
     chunkSelection: '',
@@ -179,6 +184,7 @@
   let previewPlacementRun = false;
   let roomGridOverlayActive = settings.roomGridOverlay !== false;
   let roomGridOverlayRaf = 0;
+  let roomGridDrag = null;
 
   // Sprite sheet data extracted from leet.city nitro files (hfdiy_NewLight_X_xueze.nitro).
   // Each entry: glow (b) layer frames per colorCode 0-7, sprite size in pixels.
@@ -2378,9 +2384,16 @@
   }
   function updateRoomGridToggle(root) {
     const btn = root && root.querySelector('#__la_room_grid_toggle');
-    if (!btn) return;
-    btn.classList.toggle('active', roomGridOverlayActive);
-    btn.setAttribute('aria-pressed', roomGridOverlayActive ? 'true' : 'false');
+    if (btn) {
+      btn.classList.toggle('active', roomGridOverlayActive);
+      btn.setAttribute('aria-pressed', roomGridOverlayActive ? 'true' : 'false');
+    }
+    const lock = root && root.querySelector('#__la_room_grid_lock');
+    if (lock) {
+      lock.classList.toggle('active', !!settings.roomGridLocked);
+      lock.setAttribute('aria-pressed', settings.roomGridLocked ? 'true' : 'false');
+      lock.textContent = settings.roomGridLocked ? 'vast' : 'los';
+    }
   }
   function roomGridOverlayHost() {
     const existingLocation = Array.from(document.querySelectorAll('.object-location')).find(function(el) {
@@ -2397,6 +2410,17 @@
     return Array.from(document.querySelectorAll('.object-location')).find(function(el) {
       return el.id !== '__la_room_grid_overlay' && !el.closest('#__la');
     });
+  }
+  function cssPx(el, prop) {
+    const inline = parseFloat((el.style && el.style[prop]) || '');
+    if (Number.isFinite(inline)) return inline;
+    const computed = parseFloat(getComputedStyle(el)[prop] || '');
+    return Number.isFinite(computed) ? computed : 0;
+  }
+  function roomGridRefPosition() {
+    const ref = roomGridReferenceLocation();
+    if (!ref) return null;
+    return { ref, left: cssPx(ref, 'left'), top: cssPx(ref, 'top') };
   }
   function roomGridOverlayBox(items, host, info) {
     const hostRect = host && host.getBoundingClientRect ? host.getBoundingClientRect() : { width: window.innerWidth, height: window.innerHeight };
@@ -2419,6 +2443,14 @@
       left = clamp(left, 4, Math.max(4, (hostRect.width || window.innerWidth) - width - 4));
       top = clamp(top, 4, Math.max(4, (hostRect.height || window.innerHeight) - height - 4));
     }
+    const refPos = roomGridRefPosition();
+    if (refPos && settings.roomGridLocked) {
+      left = refPos.left + (+settings.roomGridOffsetX || 0);
+      top = refPos.top + (+settings.roomGridOffsetY || 0);
+    } else if (Number.isFinite(+settings.roomGridFreeLeft) && Number.isFinite(+settings.roomGridFreeTop)) {
+      left = +settings.roomGridFreeLeft;
+      top = +settings.roomGridFreeTop;
+    }
     return { left, top, width, height, chunkW: width / info.cols, chunkH: height / info.rows };
   }
   function removeRoomGridOverlay() {
@@ -2427,20 +2459,55 @@
     const old = document.getElementById('__la_room_grid_overlay');
     if (old) old.remove();
   }
-  function anchorRoomGridOverlay(overlay, box) {
-    const ref = roomGridReferenceLocation();
-    if (!ref) return;
-    const startRef = ref.getBoundingClientRect();
-    const startLeft = box.left;
-    const startTop = box.top;
+  function anchorRoomGridOverlay(overlay) {
+    if (!settings.roomGridLocked) return;
     function tick() {
       if (!overlay.parentElement) return;
-      const now = ref.getBoundingClientRect();
-      overlay.style.left = Math.round(startLeft + (now.left - startRef.left)) + 'px';
-      overlay.style.top = Math.round(startTop + (now.top - startRef.top)) + 'px';
+      const refPos = roomGridRefPosition();
+      if (refPos) {
+        overlay.style.left = Math.round(refPos.left + (+settings.roomGridOffsetX || 0)) + 'px';
+        overlay.style.top = Math.round(refPos.top + (+settings.roomGridOffsetY || 0)) + 'px';
+      }
       roomGridOverlayRaf = requestAnimationFrame(tick);
     }
     roomGridOverlayRaf = requestAnimationFrame(tick);
+  }
+  function makeRoomGridDraggable(overlay) {
+    overlay.addEventListener('mousedown', function(e) {
+      if (settings.roomGridLocked || e.button !== 0) return;
+      e.preventDefault();
+      roomGridDrag = {
+        overlay,
+        sx: e.clientX,
+        sy: e.clientY,
+        left: cssPx(overlay, 'left'),
+        top: cssPx(overlay, 'top')
+      };
+    });
+  }
+  function toggleRoomGridLock(root) {
+    const overlay = document.getElementById('__la_room_grid_overlay');
+    const refPos = roomGridRefPosition();
+    if (!overlay || !refPos) {
+      const el = root && root.querySelector('#__la_status');
+      if (el) el.textContent = 'Geen room object-location gevonden om grid aan vast te maken.';
+      return;
+    }
+    settings.roomGridLocked = !settings.roomGridLocked;
+    if (settings.roomGridLocked) {
+      settings.roomGridOffsetX = cssPx(overlay, 'left') - refPos.left;
+      settings.roomGridOffsetY = cssPx(overlay, 'top') - refPos.top;
+      settings.roomGridFreeLeft = cssPx(overlay, 'left');
+      settings.roomGridFreeTop = cssPx(overlay, 'top');
+      anchorRoomGridOverlay(overlay);
+    } else {
+      if (roomGridOverlayRaf) cancelAnimationFrame(roomGridOverlayRaf);
+      roomGridOverlayRaf = 0;
+      settings.roomGridFreeLeft = cssPx(overlay, 'left');
+      settings.roomGridFreeTop = cssPx(overlay, 'top');
+    }
+    saveSettings();
+    updateRoomGridToggle(root);
   }
   function renderRoomGridOverlay(root, items) {
     removeRoomGridOverlay();
@@ -2459,7 +2526,8 @@
     overlay.innerHTML =
       '<div class="__la-room-grid-lines" style="--cw:' + box.chunkW + 'px;--ch:' + box.chunkH + 'px"></div>';
     host.appendChild(overlay);
-    anchorRoomGridOverlay(overlay, box);
+    makeRoomGridDraggable(overlay);
+    anchorRoomGridOverlay(overlay);
     updateRoomGridToggle(root);
   }
   function toggleRoomGridOverlay(root) {
@@ -2667,8 +2735,8 @@
       '#__la .tabs button{flex:1 1 0;min-width:0;width:auto;border-bottom-left-radius:0!important;border-bottom-right-radius:0!important}',
       '#__la .btn-primary,#__la .btn-secondary{background:#1f7f99!important;border-color:#0f5f75!important;color:#fff!important}',
       '#__la .btn-primary.active,#__la .btn-secondary.active{background:#155f73!important;border-color:#0b4b5e!important}',
-      '#__la #__la_place_preview,#__la #__la_room_grid_toggle{background:#3a9fd4!important;border-color:#2276a3!important;color:#fff!important}',
-      '#__la #__la_place_preview.active,#__la #__la_room_grid_toggle.active{background:#0d4a7a!important;border-color:#083454!important;color:#fff!important}',
+      '#__la #__la_place_preview,#__la #__la_room_grid_toggle,#__la #__la_room_grid_lock{background:#3a9fd4!important;border-color:#2276a3!important;color:#fff!important}',
+      '#__la #__la_place_preview.active,#__la #__la_room_grid_toggle.active,#__la #__la_room_grid_lock.active{background:#0d4a7a!important;border-color:#083454!important;color:#fff!important}',
       '#__la .tabs .btn-secondary{background:#d1d0c8!important;border-color:#111!important;color:#000!important}',
       '#__la .tabs .btn-secondary.active{background:#f3efe4!important;border-color:#111!important;color:#000!important}',
       '#__la .btn-success{background:#198754!important;border-color:#11653d!important;color:#fff!important}',
@@ -2684,7 +2752,7 @@
       '#__la [data-panel="saves"].on #__la_log{flex:1 1 220px;min-height:180px;max-height:none}',
       '#__la .prog{height:8px;background:rgba(0,0,0,.14);overflow:hidden;border-radius:4px}',
       '#__la .bar{height:100%;width:0;background:#198754}',
-      '#__la_room_grid_overlay{z-index:2147483000;pointer-events:none;opacity:.62}',
+      '#__la_room_grid_overlay{z-index:2147483000;pointer-events:auto;opacity:.62;cursor:move}',
       '#__la_room_grid_overlay .__la-room-grid-lines{width:100%;height:100%;border:1px dashed rgba(255,255,255,.45);background-image:linear-gradient(rgba(255,255,255,.34) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.34) 1px,transparent 1px);background-size:var(--cw) var(--ch),var(--cw) var(--ch);box-shadow:0 0 0 1px rgba(0,0,0,.25) inset}',
       '@media (max-width:560px){#__la .preview-grid{grid-template-columns:1fr}#__la canvas{height:130px}}'
     ].join('');
@@ -2723,7 +2791,7 @@
           '<div class="row"><label>Welke stukken</label><input id="__la_chunk_select" type="text" placeholder="leeg = auto, bv. 1 of 1,2,4,5" value="' + esc(settings.chunkSelection) + '"></div>' +
           '<div class="row"><button id="__la_reset_gen" class="btn btn-secondary btn-sm flex-grow-1">Generator terug naar default</button></div>' +
           '<div class="sec">Koop en bouw</div><div class="prog"><div class="bar" id="__la_bar"></div></div><div id="__la_status">Klaar.</div>' +
-          '<div class="row"><button id="__la_place_preview" class="btn btn-primary btn-sm flex-grow-1">Plaats preview in kamer</button><button id="__la_room_grid_toggle" class="btn btn-primary btn-sm" style="min-width:88px">grids</button></div>' +
+          '<div class="row"><button id="__la_place_preview" class="btn btn-primary btn-sm flex-grow-1">Plaats preview in kamer</button><button id="__la_room_grid_toggle" class="btn btn-primary btn-sm" style="min-width:88px">grids</button><button id="__la_room_grid_lock" class="btn btn-primary btn-sm" style="min-width:74px">los</button></div>' +
           '<div class="row"><button id="__la_build" class="btn btn-warning btn-sm flex-grow-1">Koop+Bouw</button></div>' +
           '<div class="row"><button id="__la_stop" class="btn btn-danger btn-sm flex-grow-1">Stop</button></div>' +
           '<div class="row"><button id="__la_continue" class="btn btn-success btn-sm flex-grow-1">Continue</button></div>' +
@@ -2973,6 +3041,9 @@
     root.querySelector('#__la_room_grid_toggle').addEventListener('click', function() {
       toggleRoomGridOverlay(root);
     });
+    root.querySelector('#__la_room_grid_lock').addEventListener('click', function() {
+      toggleRoomGridLock(root);
+    });
     updateRoomGridToggle(root);
     root.querySelector('#__la_build').addEventListener('click', function() { buyAndBuild(root); });
     root.querySelector('#__la_continue').addEventListener('click', function() {
@@ -3022,6 +3093,20 @@
       renderSavesPanel(root);
     });
     root.querySelector('#__la_close').addEventListener('click', function() { root.style.display = 'none'; });
+    document.addEventListener('mousemove', function(e) {
+      if (!roomGridDrag || settings.roomGridLocked) return;
+      const left = roomGridDrag.left + (e.clientX - roomGridDrag.sx);
+      const top = roomGridDrag.top + (e.clientY - roomGridDrag.sy);
+      roomGridDrag.overlay.style.left = Math.round(left) + 'px';
+      roomGridDrag.overlay.style.top = Math.round(top) + 'px';
+    });
+    document.addEventListener('mouseup', function() {
+      if (!roomGridDrag) return;
+      settings.roomGridFreeLeft = cssPx(roomGridDrag.overlay, 'left');
+      settings.roomGridFreeTop = cssPx(roomGridDrag.overlay, 'top');
+      saveSettings();
+      roomGridDrag = null;
+    });
     const hdr = root.querySelector('#__la_hdr');
     let drag = false, ox = 0, oy = 0;
     hdr.addEventListener('mousedown', function(e) { if (e.target.id === '__la_close') return; drag = true; ox = e.clientX - root.getBoundingClientRect().left; oy = e.clientY - root.getBoundingClientRect().top; });
