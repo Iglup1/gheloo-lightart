@@ -652,9 +652,10 @@ This is the compressed handoff from the long Codex/Kenjy conversation so Claude 
   6. Send `AssignRights` for Kenjy's own id `4502029`.
   7. Send `UpdateFloorProperties` using the 63x63 floor payload from `shared-context/assets/packets/2026-06-29-update-floor-properties-63x63.txt`.
   8. Build the 4 mapped chunks in that room, then continue with the next room.
-- Important parser detail:
-  - Gheloo's `GPacket.fromExpression()` regex does not parse `{s:"..."}` over actual newlines.
-  - The floor payload is stored readable in shared context, but the extension removes newline characters before sending it.
+- Important floor payload detail:
+  - The floorplan string needs its row breaks. Do not flatten the `{s:"000..."}` floorplan into one long row.
+  - The extension now preserves line breaks in the payload, normalizing CRLF to LF only.
+  - `UpdateFloorProperties` is sent 3 times with delay after the new room is entered/settings/rights are sent, because sending it too early can be ignored by the hotel.
 - Chunk mapping rule:
   - Global chunks are temporarily remapped to local room positions 1-4 during each room build.
   - Example: global chunks `5,6,7,8` are selected for room 2 but placed using local chunk anchors `1,2,3,4`.

@@ -45,4 +45,11 @@ Created folders:
 - File: `shared-context/assets/packets/2026-06-29-update-floor-properties-63x63.txt`
 - From: Kenjy
 - Purpose: raw `UpdateFloorProperties` payload used after auto-creating each Light Art mega room so the room becomes the large build floor again.
-- Important notes: keep the file as raw shared evidence. In `pixelart-lightart.js`, newline characters are stripped before sending because Gheloo's `GPacket.fromExpression()` cannot parse string tokens across literal newlines.
+- Important notes: keep the file as raw shared evidence. The floorplan string row breaks are meaningful; `pixelart-lightart.js` preserves them, only normalizing CRLF to LF before sending.
+
+## 2026-06-30 - confirmed floor packet from room 5053285 test
+
+- File: `shared-context/assets/packets/2026-06-30-update-floor-properties-63x63-room-5053285.txt`
+- From: Kenjy
+- Purpose: raw `UpdateFloorProperties` packet supplied when testing room id `5053285`; confirms the same 63x63 floor payload shape should be used.
+- Important notes: the room id is context from Kenjy's test message; the `UpdateFloorProperties` payload itself does not include a room id.

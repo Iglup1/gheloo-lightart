@@ -471,7 +471,7 @@
     sendOut('AssignRights', '{i:' + parseInt(userId, 10) + '}', 808);
   }
   function sendUpdateFloorProperties() {
-    sendOut('UpdateFloorProperties', FLOOR_PROPERTIES_PAYLOAD.replace(/\r?\n/g, ''), 875);
+    sendOut('UpdateFloorProperties', FLOOR_PROPERTIES_PAYLOAD.replace(/\r\n/g, '\n'), 875);
   }
   function sendUseFurniture(itemId) {
     sendOut('UseFurniture', '{i:' + parseInt(itemId, 10) + '}{i:0}', 99);
@@ -544,6 +544,14 @@
     sendUseFurniture(objectId);
     return objectId;
   }
+  async function applyMegaRoomFloor(root, roomId) {
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      if (stopRequested) return;
+      logBuild(root, 'grote kamer floor sturen', { roomId, attempt, total: 3 });
+      sendUpdateFloorProperties();
+      await sleep(1500);
+    }
+  }
   async function prepareMegaRoom(root, roomName) {
     logBuild(root, 'nieuwe kamer maken', { roomName, beforeRoomId: currentRoomId() });
     const afterTs = Date.now();
@@ -565,9 +573,9 @@
     sendAssignRights(settings.rightsAkaId || 37968);
     await sleep(250);
     sendAssignRights(settings.rightsSelfId || 4502029);
-    await sleep(500);
-    sendUpdateFloorProperties();
-    await sleep(1500);
+    await sleep(1000);
+    await applyMegaRoomFloor(root, settingsRoomId);
+    await sleep(1000);
     await ensureScoreboardAnchor(root);
     await sleep(500);
     return settingsRoomId;

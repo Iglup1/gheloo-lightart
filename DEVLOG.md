@@ -1375,6 +1375,28 @@ Fixed to: `y = anchorY - (logicalH - 1 - localY)` — image-top now maps to room
 
 ---
 
+## [2026-06-30] Codex - Session 36
+
+**Done:**
+- Fixed the mega-room floor update after Kenjy confirmed the room was still being built without the large room size.
+- Preserved the line breaks inside the `UpdateFloorProperties` floorplan string. The previous flattening could turn the floorplan into one long row, so the hotel did not apply the intended large layout.
+- Added a robust floor apply helper that sends `UpdateFloorProperties` 3 times with 1.5s between attempts after room enter/settings/rights.
+- Logged each floor attempt as `grote kamer floor sturen` with the confirmed room id, so the build log shows whether the floor update stage ran.
+
+**Changed files:**
+- `pixelart-lightart.js:473` - `sendUpdateFloorProperties()` now preserves floorplan row breaks and only normalizes CRLF to LF.
+- `pixelart-lightart.js:547` - added `applyMegaRoomFloor(...)` retry helper.
+- `pixelart-lightart.js:574` - mega-room preparation now calls the retry helper after settings/rights instead of firing the floor packet once.
+- `SHARED_CONTEXT.md`, `shared-context/SHARED_CONTEXT.md`, `shared-context/notes/PROJECT_MEMORY.md`, `shared-context/ASSET_INDEX.md` - corrected the shared rule: floorplan newlines are meaningful and must not be stripped.
+
+**Verification:**
+- Ran `node --check pixelart-lightart.js` successfully.
+
+**Open / next:**
+- Live-test with room id examples like `5053285`: the log should show 3 `grote kamer floor sturen` entries before scorebord/build starts.
+
+---
+
 ## [2026-06-30] Codex - Session 35
 
 **Done:**
