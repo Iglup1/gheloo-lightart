@@ -723,3 +723,13 @@ shared-context/assets/logs/2026-06-30-mega-room-checkpoint-step-1532.txt
   - Do not place chunk numbers again for the resumed room.
   - Resume with `resumeSkip = checkpoint.completed`.
   - After that room finishes, reset `resumeSkip` and continue with the next room group.
+
+### 2026-06-30 PixelArt launcher / hub button
+
+- PixelArt should not auto-open the full UI when the extension is enabled.
+- Startup should create only a small launcher/hub button labeled `PA PixelArt`.
+- Clicking the launcher opens the full PixelArt card.
+- Closing the card hides it with `display:none`; it must not destroy/reset the current image, source pan/zoom, plan, settings, or log.
+- Clicking the launcher again should show the existing hidden card, not rebuild a fresh card.
+- On extension stop/toggle off, remove the launcher, room grid overlay, PixelArt card, and PixelArt styles.
+- If Kenjy later wants the launcher placed inside a specific Gheloo user-extension hub container, inspect that DOM first and move `#__la_launcher` there without changing the state-preserving behavior.

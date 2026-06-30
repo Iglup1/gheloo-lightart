@@ -1448,6 +1448,29 @@ Fixed to: `y = anchorY - (logicalH - 1 - localY)` — image-top now maps to room
 
 ---
 
+## [2026-06-30] Codex - Session 39
+
+**Done:**
+- Changed PixelArt startup so it no longer opens the full UI immediately on extension enable.
+- Added a small fixed PixelArt launcher/hub button (`PA PixelArt`) that opens the full UI only when clicked.
+- Closing the PixelArt card now still only hides it, so the current image, pan/zoom, generated plan, settings, and logs remain in memory for the session.
+- Clicking the launcher again reopens the existing hidden card instead of rebuilding/resetting it.
+- Extension stop cleanup now removes the launcher, room grid overlay, and PixelArt UI/style.
+
+**Changed files:**
+- `pixelart-lightart.js` - added `ensureLauncher()` / `removeLauncher()`.
+- `pixelart-lightart.js` - changed `buildUI()` to reopen an existing hidden UI.
+- `pixelart-lightart.js` - changed `bootPixelArt()` to create only the launcher on startup.
+- `DEVLOG.md`, `SHARED_CONTEXT.md`, `shared-context/SHARED_CONTEXT.md`, `shared-context/notes/PROJECT_MEMORY.md` - documented the launcher rule.
+
+**Verification:**
+- Ran `node --check pixelart-lightart.js` successfully.
+
+**Open / next:**
+- If Kenjy wants the launcher physically inside a specific Gheloo hub/user-extension container instead of fixed on-screen, inspect that DOM and move `#__la_launcher` into that container.
+
+---
+
 ## [2026-06-30] Codex - Session 38
 
 **Done:**
