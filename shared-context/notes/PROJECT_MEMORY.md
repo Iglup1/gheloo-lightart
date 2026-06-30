@@ -189,7 +189,20 @@ Then send the 63x63 `UpdateFloorProperties` payload from:
 shared-context/assets/packets/2026-06-29-update-floor-properties-63x63.txt
 ```
 
-Implementation detail: the raw floor payload is multi-line because the floorplan string needs row breaks. Do not flatten those row breaks into one long string. The extension only normalizes CRLF to LF, then sends `UpdateFloorProperties` 3 times with delay after room enter/settings/rights because Leet can ignore the floor update when it is sent too early.
+Implementation detail: the raw logged `UpdateFloorProperties` byte-expression is useful evidence, but should not be used as the JS payload. Python sends the semantic packet:
+
+```python
+BIG_FLOOR_64 = "\r".join(["0" * 64 for _ in range(64)]) + "\r"
+make_packet('UpdateFloorProperties', BIG_FLOOR_64, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, -1)
+```
+
+JS should send:
+
+```js
+packetString(BIG_FLOOR_64) + '{i:0}{i:0}{i:0}{i:0}{i:0}{i:2}{i:0}{i:0}{i:0}{i:0}{i:-1}'
+```
+
+`packetString(...)` must encode CR/LF as `\\r`, because Gheloo's `GPacket.fromExpression()` expands escaped `\r` into real carriage returns. The floor update belongs after room enter/RoomReady and before `SaveRoomSettings`, matching Python.
 
 Chunk remap rule: for each room group, global chunks are temporarily mapped to local room chunks 1-4. So room 2 builds global `5,6,7,8`, but their furniture coordinates use the exact local frame starts/anchors for `1,2,3,4`.
 

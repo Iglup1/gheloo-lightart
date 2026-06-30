@@ -3,6 +3,7 @@
   const SETTINGS_KEY = '__gheloo_lightart_js_settings_v1';
   const LOG_KEY = '__gheloo_lightart_js_log_v1';
   const CHECKPOINT_KEY = '__gheloo_lightart_js_checkpoint_v1';
+  const BIG_FLOOR_64 = Array(64).fill('0'.repeat(64)).join('\r') + '\r';
   const FLOOR_PROPERTIES_PAYLOAD = String.raw`{i:272576560}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808455472}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464397}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{i:808464432}{s:"000000000000000000000000000000000000000000000000000000000000000
 0000000000000000000000000000000000000000000000000000000000000000
 0000000000000000000000000000000000000000000000000000000000000000
@@ -415,7 +416,7 @@
     return window.sendPacket('IN', id, payload || '');
   }
   function packetString(value) {
-    return '{s:"' + String(value == null ? '' : value).replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"}';
+    return '{s:"' + String(value == null ? '' : value).replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\r/g, '\\r').replace(/\n/g, '\\r') + '"}';
   }
   function sendChatCommand(text) {
     sendOut('Chat', '{s:"' + String(text).replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"}{i:26}', 1314);
@@ -471,7 +472,7 @@
     sendOut('AssignRights', '{i:' + parseInt(userId, 10) + '}', 808);
   }
   function sendUpdateFloorProperties() {
-    sendOut('UpdateFloorProperties', FLOOR_PROPERTIES_PAYLOAD.replace(/\r\n/g, '\n'), 875);
+    sendOut('UpdateFloorProperties', packetString(BIG_FLOOR_64) + '{i:0}{i:0}{i:0}{i:0}{i:0}{i:2}{i:0}{i:0}{i:0}{i:0}{i:-1}', 875);
   }
   function sendUseFurniture(itemId) {
     sendOut('UseFurniture', '{i:' + parseInt(itemId, 10) + '}{i:0}', 99);
@@ -565,6 +566,8 @@
     const guestRoom = await waitGuestRoomResult(roomId, 5000);
     const settingsRoomId = (guestRoom && guestRoom.id) ? guestRoom.id : roomId;
     await sleep(1000);
+    await applyMegaRoomFloor(root, settingsRoomId);
+    await sleep(800);
     logBuild(root, 'kamer settings sturen', { roomName, roomId: settingsRoomId });
     sendSaveRoomSettings(settingsRoomId, roomName);
     await sleep(1000);
@@ -573,8 +576,6 @@
     sendAssignRights(settings.rightsAkaId || 37968);
     await sleep(250);
     sendAssignRights(settings.rightsSelfId || 4502029);
-    await sleep(1000);
-    await applyMegaRoomFloor(root, settingsRoomId);
     await sleep(1000);
     await ensureScoreboardAnchor(root);
     await sleep(500);

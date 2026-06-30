@@ -653,9 +653,12 @@ This is the compressed handoff from the long Codex/Kenjy conversation so Claude 
   7. Send `UpdateFloorProperties` using the 63x63 floor payload from `shared-context/assets/packets/2026-06-29-update-floor-properties-63x63.txt`.
   8. Build the 4 mapped chunks in that room, then continue with the next room.
 - Important floor payload detail:
-  - The floorplan string needs its row breaks. Do not flatten the `{s:"000..."}` floorplan into one long row.
-  - The extension now preserves line breaks in the payload, normalizing CRLF to LF only.
-  - `UpdateFloorProperties` is sent 3 times with delay after the new room is entered/settings/rights are sent, because sending it too early can be ignored by the hotel.
+  - Python does not send the logged raw byte-expression as the payload.
+  - Python sends `make_packet('UpdateFloorProperties', BIG_FLOOR_64, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, -1)`.
+  - `BIG_FLOOR_64` is `64` rows of `64` zeroes joined with `\r`, plus a final `\r`.
+  - In JS, use `packetString(BIG_FLOOR_64) + '{i:0}{i:0}{i:0}{i:0}{i:0}{i:2}{i:0}{i:0}{i:0}{i:0}{i:-1}'`.
+  - `GPacket.fromExpression()` understands escaped `\\r` in strings, so `packetString(...)` must encode CR/LF as `\\r`.
+  - The floor update should run after entering the room/RoomReady and before saving room settings, matching the Python flow.
 - Chunk mapping rule:
   - Global chunks are temporarily remapped to local room positions 1-4 during each room build.
   - Example: global chunks `5,6,7,8` are selected for room 2 but placed using local chunk anchors `1,2,3,4`.

@@ -52,4 +52,4 @@ Created folders:
 - File: `shared-context/assets/packets/2026-06-30-update-floor-properties-63x63-room-5053285.txt`
 - From: Kenjy
 - Purpose: raw `UpdateFloorProperties` packet supplied when testing room id `5053285`; confirms the same 63x63 floor payload shape should be used.
-- Important notes: the room id is context from Kenjy's test message; the `UpdateFloorProperties` payload itself does not include a room id.
+- Important notes: the room id is context from Kenjy's test message; the `UpdateFloorProperties` payload itself does not include a room id. This is a raw logged byte-expression, not the semantic JS payload. The active JS sender should follow Python: `BIG_FLOOR_64` string plus trailing ints `0,0,0,0,0,2,0,0,0,0,-1`.

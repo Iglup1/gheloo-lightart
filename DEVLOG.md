@@ -1375,6 +1375,30 @@ Fixed to: `y = anchorY - (logicalH - 1 - localY)` — image-top now maps to room
 
 ---
 
+## [2026-06-30] Codex - Session 37
+
+**Done:**
+- Rechecked the Python reference implementation after Kenjy showed the log still made a small room.
+- Found the real Python packet shape: `make_packet('UpdateFloorProperties', BIG_FLOOR_64, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, -1)`.
+- Changed JS to send the same semantic expression: one string argument containing 64 rows of 64 zeroes separated by `\r`, then the same trailing integers.
+- Updated `packetString(...)` so carriage returns are encoded as `\\r`, matching Gheloo's `GPacket.fromExpression()` parser.
+- Moved the floor update before room settings, matching Python's `create_and_prepare_room(...)` order more closely.
+
+**Changed files:**
+- `pixelart-lightart.js:6` - added `BIG_FLOOR_64` generated exactly like Python.
+- `pixelart-lightart.js:418` - `packetString(...)` now escapes CR/LF as `\\r`.
+- `pixelart-lightart.js:475` - `sendUpdateFloorProperties()` now sends `packetString(BIG_FLOOR_64) + {i:0}...{i:-1}` instead of the logged raw byte expression.
+- `pixelart-lightart.js:569` - mega-room prep applies floor before saving settings.
+
+**Verification:**
+- Ran `node --check pixelart-lightart.js` successfully.
+- Ran `git diff --check` successfully; only existing CRLF normalization warning was reported.
+
+**Open / next:**
+- Live-test room creation again. The build log should still show `grote kamer floor sturen`, but the outgoing `UpdateFloorProperties` packet should now resemble Python's semantic packet rather than the raw logged byte dump.
+
+---
+
 ## [2026-06-30] Codex - Session 36
 
 **Done:**
