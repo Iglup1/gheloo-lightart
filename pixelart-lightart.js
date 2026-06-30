@@ -2417,7 +2417,7 @@
       r: parseInt(p[2], 10) || 0
     };
   }
-  async function placeGrouped(root, items, label, offset, totalOverride) {
+  async function placeGrouped(root, items, label, offset, totalOverride, checkpointExtra) {
     const groups = {};
     items.forEach(function(item) {
       const key = buildGroupKey(item);
@@ -2449,12 +2449,12 @@
         progress(root, globalStep, total);
         const el = root.querySelector('#__la_status');
         if (el && label) el.textContent = el.textContent.replace('Bouwen:', label + ':');
-        saveCheckpoint({ stage: label || 'Bouwen', completed: globalStep - 1, nextStep: globalStep, total, item });
+        saveCheckpoint(Object.assign({ stage: label || 'Bouwen', completed: globalStep - 1, nextStep: globalStep, total, item }, checkpointExtra || {}));
         if (!await placeWithWatchdog(root, item, globalStep, total)) {
-          saveCheckpoint({ stage: label || 'Bouwen', failed: true, completed: globalStep - 1, nextStep: globalStep, total, item });
+          saveCheckpoint(Object.assign({ stage: label || 'Bouwen', failed: true, completed: globalStep - 1, nextStep: globalStep, total, item }, checkpointExtra || {}));
           throw new Error('Geen ObjectAdd bij stap ' + globalStep);
         }
-        saveCheckpoint({ stage: label || 'Bouwen', completed: globalStep, nextStep: globalStep + 1, total, item });
+        saveCheckpoint(Object.assign({ stage: label || 'Bouwen', completed: globalStep, nextStep: globalStep + 1, total, item }, checkpointExtra || {}));
         await sleep(Math.max(0, +settings.delay || 120));
       }
     }
@@ -2609,24 +2609,40 @@
     collectSettings(root);
     const groups = chunkGroupsForRooms();
     const base = projectNameBase();
-    logBuild(root, 'mega rooms build gestart', { base, groups });
+    checkpoint = loadCheckpoint();
+    let resumeRoomIndex = 0;
+    if (checkpoint && checkpoint.megaRoom && Number.isFinite(parseInt(checkpoint.roomIndex, 10))) {
+      resumeRoomIndex = Math.max(0, parseInt(checkpoint.roomIndex, 10));
+    } else if (checkpoint && /^Kamer\s+\d+/i.test(String(checkpoint.stage || ''))) {
+      const m = String(checkpoint.stage || '').match(/^Kamer\s+(\d+)/i);
+      resumeRoomIndex = m ? Math.max(0, parseInt(m[1], 10) - 1) : 0;
+    }
+    const resumeMegaRoom = !!(resumeSkip > 0 && checkpoint && (/^Kamer\s+\d+/i.test(String(checkpoint.stage || '')) || checkpoint.megaRoom));
+    logBuild(root, 'mega rooms build gestart', { base, groups, resumeSkip, resumeRoomIndex, resumeMegaRoom });
     progressStart = Date.now();
-    for (let gi = 0; gi < groups.length; gi++) {
+    for (let gi = resumeRoomIndex; gi < groups.length; gi++) {
       if (stopRequested) break;
       const chunks = groups[gi];
       const roomName = base + (gi + 1);
-      await prepareMegaRoom(root, roomName);
+      const resumeThisRoom = resumeMegaRoom && gi === resumeRoomIndex;
+      if (resumeThisRoom) {
+        logBuild(root, 'kamer hervatten zonder nieuwe kamer', { roomName, chunks, resumeSkip });
+      } else {
+        resumeSkip = 0;
+        await prepareMegaRoom(root, roomName);
+      }
       await withChunkRoomMapAsync(chunks, async function() {
         logBuild(root, 'kamer chunks starten', { roomName, chunks });
-        if (settings.chunkMode) await buyAndPlaceChunkMarkers(root, true);
+        if (settings.chunkMode && !resumeThisRoom) await buyAndPlaceChunkMarkers(root, true);
         if (window.Inventory && Object.keys(window.Inventory.items || {}).length) rebuildLocalInventoryFromWindow();
         requestInventory();
         await waitInventoryReady(8000);
         const items = makeBuildItems(root);
         logBuild(root, 'kamer build items', { roomName, chunks, total: items.length });
-        await placeGrouped(root, items, 'Kamer ' + (gi + 1), 0, items.length);
+        await placeGrouped(root, items, 'Kamer ' + (gi + 1), 0, items.length, { megaRoom: true, roomIndex: gi, roomNumber: gi + 1, roomName, chunks });
         logBuild(root, 'kamer klaar', { roomName, chunks, total: items.length });
       });
+      resumeSkip = 0;
       await sleep(1200);
     }
     sendChatCommand(':bh'); sendChatCommand(':bs'); sendChatCommand(':bd');
@@ -3108,7 +3124,7 @@
           '<div class="sec">Chunks</div>' +
           '<div class="row"><label><input id="__la_chunk_mode" type="checkbox"' + (settings.chunkMode ? ' checked' : '') + '> in stukken</label><label><input id="__la_show_grid" type="checkbox"' + (settings.showGrid !== false ? ' checked' : '') + '> grid tonen</label></div>' +
           '<div class="row"><label>Welke stukken</label><input id="__la_chunk_select" type="text" placeholder="leeg = auto, bv. 1 of 1,2,4,5" value="' + esc(settings.chunkSelection) + '"></div>' +
-          '<div class="row"><button id="__la_reset_gen" class="btn btn-secondary btn-sm flex-grow-1">Generator terug naar default</button></div>' +
+          '<div class="row"><button id="__la_reset_photo" class="btn btn-secondary btn-sm flex-grow-1">Bronfoto terugzetten</button><button id="__la_reset_gen" class="btn btn-secondary btn-sm flex-grow-1">Generator terug naar default</button></div>' +
           '<div class="sec">Koop en bouw</div><div class="prog"><div class="bar" id="__la_bar"></div></div><div id="__la_status">Klaar.</div>' +
           '<div class="row"><button id="__la_place_preview" class="btn btn-primary btn-sm flex-grow-1">Plaats preview in kamer</button><button id="__la_room_grid_toggle" class="btn btn-primary btn-sm" style="min-width:88px">grids</button><button id="__la_room_grid_lock" class="btn btn-primary btn-sm" style="min-width:74px">los</button></div>' +
           '<div class="row"><button id="__la_build" class="btn btn-warning btn-sm flex-grow-1">Koop+Bouw</button></div>' +
@@ -3321,6 +3337,19 @@
     const generatorResetKeys = ['generatorMode','projectName','variant','renderWidth','roomW','roomH','alpha','crop','randomizer','maxLights','chunkMode','showGrid','chunkSize','chunkCols','chunkSelection','chunkBleed','chunkRightX','chunkRightY','chunkUpX','chunkUpY','imgPanX','imgPanY','imgScale'];
     const colorResetKeys = ['sat','bright','contrast','gamma','redPower','greenPower','bluePower','cameraMoreSat','cameraHyperSat','cameraLessSat','cameraBleach','cameraGray','cameraRosy'];
     const buildResetKeys = ['startX','startY','xyStep','baseBh','bhStep','rotation','delay','settingDelay','burst','burstPause','retry','attempts','megaRooms','chunksPerRoom','rightsAkaId','rightsSelfId','markerNumberType','markerNumberPage','markerNumberOffer','markerNumberBh','markerNumberRot','typeXXL','typeXL','typeL','typeM','typeS','pageXXL','pageXL','pageL','pageM','pageS','offerXXL','offerXL','offerL','offerM','offerS'];
+    root.querySelector('#__la_reset_photo').addEventListener('click', function() {
+      settings.imgPanX = 0;
+      settings.imgPanY = 0;
+      settings.imgScale = 1.0;
+      saveSettings();
+      if (image) {
+        try { makePlan(root); }
+        catch(ex) { root.querySelector('#__la_status').textContent = ex.message; return; }
+      } else {
+        redrawCurrentPreview();
+      }
+      root.querySelector('#__la_status').textContent = 'Bronfoto terug gecentreerd.';
+    });
     root.querySelector('#__la_reset_gen').addEventListener('click', function() { resetSettingsGroup(generatorResetKeys, true, 'Generator'); });
     root.querySelector('#__la_reset_color').addEventListener('click', function() { resetSettingsGroup(colorResetKeys, true, 'Color'); });
     root.querySelector('#__la_reset_build').addEventListener('click', function() { resetSettingsGroup(buildResetKeys, false, 'Settings'); });
@@ -3365,11 +3394,24 @@
     updateRoomGridToggle(root);
     root.querySelector('#__la_build').addEventListener('click', function() { buyAndBuild(root); });
     root.querySelector('#__la_continue').addEventListener('click', function() {
+      if (running) return;
       checkpoint = loadCheckpoint();
       resumeSkip = checkpoint && checkpoint.completed ? parseInt(checkpoint.completed, 10) || 0 : 0;
       logBuild(root, 'continue geklikt', { checkpoint, resumeSkip });
-      if (checkpoint && String(checkpoint.stage || '').toLowerCase().includes('marker')) buyAndPlaceChunkMarkers(root);
-      else build(root);
+      if (checkpoint && String(checkpoint.stage || '').toLowerCase().includes('marker')) {
+        buyAndPlaceChunkMarkers(root);
+      } else if (checkpoint && (checkpoint.megaRoom || /^Kamer\s+\d+/i.test(String(checkpoint.stage || '')) || (settings.megaRooms && settings.chunkMode))) {
+        running = true;
+        stopRequested = false;
+        buildMegaRooms(root).catch(function(ex) {
+          logBuild(root, 'mega continue fout', { message: ex.message });
+          root.querySelector('#__la_status').textContent = 'Fout: ' + ex.message;
+        }).finally(function() {
+          running = false;
+        });
+      } else {
+        build(root);
+      }
     });
     root.querySelector('#__la_stop').addEventListener('click', function() {
       stopRequested = true;

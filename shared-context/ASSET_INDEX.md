@@ -53,3 +53,10 @@ Created folders:
 - From: Kenjy
 - Purpose: raw `UpdateFloorProperties` packet supplied when testing room id `5053285`; confirms the same 63x63 floor payload shape should be used.
 - Important notes: the room id is context from Kenjy's test message; the `UpdateFloorProperties` payload itself does not include a room id. This is a raw logged byte-expression, not the semantic JS payload. The active JS sender should follow Python: `BIG_FLOOR_64` string plus trailing ints `0,0,0,0,0,2,0,0,0,0,-1`.
+
+## 2026-06-30 - mega-room checkpoint failure at step 1532
+
+- File: `shared-context/assets/logs/2026-06-30-mega-room-checkpoint-step-1532.txt`
+- From: Kenjy
+- Purpose: PLAN INFO/log showing a mega-room build failure in `Kamer 1` at `nextStep: 1532` of `2990`.
+- Important notes: this log motivated the Continue fix. `Kamer N` checkpoints must resume via `buildMegaRooms(...)`, not single-room `build(...)`, and should not recreate the same room or re-place chunk numbers.

@@ -701,3 +701,25 @@ This is the compressed handoff from the long Codex/Kenjy conversation so Claude 
   - offer `240903`
   - type `886656643`
 - These numbers are labels for the camera/chunk workflow, not part of the Light Art image itself.
+
+### 2026-06-30 Source photo reset and mega-room continue
+
+- Kenjy reported that the source image in `Bron + color` can be dragged/scaled out of view accidentally.
+- Current JS rule: the Generator tab has a visible `Bronfoto terugzetten` button.
+  - It resets only `imgPanX`, `imgPanY`, and `imgScale`.
+  - It must not reset art size, chunk selection, max lights, colour settings, or build settings.
+  - Double-click on the source canvas may still reset, but the visible button is the user-facing recovery path.
+- Kenjy supplied a failed PLAN INFO/log saved at:
+
+```txt
+shared-context/assets/logs/2026-06-30-mega-room-checkpoint-step-1532.txt
+```
+
+- That checkpoint is `stage: "Kamer 1"`, `completed: 1531`, `nextStep: 1532`, `total: 2990`.
+- Important JS rule: Continue for a `Kamer N` checkpoint must resume through `buildMegaRooms(...)`, not the normal single-room `build(...)`.
+- Mega-room checkpoints should include `megaRoom`, `roomIndex`, `roomNumber`, `roomName`, and `chunks`.
+- When resuming such a checkpoint:
+  - Do not create the same room again.
+  - Do not place chunk numbers again for the resumed room.
+  - Resume with `resumeSkip = checkpoint.completed`.
+  - After that room finishes, reset `resumeSkip` and continue with the next room group.

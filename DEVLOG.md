@@ -1448,6 +1448,33 @@ Fixed to: `y = anchorY - (logicalH - 1 - localY)` — image-top now maps to room
 
 ---
 
+## [2026-06-30] Codex - Session 38
+
+**Done:**
+- Added a visible `Bronfoto terugzetten` button in the Generator tab. It only resets the source-photo pan/zoom (`imgPanX`, `imgPanY`, `imgScale`) and rebuilds the preview, without resetting the whole generator.
+- Fixed Continue for mega-room checkpoints. A checkpoint from `Kamer N` now resumes through `buildMegaRooms(...)`, not the normal single-room `build(...)`.
+- Mega-room checkpoints now store `megaRoom`, `roomIndex`, `roomNumber`, `roomName`, and `chunks`, so future resumes know which generated room/chunk group they belong to.
+- When resuming a failed mega-room checkpoint, the extension continues in the current room without creating the same room or placing chunk numbers again. After that room finishes, it continues to the next room group.
+- Saved Kenjy's latest PLAN INFO/log evidence to `shared-context/assets/logs/2026-06-30-mega-room-checkpoint-step-1532.txt`.
+
+**Changed files:**
+- `pixelart-lightart.js` - added the source-photo reset button and handler.
+- `pixelart-lightart.js` - added optional checkpoint metadata to `placeGrouped(...)`.
+- `pixelart-lightart.js` - changed `buildMegaRooms(...)` to resume from the checkpoint room index.
+- `pixelart-lightart.js` - changed the Continue button to route `Kamer N` checkpoints through the mega-room builder.
+- `shared-context/assets/logs/2026-06-30-mega-room-checkpoint-step-1532.txt` - copied the attached failed checkpoint/log.
+- `DEVLOG.md`, `SHARED_CONTEXT.md`, `shared-context/SHARED_CONTEXT.md`, `shared-context/notes/PROJECT_MEMORY.md`, `shared-context/ASSET_INDEX.md` - documented the change.
+
+**Verification:**
+- Ran `node --check pixelart-lightart.js` successfully.
+- Ran `git diff --check` successfully; only the existing CRLF normalization warning was reported.
+
+**Open / next:**
+- Live-test Continue from a failed `Kamer 1` checkpoint. Expected behavior: no new room is created, chunk numbers are not re-placed, and the build resumes at the saved step.
+- If it still stops on `Geen ObjectAdd`, inspect the saved log's `recentAcks` for whether the item id was consumed without ObjectAdd or whether a wrong room/coordinate is being used.
+
+---
+
 ## [2026-06-29] Codex - Session 34
 
 **Done:**

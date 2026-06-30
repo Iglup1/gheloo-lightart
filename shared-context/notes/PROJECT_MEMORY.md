@@ -208,6 +208,50 @@ Chunk remap rule: for each room group, global chunks are temporarily mapped to l
 
 Current scorebord automation rule: after preparing each generated room, the extension buys one scorebord, reads its real item id from `UnseenItems`, places it at `x:1, y:0, rot:0` with `bh 63.0`, then activates it using `UseFurniture`.
 
+## 2026-06-30 Source Photo Reset
+
+Kenjy can accidentally drag/scale the `Bron + color` source image out of view. The UI must expose a visible recovery button:
+
+- Button label: `Bronfoto terugzetten`.
+- Reset only:
+  - `imgPanX = 0`
+  - `imgPanY = 0`
+  - `imgScale = 1.0`
+- Rebuild the preview if an image is loaded.
+- Do not reset generator size, chunk selection, max lights, build settings, or colour settings.
+
+## 2026-06-30 Mega-Room Continue Rule
+
+Kenjy supplied a failed PLAN INFO/log copied to:
+
+```txt
+shared-context/assets/logs/2026-06-30-mega-room-checkpoint-step-1532.txt
+```
+
+Important observed checkpoint:
+
+- `stage: "Kamer 1"`
+- `completed: 1531`
+- `nextStep: 1532`
+- `total: 2990`
+
+Rule for all future agents:
+
+- A `Kamer N` checkpoint is a mega-room checkpoint.
+- Continue must call `buildMegaRooms(...)`, not normal `build(...)`.
+- Checkpoints from `placeGrouped(...)` during mega-room building must include:
+  - `megaRoom: true`
+  - `roomIndex`
+  - `roomNumber`
+  - `roomName`
+  - `chunks`
+- When resuming a mega-room checkpoint:
+  - Continue in the current room.
+  - Do not create the room again.
+  - Do not place chunk numbers again.
+  - Skip already completed steps with `resumeSkip`.
+  - Clear `resumeSkip` after that room completes so later rooms build from step 1.
+
 ## Python Reference Repo
 
 Kenjy shared `https://github.com/Iglup1/pixelart-gpython` as the old Python implementation to inspect for packets and room flow. Codex cloned it locally to:
