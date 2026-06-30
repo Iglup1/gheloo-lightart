@@ -172,19 +172,11 @@
     chunkRightY: -2,
     chunkUpX: 0,
     chunkUpY: -29,
-    markerCylinderType: 886731030,
-    markerCylinderPage: 2026,
-    markerCylinderOffer: 6572,
-    markerCornerType: 886748112,
-    markerCornerPage: 348,
-    markerCornerOffer: 21567,
     markerNumberType: 886656643,
     markerNumberPage: -1,
     markerNumberOffer: 240903,
     markerNumberBh: 0,
     markerNumberRot: 4,
-    markerBh: 0,
-    markerRot: 2,
     typeXXL: 886600850,
     typeXL: 886600851,
     typeL: 886600852,
@@ -562,12 +554,13 @@
     logBuild(root, 'nieuwe kamer gevonden', { roomName, roomId });
     sendOpenFlatConnection(roomId);
     await waitRoomReady(roomId, 15000);
-    await waitGuestRoomResult(roomId, 5000);
+    const guestRoom = await waitGuestRoomResult(roomId, 5000);
+    const settingsRoomId = (guestRoom && guestRoom.id) ? guestRoom.id : roomId;
     await sleep(1000);
-    logBuild(root, 'kamer settings sturen', { roomName, roomId });
-    sendSaveRoomSettings(roomId, roomName);
+    logBuild(root, 'kamer settings sturen', { roomName, roomId: settingsRoomId });
+    sendSaveRoomSettings(settingsRoomId, roomName);
     await sleep(1000);
-    sendSaveRoomSettings(roomId, roomName);
+    sendSaveRoomSettings(settingsRoomId, roomName);
     await sleep(500);
     sendAssignRights(settings.rightsAkaId || 37968);
     await sleep(250);
@@ -577,7 +570,7 @@
     await sleep(1500);
     await ensureScoreboardAnchor(root);
     await sleep(500);
-    return roomId;
+    return settingsRoomId;
   }
   async function purchaseAmount(pageId, offerId, amount, typeId) {
     const count = Math.max(1, Math.min(100, Math.round(parseFloat(amount) || 1)));
@@ -1379,10 +1372,8 @@
       chunkSize:'#__la_chunk_size', chunkCols:'#__la_chunk_cols', chunkSelection:'#__la_chunk_select', chunkBleed:'#__la_chunk_bleed',
       chunkRightX:'#__la_chunk_rx', chunkRightY:'#__la_chunk_ry', chunkUpX:'#__la_chunk_ux', chunkUpY:'#__la_chunk_uy',
       chunksPerRoom:'#__la_chunks_per_room', rightsAkaId:'#__la_rights_aka', rightsSelfId:'#__la_rights_self',
-      markerCylinderType:'#__la_marker_cyl_type', markerCylinderPage:'#__la_marker_cyl_page', markerCylinderOffer:'#__la_marker_cyl_offer',
-      markerCornerType:'#__la_marker_corner_type', markerCornerPage:'#__la_marker_corner_page', markerCornerOffer:'#__la_marker_corner_offer',
       markerNumberType:'#__la_marker_num_type', markerNumberPage:'#__la_marker_num_page', markerNumberOffer:'#__la_marker_num_offer',
-      markerBh:'#__la_marker_bh', markerRot:'#__la_marker_rot', markerNumberBh:'#__la_marker_num_bh', markerNumberRot:'#__la_marker_num_rot',
+      markerNumberBh:'#__la_marker_num_bh', markerNumberRot:'#__la_marker_num_rot',
       typeXXL:'#__la_type_xxl', typeXL:'#__la_type_xl', typeL:'#__la_type_l', typeM:'#__la_type_m', typeS:'#__la_type_s',
       pageXXL:'#__la_page_xxl', pageXL:'#__la_page_xl', pageL:'#__la_page_l', pageM:'#__la_page_m', pageS:'#__la_page_s',
       offerXXL:'#__la_offer_xxl', offerXL:'#__la_offer_xl', offerL:'#__la_offer_l', offerM:'#__la_offer_m', offerS:'#__la_offer_s'
@@ -2064,8 +2055,6 @@
         const a = chunkAnchor(col, row);
         const nr = chunkNumberForGrid(col, row);
         if (selected && !selected.has(nr)) continue;
-        out.push({ kind: 'cylinder', nr, typeId: +settings.markerCylinderType, pageId: +settings.markerCylinderPage, offerId: +settings.markerCylinderOffer, x: a.x, y: a.y, rot: 0, state: '0' });
-        out.push({ kind: 'corner', nr, typeId: +settings.markerCornerType, pageId: +settings.markerCornerPage, offerId: +settings.markerCornerOffer, x: a.x + 1, y: a.y, rot: +settings.markerRot || 2, state: '0' });
         addNumberDigits(nr, a);
       }
     }
@@ -2082,8 +2071,8 @@
     try {
       if (!internalRun) collectSettings(root);
       const specs = markerSpecs();
-      logBuild(root, 'markers gestart', { total: specs.length, resumeSkip });
-      root.querySelector('#__la_status').textContent = 'Markers kopen/scannen...';
+      logBuild(root, 'chunk nummers gestart', { total: specs.length, resumeSkip });
+      root.querySelector('#__la_status').textContent = 'Chunk nummers kopen/scannen...';
       if (window.Inventory && Object.keys(window.Inventory.items || {}).length) rebuildLocalInventoryFromWindow();
       if (window.Inventory) window.Inventory.loaded = false;
       requestInventory();
@@ -2108,19 +2097,19 @@
       specs.forEach(function(s) {
         const arr = inv2[s.typeId] || [];
         const id = arr.shift();
-        const z = s.z != null ? s.z : normalizeHeight(settings.markerBh);
-        if (id) items.push({ id, typeId: s.typeId, x: s.x, y: s.y, z, rotation: s.rot, state: s.state, nr: s.nr, kind: s.kind, name: 'marker_' + s.kind });
+        const z = s.z != null ? s.z : normalizeHeight(settings.markerNumberBh);
+        if (id) items.push({ id, typeId: s.typeId, x: s.x, y: s.y, z, rotation: s.rot, state: s.state, nr: s.nr, kind: s.kind, name: 'chunk_' + s.kind });
       });
-      await placeGrouped(root, items, 'Markers', 0, items.length);
+      await placeGrouped(root, items, 'Chunk nummers', 0, items.length);
       if (!internalRun) {
         clearCheckpoint();
         resumeSkip = 0;
       }
-      logBuild(root, 'markers klaar', { total: items.length });
-      root.querySelector('#__la_status').textContent = 'Chunk markers klaar.';
+      logBuild(root, 'chunk nummers klaar', { total: items.length });
+      root.querySelector('#__la_status').textContent = 'Chunk nummers klaar.';
     } catch (ex) {
-      logBuild(root, 'marker fout', { message: ex.message });
-      root.querySelector('#__la_status').textContent = 'Marker fout: ' + ex.message;
+      logBuild(root, 'chunk nummer fout', { message: ex.message });
+      root.querySelector('#__la_status').textContent = 'Chunk nummer fout: ' + ex.message;
     } finally {
       if (!internalRun) running = false;
     }
@@ -2319,7 +2308,7 @@
         typeId: s.typeId,
         x: s.x,
         y: s.y,
-        z: s.z != null ? s.z : normalizeHeight(settings.markerBh),
+        z: s.z != null ? s.z : normalizeHeight(settings.markerNumberBh),
         rotation: s.rot || 0,
         state: s.state || '0',
         size: 'marker',
@@ -3147,10 +3136,7 @@
           '<div class="sec">Mega kamers</div>' +
           '<div class="row"><label><input id="__la_mega_rooms" type="checkbox"' + (settings.megaRooms ? ' checked' : '') + '> 4 chunks per kamer</label><label>Per kamer</label><input id="__la_chunks_per_room" type="number" min="1" max="4" value="' + esc(settings.chunksPerRoom) + '"></div>' +
           '<div class="row"><label>Rechten IDs</label><input id="__la_rights_aka" type="number" value="' + esc(settings.rightsAkaId) + '"><input id="__la_rights_self" type="number" value="' + esc(settings.rightsSelfId) + '"></div>' +
-          '<div class="sec">Chunk camera markers</div>' +
-          '<div class="row"><label>BH</label><input id="__la_marker_bh" type="number" value="' + esc(settings.markerBh) + '"><label>Rot</label><input id="__la_marker_rot" type="number" value="' + esc(settings.markerRot) + '"></div>' +
-          '<div class="row"><label>Cyl 14</label><input id="__la_marker_cyl_type" type="number" value="' + esc(settings.markerCylinderType) + '"><input id="__la_marker_cyl_page" type="number" value="' + esc(settings.markerCylinderPage) + '"><input id="__la_marker_cyl_offer" type="number" value="' + esc(settings.markerCylinderOffer) + '"></div>' +
-          '<div class="row"><label>Corner</label><input id="__la_marker_corner_type" type="number" value="' + esc(settings.markerCornerType) + '"><input id="__la_marker_corner_page" type="number" value="' + esc(settings.markerCornerPage) + '"><input id="__la_marker_corner_offer" type="number" value="' + esc(settings.markerCornerOffer) + '"></div>' +
+          '<div class="sec">Chunk nummers</div>' +
           '<div class="row"><label>Numbers</label><input id="__la_marker_num_type" type="number" value="' + esc(settings.markerNumberType) + '"><input id="__la_marker_num_page" type="number" value="' + esc(settings.markerNumberPage) + '"><input id="__la_marker_num_offer" type="number" value="' + esc(settings.markerNumberOffer) + '"></div>' +
           '<div class="row"><label>Num set</label><input id="__la_marker_num_bh" type="number" value="' + esc(settings.markerNumberBh) + '"><input id="__la_marker_num_rot" type="number" value="' + esc(settings.markerNumberRot) + '"></div>' +
           '<div class="sec">Catalog lights</div>' +
@@ -3289,10 +3275,9 @@
       cameraBleach:'#__la_cam_bleach', cameraGray:'#__la_cam_gray', cameraRosy:'#__la_cam_rosy',
       startX:'#__la_x', startY:'#__la_y', xyStep:'#__la_xystep', baseBh:'#__la_bh', bhStep:'#__la_bhstep',
       rotation:'#__la_rot', delay:'#__la_delay', settingDelay:'#__la_setting_delay', burst:'#__la_burst', burstPause:'#__la_burst_pause',
-      retry:'#__la_retry', attempts:'#__la_attempts', megaRooms:'#__la_mega_rooms', chunksPerRoom:'#__la_chunks_per_room', rightsAkaId:'#__la_rights_aka', rightsSelfId:'#__la_rights_self', markerCylinderType:'#__la_marker_cyl_type', markerCylinderPage:'#__la_marker_cyl_page',
-      markerCylinderOffer:'#__la_marker_cyl_offer', markerCornerType:'#__la_marker_corner_type', markerCornerPage:'#__la_marker_corner_page',
-      markerCornerOffer:'#__la_marker_corner_offer', markerNumberType:'#__la_marker_num_type', markerNumberPage:'#__la_marker_num_page',
-      markerNumberOffer:'#__la_marker_num_offer', markerBh:'#__la_marker_bh', markerRot:'#__la_marker_rot',
+      retry:'#__la_retry', attempts:'#__la_attempts', megaRooms:'#__la_mega_rooms', chunksPerRoom:'#__la_chunks_per_room', rightsAkaId:'#__la_rights_aka', rightsSelfId:'#__la_rights_self',
+      markerNumberType:'#__la_marker_num_type', markerNumberPage:'#__la_marker_num_page',
+      markerNumberOffer:'#__la_marker_num_offer',
       markerNumberBh:'#__la_marker_num_bh', markerNumberRot:'#__la_marker_num_rot',
       typeXXL:'#__la_type_xxl', typeXL:'#__la_type_xl', typeL:'#__la_type_l', typeM:'#__la_type_m', typeS:'#__la_type_s',
       pageXXL:'#__la_page_xxl', pageXL:'#__la_page_xl', pageL:'#__la_page_l', pageM:'#__la_page_m', pageS:'#__la_page_s',
@@ -3326,7 +3311,7 @@
     }
     const generatorResetKeys = ['generatorMode','projectName','variant','renderWidth','roomW','roomH','alpha','crop','randomizer','maxLights','chunkMode','showGrid','chunkSize','chunkCols','chunkSelection','chunkBleed','chunkRightX','chunkRightY','chunkUpX','chunkUpY','imgPanX','imgPanY','imgScale'];
     const colorResetKeys = ['sat','bright','contrast','gamma','redPower','greenPower','bluePower','cameraMoreSat','cameraHyperSat','cameraLessSat','cameraBleach','cameraGray','cameraRosy'];
-    const buildResetKeys = ['startX','startY','xyStep','baseBh','bhStep','rotation','delay','settingDelay','burst','burstPause','retry','attempts','megaRooms','chunksPerRoom','rightsAkaId','rightsSelfId','markerCylinderType','markerCylinderPage','markerCylinderOffer','markerCornerType','markerCornerPage','markerCornerOffer','markerNumberType','markerNumberPage','markerNumberOffer','markerBh','markerRot','markerNumberBh','markerNumberRot','typeXXL','typeXL','typeL','typeM','typeS','pageXXL','pageXL','pageL','pageM','pageS','offerXXL','offerXL','offerL','offerM','offerS'];
+    const buildResetKeys = ['startX','startY','xyStep','baseBh','bhStep','rotation','delay','settingDelay','burst','burstPause','retry','attempts','megaRooms','chunksPerRoom','rightsAkaId','rightsSelfId','markerNumberType','markerNumberPage','markerNumberOffer','markerNumberBh','markerNumberRot','typeXXL','typeXL','typeL','typeM','typeS','pageXXL','pageXL','pageL','pageM','pageS','offerXXL','offerXL','offerL','offerM','offerS'];
     root.querySelector('#__la_reset_gen').addEventListener('click', function() { resetSettingsGroup(generatorResetKeys, true, 'Generator'); });
     root.querySelector('#__la_reset_color').addEventListener('click', function() { resetSettingsGroup(colorResetKeys, true, 'Color'); });
     root.querySelector('#__la_reset_build').addEventListener('click', function() { resetSettingsGroup(buildResetKeys, false, 'Settings'); });

@@ -668,3 +668,32 @@ This is the compressed handoff from the long Codex/Kenjy conversation so Claude 
   - Example: `{in:GetGuestRoomResult}{b:true}{i:5053231}{s:"e1"}...`
   - The second field after the boolean is the room id (`5053231` in the example).
   - Any packets that need room id, especially `SaveRoomSettings`, must use this created/opened room id.
+
+### 2026-06-30 Python reference repo inspection
+
+- Kenjy shared the Python reference repo: `https://github.com/Iglup1/pixelart-gpython`.
+- Codex cloned it locally to `C:\Users\prepa\OneDrive\Bureaublad\pixelart-gpython-ref` for inspection only.
+- Relevant Python findings from `leet_pixelart.py`:
+  - Room creation waits for `FlatCreated`.
+  - Then it sends `OpenFlatConnection`.
+  - Then it waits for `RoomReady`.
+  - Then it sends the big floorplan and saves room settings.
+  - Number labels are intentionally outside the camera/photo footprint.
+- JS implementation update:
+  - `prepareMegaRoom(...)` now uses the id confirmed by `GetGuestRoomResult` for `SaveRoomSettings` when available.
+  - Old physical chunk camera markers are removed from the extension.
+  - Do not place standing half cylinder 14 / diagonal corner marker furniture for chunk framing anymore.
+  - Keep only the chunk number furniture.
+
+### Current chunk marker rule
+
+- The word "marker" may still appear in internal JS helper names, but user-facing behaviour must be:
+  - no physical chunk outline/frame furniture,
+  - no standing half cylinder marker,
+  - no diagonal corner marker,
+  - only number labels remain.
+- Number furniture:
+  - page `-1`
+  - offer `240903`
+  - type `886656643`
+- These numbers are labels for the camera/chunk workflow, not part of the Light Art image itself.

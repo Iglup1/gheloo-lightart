@@ -1375,6 +1375,33 @@ Fixed to: `y = anchorY - (logicalH - 1 - localY)` — image-top now maps to room
 
 ---
 
+## [2026-06-30] Codex - Session 35
+
+**Done:**
+- Inspected Kenjy's Python reference repo `Iglup1/pixelart-gpython` locally at `C:\Users\prepa\OneDrive\Bureaublad\pixelart-gpython-ref`.
+- Confirmed the Python mega-room flow: `CreateFlat` -> wait `FlatCreated` -> `OpenFlatConnection` -> wait `RoomReady` -> floor/settings -> build.
+- Updated the JS mega-room prep to use the confirmed id from `GetGuestRoomResult` for `SaveRoomSettings` instead of blindly trusting the first created id.
+- Removed the old physical chunk camera marker furniture flow from the JS extension: no standing half cylinder frame and no diagonal corner markers are generated anymore.
+- Kept only the small chunk number furniture, matching Kenjy's latest correction: "die hele markers zijn niet nodig, alleen dat getalletje nog".
+
+**Changed files:**
+- `pixelart-lightart.js:547` - `prepareMegaRoom(...)` still follows the CreateFlat/OpenFlatConnection/RoomReady flow, but now stores the confirmed `GetGuestRoomResult` id.
+- `pixelart-lightart.js:557` - `SaveRoomSettings` now uses the confirmed opened room id when available.
+- `pixelart-lightart.js:2031` - `markerSpecs()` now returns only chunk number digit objects.
+- `pixelart-lightart.js:2063` - chunk marker build helper now logs/statuses as chunk numbers instead of camera markers.
+- `pixelart-lightart.js:3139` - settings UI now exposes only chunk number catalog/settings, no cylinder/corner marker settings.
+- `SHARED_CONTEXT.md`, `shared-context/SHARED_CONTEXT.md`, `shared-context/notes/PROJECT_MEMORY.md` - documented the Python reference and the new "numbers only" chunk marker rule.
+
+**Verification:**
+- Ran `node --check pixelart-lightart.js` successfully.
+- Ran `git diff --check` successfully; only the existing CRLF normalization warning was reported.
+
+**Open / next:**
+- Live-test the mega-room sequence on Leet after this marker removal: rooms should still get scorebord anchor + number labels, but no frame/corner marker furniture.
+- If the number label placement still blocks the camera, move the digit labels farther outside the photo footprint, using the Python number-gutter idea as inspiration.
+
+---
+
 ## [2026-06-29] Codex - Session 34
 
 **Done:**

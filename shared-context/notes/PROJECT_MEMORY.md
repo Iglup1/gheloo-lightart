@@ -195,6 +195,34 @@ Chunk remap rule: for each room group, global chunks are temporarily mapped to l
 
 Current scorebord automation rule: after preparing each generated room, the extension buys one scorebord, reads its real item id from `UnseenItems`, places it at `x:1, y:0, rot:0` with `bh 63.0`, then activates it using `UseFurniture`.
 
+## Python Reference Repo
+
+Kenjy shared `https://github.com/Iglup1/pixelart-gpython` as the old Python implementation to inspect for packets and room flow. Codex cloned it locally to:
+
+```txt
+C:\Users\prepa\OneDrive\Bureaublad\pixelart-gpython-ref
+```
+
+Useful Python findings from `leet_pixelart.py`:
+
+- Mega room creation sends `CreateFlat`.
+- It waits for `FlatCreated`.
+- It sends `OpenFlatConnection`.
+- It waits for `RoomReady`.
+- It sends the big floorplan and saves room settings before building.
+- Number labels are deliberately outside the camera/photo footprint.
+
+Current JS rule based on this inspection:
+
+- `prepareMegaRoom(...)` should use the confirmed `GetGuestRoomResult` room id for `SaveRoomSettings` when available.
+- Physical chunk camera markers are removed.
+- Do not generate or build standing half cylinder 14 marker furniture.
+- Do not generate or build diagonal corner marker furniture.
+- Only the number furniture remains:
+  - page `-1`
+  - offer `240903`
+  - type `886656643`
+
 ## Current User Feedback To Preserve
 
 - Blender 0 should be closer to pixel art with small lights.
