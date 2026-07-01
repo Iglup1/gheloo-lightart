@@ -724,12 +724,16 @@ shared-context/assets/logs/2026-06-30-mega-room-checkpoint-step-1532.txt
   - Resume with `resumeSkip = checkpoint.completed`.
   - After that room finishes, reset `resumeSkip` and continue with the next room group.
 
-### 2026-06-30 PixelArt launcher / hub button
+### 2026-07-01 PixelArt User Extensions hub tile
 
 - PixelArt should not auto-open the full UI when the extension is enabled.
-- Startup should create only a small launcher/hub button labeled `PA PixelArt`.
-- Clicking the launcher opens the full PixelArt card.
+- Startup should create the PixelArt panel hidden and register it as a tile in Gheloo's `User Extensions` hub.
+- Use `window.__ext_hub_register({ name: 'PixelArt', icon, panel })`.
+- Do not create a separate floating `PA PixelArt` button on the game screen.
+- Clicking the `PixelArt` tile in User Extensions opens the full PixelArt card.
 - Closing the card hides it with `display:none`; it must not destroy/reset the current image, source pan/zoom, plan, settings, or log.
-- Clicking the launcher again should show the existing hidden card, not rebuild a fresh card.
+- Clicking the hub tile again should show the existing hidden card, not rebuild a fresh card.
 - On extension stop/toggle off, remove the launcher, room grid overlay, PixelArt card, and PixelArt styles.
-- If Kenjy later wants the launcher placed inside a specific Gheloo user-extension hub container, inspect that DOM first and move `#__la_launcher` there without changing the state-preserving behavior.
+- Current Gheloo hub API is in `content.js`:
+  - `window.__ext_hub_register = function(opts) { _addHubTile(opts); }`
+  - `opts.panel` is moved/displayed by the hub when the tile is clicked.

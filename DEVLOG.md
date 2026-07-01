@@ -1448,6 +1448,28 @@ Fixed to: `y = anchorY - (logicalH - 1 - localY)` — image-top now maps to room
 
 ---
 
+## [2026-07-01] Codex - Session 40
+
+**Done:**
+- Replaced the separate floating `PA PixelArt` launcher with a real User Extensions hub tile.
+- PixelArt now creates its panel hidden at boot and registers it with `window.__ext_hub_register({ name: 'PixelArt', icon, panel })`.
+- The full UI appears only when Kenjy clicks the `PixelArt` tile inside the `User Extensions` window.
+- Closing the PixelArt card still only hides it, so the current image/settings/plan stay alive and the hub tile can reopen the same panel.
+
+**Changed files:**
+- `pixelart-lightart.js` - removed `ensureLauncher()` / `removeLauncher()` floating button code.
+- `pixelart-lightart.js` - added `registerHubTile()` using the Gheloo user-extension hub API.
+- `pixelart-lightart.js` - changed boot to `buildUI(true)` then register the hidden panel as a hub tile.
+- `DEVLOG.md`, `SHARED_CONTEXT.md`, `shared-context/SHARED_CONTEXT.md`, `shared-context/notes/PROJECT_MEMORY.md` - documented the hub-tile rule.
+
+**Verification:**
+- Ran `node --check pixelart-lightart.js` successfully.
+
+**Open / next:**
+- Live-test that the tile appears beside `Wall Aligner`, `Room Info`, and `Packet Logger` in the User Extensions grid.
+
+---
+
 ## [2026-06-30] Codex - Session 39
 
 **Done:**

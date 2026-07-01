@@ -252,14 +252,25 @@ Rule for all future agents:
   - Skip already completed steps with `resumeSkip`.
   - Clear `resumeSkip` after that room completes so later rooms build from step 1.
 
-## 2026-06-30 PixelArt Launcher Rule
+## 2026-07-01 PixelArt User Extensions Hub Rule
 
 The full PixelArt UI must not open automatically when the extension starts.
 
 Current intended behavior:
 
-- Boot creates a small launcher button: `PA PixelArt`.
-- Clicking the launcher opens the PixelArt card.
+- Boot creates the PixelArt card hidden.
+- Boot registers that hidden panel with the Gheloo User Extensions hub:
+
+```js
+window.__ext_hub_register({
+  name: 'PixelArt',
+  icon: '...',
+  panel: root
+});
+```
+
+- No separate floating `PA PixelArt` launcher should be shown on the game screen.
+- Clicking the `PixelArt` tile inside the User Extensions window opens the PixelArt card.
 - The close button hides the card only.
 - Hidden card state must remain alive:
   - loaded image,
@@ -267,10 +278,10 @@ Current intended behavior:
   - generated plan,
   - settings,
   - logs.
-- Clicking launcher again reuses and shows the same card.
-- Extension stop/toggle off removes launcher, card, room grid overlay, and PixelArt styles.
+- Clicking the hub tile again reuses and shows the same card.
+- Extension stop/toggle off removes card, room grid overlay, and PixelArt styles.
 
-If a future change moves the launcher into a Gheloo hub/user-extension container, preserve this behavior exactly.
+The Gheloo hub code in `content.js` handles positioning/displaying `opts.panel` when the tile is clicked.
 
 ## Python Reference Repo
 
