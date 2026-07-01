@@ -66,4 +66,4 @@ Created folders:
 - File: `shared-context/assets/icons/2026-07-01-pixelart-logo.png`
 - From: Kenjy
 - Purpose: source logo for the PixelArt tile inside Gheloo's User Extensions hub.
-- Important notes: `pixelart-lightart.js` embeds a resized 48x48 PNG data URI derived from this image. Do not copy the PNG into the live `Gheloo-main/extensions` folder; that folder should remain JS-only.
+- Important notes: `pixelart-lightart.js` embeds a cropped 64x96 portrait PNG data URI derived from this image because Gheloo renders hub icons at `20px x 30px`. Do not copy the PNG into the live `Gheloo-main/extensions` folder; that folder should remain JS-only.

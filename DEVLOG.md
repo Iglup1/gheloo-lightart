@@ -1549,6 +1549,26 @@ Fixed to: `y = anchorY - (logicalH - 1 - localY)` — image-top now maps to room
 
 ---
 
+## [2026-07-01] Codex - Session 42
+
+**Done:**
+- Enlarged the PixelArt hub tile icon by replacing the square 48x48 embed with a portrait 64x96 crop.
+- Matched Gheloo's hub image slot (`20px x 30px; object-fit: contain`) so the icon appears similar in size to the other User Extensions icons.
+
+**Changed files:**
+- `pixelart-lightart.js:3595` - embedded portrait PNG data URI generated from Kenjy's original PixelArt logo.
+- `SHARED_CONTEXT.md`, `shared-context/SHARED_CONTEXT.md`, `shared-context/notes/PROJECT_MEMORY.md`, `shared-context/ASSET_INDEX.md` - corrected the documented runtime icon size/shape.
+
+**Verification:**
+- Ran `node --check pixelart-lightart.js` successfully.
+- Ran `git diff --check` successfully; only the existing CRLF normalization warnings were reported.
+- Copied `pixelart-lightart.js` to the live Gheloo extensions folder and clipboard.
+
+**Open / next:**
+- If the hub still feels slightly small, adjust only the portrait crop bounds, not the Gheloo hub host code.
+
+---
+
 ## [2026-07-01] Codex - Session 41
 
 **Done:**
