@@ -60,3 +60,10 @@ Created folders:
 - From: Kenjy
 - Purpose: PLAN INFO/log showing a mega-room build failure in `Kamer 1` at `nextStep: 1532` of `2990`.
 - Important notes: this log motivated the Continue fix. `Kamer N` checkpoints must resume via `buildMegaRooms(...)`, not single-room `build(...)`, and should not recreate the same room or re-place chunk numbers.
+
+## 2026-07-01 - PixelArt hub logo
+
+- File: `shared-context/assets/icons/2026-07-01-pixelart-logo.png`
+- From: Kenjy
+- Purpose: source logo for the PixelArt tile inside Gheloo's User Extensions hub.
+- Important notes: `pixelart-lightart.js` embeds a resized 48x48 PNG data URI derived from this image. Do not copy the PNG into the live `Gheloo-main/extensions` folder; that folder should remain JS-only.

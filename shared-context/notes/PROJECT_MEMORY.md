@@ -270,6 +270,8 @@ window.__ext_hub_register({
 ```
 
 - No separate floating `PA PixelArt` launcher should be shown on the game screen.
+- The tile icon is Kenjy's PixelArt logo from `shared-context/assets/icons/2026-07-01-pixelart-logo.png`, embedded in `pixelart-lightart.js` as a resized PNG data URI.
+- Keep the live `Gheloo-main/extensions` folder JS-only; do not copy the loose logo file there.
 - Clicking the `PixelArt` tile inside the User Extensions window opens the PixelArt card.
 - The close button hides the card only.
 - Hidden card state must remain alive:

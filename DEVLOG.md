@@ -1549,6 +1549,28 @@ Fixed to: `y = anchorY - (logicalH - 1 - localY)` — image-top now maps to room
 
 ---
 
+## [2026-07-01] Codex - Session 41
+
+**Done:**
+- Replaced the temporary PixelArt hub tile SVG with Kenjy's supplied PixelArt logo.
+- Embedded a resized 48x48 PNG data URI inside `pixelart-lightart.js` so the live Gheloo extension folder still only needs the JS script.
+- Copied the original logo into shared context for Claude/Codex reference.
+
+**Changed files:**
+- `pixelart-lightart.js:3595` - `registerHubTile()` now passes the supplied PixelArt logo as the `icon` data URI.
+- `shared-context/assets/icons/2026-07-01-pixelart-logo.png` - original logo from Kenjy.
+- `SHARED_CONTEXT.md`, `shared-context/SHARED_CONTEXT.md`, `shared-context/notes/PROJECT_MEMORY.md`, `shared-context/ASSET_INDEX.md` - documented the hub logo source and no-extra-live-assets rule.
+
+**Verification:**
+- Ran `node --check pixelart-lightart.js` successfully.
+- Ran `git diff --check` successfully; only the existing CRLF normalization warnings were reported.
+- Copied `pixelart-lightart.js` to the live Gheloo extensions folder and clipboard.
+
+**Open / next:**
+- Keep using the hub tile flow: PixelArt should open only from User Extensions and preserve its state when hidden.
+
+---
+
 ## [2026-06-29] Codex - Session 33
 
 **Done:**

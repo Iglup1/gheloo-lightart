@@ -729,6 +729,10 @@ shared-context/assets/logs/2026-06-30-mega-room-checkpoint-step-1532.txt
 - PixelArt should not auto-open the full UI when the extension is enabled.
 - Startup should create the PixelArt panel hidden and register it as a tile in Gheloo's `User Extensions` hub.
 - Use `window.__ext_hub_register({ name: 'PixelArt', icon, panel })`.
+- The `PixelArt` hub tile icon is Kenjy's supplied PixelArt logo:
+  - Shared original: `shared-context/assets/icons/2026-07-01-pixelart-logo.png`
+  - Runtime use: a resized 48x48 PNG is embedded directly as a `data:image/png;base64,...` string in `pixelart-lightart.js`.
+  - Do not place this PNG as a loose file in `Gheloo-main/extensions`; the live extension folder should keep only JS scripts.
 - Do not create a separate floating `PA PixelArt` button on the game screen.
 - Clicking the `PixelArt` tile in User Extensions opens the full PixelArt card.
 - Closing the card hides it with `display:none`; it must not destroy/reset the current image, source pan/zoom, plan, settings, or log.
